@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\LoginController;
+use Livewire\Volt\Volt;
 
 Route::get('/', function () {
     return auth()->check()
@@ -10,7 +11,7 @@ Route::get('/', function () {
 });
 
 Route::middleware(['guest'])->group(function () {
-    Route::get('login', [LoginController::class, 'show'])->name('login');
+    Volt::route('login', 'pages.auth.login')->name('login');
     Route::post('login', [LoginController::class, 'login']);
 });
 

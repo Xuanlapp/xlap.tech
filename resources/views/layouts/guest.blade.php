@@ -16,7 +16,8 @@
     </head>
     <body class="font-sans text-gray-900 antialiased bg-slate-950">
         <div class="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.45),_transparent_32%),radial-gradient(circle_at_bottom_right,_rgba(59,130,246,0.25),_transparent_28%),linear-gradient(135deg,_#f8fafc_0%,_#dbeafe_34%,_#c7d2fe_68%,_#e0f2fe_100%)]">
-            {{ $slot }}
+            {{ $slot ?? '' }}
+            @yield('content')
         </div>
     </body>
 </html>
