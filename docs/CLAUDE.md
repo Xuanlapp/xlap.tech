@@ -15,44 +15,135 @@
 
 ## 📁 Cấu Trúc Thư Mục Chi Tiết
 
+**Nguồn chuẩn để đọc tree project:** [docs/architecture.md](docs/architecture.md).  
+Khi bạn nói "đọc doc", ưu tiên đọc file này trước để nắm cấu trúc mới nhất.
+
 ```
-xlap-tech/
-├── docs/                          # 📚 Tất cả documentation
-│   ├── CLAUDE.md                  # File này - AI Documentation
-│   ├── memory.md                  # Context & Rules cần nhớ
-│   ├── business-processes/        # Các quy trình kinh doanh
-│   │   ├── business-pulse/        # Tổng hợp health của business
-│   │   ├── invoice-chase/         # Theo dõi & thu hồi hoá đơn
-│   │   ├── close-month/           # Đóng sổ cuối tháng
-│   │   ├── tax-prep/              # Chuẩn bị tài liệu thuế
-│   │   └── job-post-builder/      # Tạo bài đăng tuyển dụng
-│   └── connectors/                # Kết nối với external tools
-│       ├── quickbooks.md          # QuickBooks API integration
-│       ├── gmail.md               # Gmail API integration
-│       ├── slack.md               # Slack API integration
-│       └── hubspot.md             # HubSpot CRM integration
 ├── app/
-│   ├── Http/Controllers/          # API Controllers
-│   ├── Livewire/                  # Livewire Components
-│   │   ├── Counter.php            # Demo component
-│   │   ├── Actions/               # Business Logic Actions
-│   │   └── Forms/                 # Reusable Form Components
-│   ├── Models/                    # Database Models
-│   └── Providers/                 # Service Providers
+│   ├── Actions/
+│   │   ├── Auth/                    # Logic Jetstream/Fortify: tạo user, reset pass
+│   │   └── Team/                    # Logic team Jetstream
+│   ├── Console/
+│   │   └── Commands/                # Lệnh artisan update NBA/WNBA/MLB data
+│   ├── Domain/
+│   │   ├── Sports/
+│   │   │   ├── MLB/
+│   │   │   │   ├── Models/
+│   │   │   │   ├── Services/
+│   │   │   │   ├── Imports/
+│   │   │   │   ├── Exports/
+│   │   │   │   └── Livewire/
+│   │   │   ├── NBA/
+│   │   │   │   ├── Models/
+│   │   │   │   ├── Services/
+│   │   │   │   ├── Imports/
+│   │   │   │   ├── Exports/
+│   │   │   │   └── Livewire/
+│   │   │   └── WNBA/
+│   │   │       ├── Models/
+│   │   │       ├── Services/
+│   │   │       ├── Imports/
+│   │   │       ├── Exports/
+│   │   │       └── Livewire/
+│   │   ├── Programs/
+│   │   │   ├── Models/
+│   │   │   ├── Services/
+│   │   │   ├── Imports/
+│   │   │   ├── Exports/
+│   │   │   └── Livewire/
+│   │   ├── Contacts/
+│   │   │   ├── Models/
+│   │   │   ├── Services/
+│   │   │   └── Livewire/
+│   │   └── Logos/
+│   │       ├── Models/
+│   │       ├── Services/
+│   │       └── Livewire/
+│   ├── Http/
+│   │   ├── Controllers/
+│   │   │   ├── Api/
+│   │   │   ├── Admin/
+│   │   │   └── Web/
+│   │   ├── Middleware/
+│   │   └── Requests/
+│   ├── Livewire/
+│   │   ├── Shared/
+│   │   ├── Admin/
+│   │   ├── Dashboard/
+│   │   └── Modals/
+│   ├── Models/
+│   ├── Policies/
+│   ├── Providers/
+│   └── Support/
+│       ├── Traits/
+│       ├── Helpers/
+│       └── Constants/
+├── config/
+│   ├── basketball_logos.php
+│   ├── repository.php
+│   └── ...
+├── database/
+│   ├── migrations/
+│   │   ├── auth/
+│   │   ├── sports/
+│   │   ├── programs/
+│   │   ├── contacts/
+│   │   └── logos/
+│   ├── seeders/
+│   └── factories/
+├── docs/
+│   ├── architecture.md
+│   ├── authentication.md
+│   ├── database.md
+│   ├── import-export.md
+│   ├── nba.md
+│   ├── mlb.md
+│   ├── wnba.md
+│   └── program.md
 ├── resources/
-│   ├── views/                     # Blade Templates
-│   │   ├── dashboard.blade.php
-│   │   ├── profile.blade.php
-│   │   ├── livewire/              # Livewire component views
-│   │   └── layouts/               # Layout templates
+│   ├── views/
+│   │   ├── layouts/
+│   │   ├── components/
+│   │   │   ├── atomics/
+│   │   │   ├── molecules/
+│   │   │   ├── icons/
+│   │   │   └── program/
+│   │   ├── livewire/
+│   │   │   ├── shared/
+│   │   │   ├── sports/
+│   │   │   │   ├── mlb/
+│   │   │   │   ├── nba/
+│   │   │   │   └── wnba/
+│   │   │   ├── programs/
+│   │   │   ├── contacts/
+│   │   │   └── logos/
+│   │   ├── admin/
+│   │   ├── auth/
+│   │   └── profile/
+│   ├── css/
 │   ├── js/
-│   │   └── app.js                 # Frontend logic
-│   └── css/
-│       └── app.css                # Tailwind styles
+│   └── markdown/
 ├── routes/
-│   ├── web.php                    # Web routes
-│   └── auth.php                   # Auth routes
-└── config/                        # Configuration files
+│   ├── web.php
+│   ├── api.php
+│   ├── admin.php
+│   ├── sports.php
+│   └── console.php
+├── storage/
+│   └── app/
+│       ├── imports/
+│       ├── exports/
+│       └── temp/
+├── tests/
+│   ├── Feature/
+│   ├── Unit/
+│   └── Browser/
+├── .env.example
+├── .gitignore
+├── composer.json
+├── package.json
+├── README.md
+└── vite.config.js
 ```
 
 ---

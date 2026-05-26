@@ -107,6 +107,12 @@ BusinessMetrics (1) ──→ (1) Month
 
 ---
 
+## 🧭 Source of Truth for Project Tree
+
+- Khi cần hiểu cấu trúc project hiện tại, đọc [docs/architecture.md](docs/architecture.md) trước.
+- File [docs/CLAUDE.md](docs/CLAUDE.md) là tài liệu AI tổng quan, còn [docs/architecture.md](docs/architecture.md) là tree chuẩn để bám theo.
+- Nếu có thay đổi cấu trúc thư mục, cập nhật đồng thời cả hai file.
+
 ## 📊 Key Metrics & KPIs
 
 ```

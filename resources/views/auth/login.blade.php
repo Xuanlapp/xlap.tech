@@ -1,29 +1,6 @@
-<?php
+@extends('layouts.guest')
 
-use App\Livewire\Forms\LoginForm;
-use Illuminate\Support\Facades\Session;
-use Livewire\Attributes\Layout;
-use Livewire\Volt\Component;
-
-new #[Layout('layouts.guest')] class extends Component
-{
-    public LoginForm $form;
-
-    /**
-     * Handle an incoming authentication request.
-     */
-    public function login(): void
-    {
-        $this->validate();
-
-        $this->form->authenticate();
-
-        Session::regenerate();
-
-        $this->redirectIntended(default: route('dashboard', absolute: false), navigate: true);
-    }
-}; ?>
-
+@section('content')
 <div class="relative min-h-screen overflow-hidden">
     <div class="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.55),transparent_24%),radial-gradient(circle_at_80%_80%,rgba(59,130,246,0.20),transparent_26%),radial-gradient(circle_at_50%_50%,rgba(14,165,233,0.18),transparent_30%)]"></div>
     <div class="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.20),rgba(255,255,255,0.04))]"></div>
@@ -47,9 +24,13 @@ new #[Layout('layouts.guest')] class extends Component
                 <p class="mt-2 text-sm text-slate-600">Vui lòng đăng nhập để tiếp tục.</p>
             </div>
 
-            <x-auth-session-status class="mt-5" :status="session('status')" />
+            @if (session('status'))
+                <div class="mt-5 text-center text-sm text-green-600">{{ session('status') }}</div>
+            @endif
 
-            <form class="mt-6 space-y-4" wire:submit="login">
+            <form class="mt-6 space-y-4" method="POST" action="{{ url('login') }}">
+                @csrf
+
                 <div>
                     <div class="relative">
                         <span class="pointer-events-none absolute inset-y-0 left-4 flex items-center text-slate-400">
@@ -59,17 +40,17 @@ new #[Layout('layouts.guest')] class extends Component
                             </svg>
                         </span>
                         <input
-                            wire:model="form.login"
                             id="login"
                             type="text"
                             name="login"
+                            value="{{ old('login') }}"
                             autocomplete="username"
                             autofocus
                             placeholder="Email / Tên đăng nhập"
                             class="w-full rounded-full border border-slate-300/80 bg-white/75 py-3.5 pl-12 pr-4 text-sm text-slate-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] outline-none transition placeholder:text-slate-400 focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-400/20"
                         />
                     </div>
-                    <x-input-error :messages="$errors->get('form.login')" class="mt-2 px-3 text-sm" />
+                    @error('login') <div class="mt-2 px-3 text-sm text-red-600">{{ $message }}</div> @enderror
                 </div>
 
                 <div>
@@ -81,7 +62,6 @@ new #[Layout('layouts.guest')] class extends Component
                             </svg>
                         </span>
                         <input
-                            wire:model="form.password"
                             id="password"
                             type="password"
                             name="password"
@@ -101,23 +81,23 @@ new #[Layout('layouts.guest')] class extends Component
                             </svg>
                         </button>
                     </div>
-                    <x-input-error :messages="$errors->get('form.password')" class="mt-2 px-3 text-sm" />
+                    @error('password') <div class="mt-2 px-3 text-sm text-red-600">{{ $message }}</div> @enderror
                 </div>
 
                 <div class="flex items-center justify-between gap-4 pt-1">
                     <label for="remember" class="inline-flex items-center gap-2 text-sm text-slate-600">
                         <input
-                            wire:model="form.remember"
                             id="remember"
                             type="checkbox"
                             class="h-4 w-4 rounded border-slate-300 text-sky-500 focus:ring-sky-400"
                             name="remember"
+                            {{ old('remember') ? 'checked' : '' }}
                         >
                         <span>Ghi nhớ tôi</span>
                     </label>
 
                     @if (Route::has('password.request'))
-                        <a class="text-sm font-medium text-sky-700 transition hover:text-sky-900" href="{{ route('password.request') }}" wire:navigate>
+                        <a class="text-sm font-medium text-sky-700 transition hover:text-sky-900" href="{{ route('password.request') }}">
                             Quên mật khẩu?
                         </a>
                     @endif
@@ -155,3 +135,4 @@ new #[Layout('layouts.guest')] class extends Component
         </div>
     </div>
 </div>
+@endsection
