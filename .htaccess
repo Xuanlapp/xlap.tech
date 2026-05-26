@@ -1,1 +1,4 @@
- .env
+.env
+.user.ini
+node_modules
+vendor
