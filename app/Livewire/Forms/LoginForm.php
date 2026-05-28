@@ -2,10 +2,10 @@
 
 namespace App\Livewire\Forms;
 
-use Illuminate\Auth\Events\Lockout;
+use App\Models\User;
+use App\Support\LoginSecurity;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Validate;
 use Livewire\Form;
@@ -21,6 +21,12 @@ class LoginForm extends Form
     #[Validate('boolean')]
     public bool $remember = false;
 
+    public string $website = '';
+
+    public int $startedAt = 0;
+
+    public string $turnstileToken = '';
+
     /**
      * Attempt to authenticate the request's credentials.
      *
@@ -28,50 +34,30 @@ class LoginForm extends Form
      */
     public function authenticate(): void
     {
-        $this->ensureIsNotRateLimited();
+        app(LoginSecurity::class)->assertCanAttempt(
+            $this->login,
+            $this->website,
+            $this->startedAt,
+            $this->turnstileToken,
+            'form.login'
+        );
 
         $loginField = filter_var($this->login, FILTER_VALIDATE_EMAIL) ? 'email' : 'name';
 
-        if (! Auth::attempt([
-            $loginField => $this->login,
-            'password' => $this->password,
-        ], $this->remember)) {
-            RateLimiter::hit($this->throttleKey());
+        $security = app(LoginSecurity::class);
+        $user = User::where($loginField, $this->login)->first();
+        $passwordHash = $user?->password ?? $security->dummyPasswordHash();
+
+        if (! $user || ! Hash::check($this->password, $passwordHash)) {
+            app(LoginSecurity::class)->recordFailedAttempt($this->login);
 
             throw ValidationException::withMessages([
                 'form.login' => trans('auth.failed'),
             ]);
         }
 
-        RateLimiter::clear($this->throttleKey());
-    }
+        Auth::login($user, $this->remember);
 
-    /**
-     * Ensure the authentication request is not rate limited.
-     */
-    protected function ensureIsNotRateLimited(): void
-    {
-        if (! RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
-            return;
-        }
-
-        event(new Lockout(request()));
-
-        $seconds = RateLimiter::availableIn($this->throttleKey());
-
-        throw ValidationException::withMessages([
-            'form.login' => trans('auth.throttle', [
-                'seconds' => $seconds,
-                'minutes' => ceil($seconds / 60),
-            ]),
-        ]);
-    }
-
-    /**
-     * Get the authentication rate limiting throttle key.
-     */
-    protected function throttleKey(): string
-    {
-        return Str::transliterate(Str::lower($this->login).'|'.request()->ip());
+        app(LoginSecurity::class)->clearSuccessfulAttempt($this->login);
     }
 }

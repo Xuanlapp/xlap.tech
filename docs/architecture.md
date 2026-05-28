@@ -1,153 +1,217 @@
-# 🏗️ Project Architecture
+﻿# ðŸ—ï¸ Project Architecture
 
-**Mục đích:** Đây là tree chuẩn của project. Khi cần hiểu structure hiện tại, đọc file này trước.
+**Má»¥c Ä‘Ã­ch:** ÄÃ¢y lÃ  tree chuáº©n cá»§a project. Khi cáº§n hiá»ƒu structure hiá»‡n táº¡i, Ä‘á»c file nÃ y trÆ°á»›c.
 
-## Tree chuẩn
+## Tree chuáº©n
 
 ```text
-├── app/
-│   ├── Actions/
-│   │   ├── Auth/                    # Logic Jetstream/Fortify: tạo user, reset pass
-│   │   └── Team/                    # Logic team Jetstream
-│   ├── Console/
-│   │   └── Commands/                # Lệnh artisan update NBA/WNBA/MLB data
-│   ├── Domain/
-│   │   ├── Sports/
-│   │   │   ├── MLB/
-│   │   │   │   ├── Models/
-│   │   │   │   ├── Services/
-│   │   │   │   ├── Imports/
-│   │   │   │   ├── Exports/
-│   │   │   │   └── Livewire/
-│   │   │   ├── NBA/
-│   │   │   │   ├── Models/
-│   │   │   │   ├── Services/
-│   │   │   │   ├── Imports/
-│   │   │   │   ├── Exports/
-│   │   │   │   └── Livewire/
-│   │   │   └── WNBA/
-│   │   │       ├── Models/
-│   │   │       ├── Services/
-│   │   │       ├── Imports/
-│   │   │       ├── Exports/
-│   │   │       └── Livewire/
-│   │   ├── Programs/
-│   │   │   ├── Models/
-│   │   │   ├── Services/
-│   │   │   ├── Imports/
-│   │   │   ├── Exports/
-│   │   │   └── Livewire/
-│   │   ├── Contacts/
-│   │   │   ├── Models/
-│   │   │   ├── Services/
-│   │   │   └── Livewire/
-│   │   └── Logos/
-│   │       ├── Models/
-│   │       ├── Services/
-│   │       └── Livewire/
-│   ├── Http/
-│   │   ├── Controllers/
-│   │   │   ├── Api/
-│   │   │   ├── Admin/
-│   │   │   └── Web/
-│   │   ├── Middleware/
-│   │   └── Requests/
-│   ├── Livewire/
-│   │   ├── Shared/
-│   │   ├── Admin/
-│   │   ├── Dashboard/
-│   │   └── Modals/
-│   ├── Models/
-│   ├── Policies/
-│   ├── Providers/
-│   └── Support/
-│       ├── Traits/
-│       ├── Helpers/
-│       └── Constants/
-├── config/
-│   ├── basketball_logos.php
-│   ├── repository.php
-│   └── ...
-├── database/
-│   ├── migrations/
-│   │   ├── auth/
-│   │   ├── sports/
-│   │   ├── programs/
-│   │   ├── contacts/
-│   │   └── logos/
-│   ├── seeders/
-│   └── factories/
-├── docs/
-│   ├── architecture.md
-│   ├── authentication.md
-│   ├── database.md
-│   ├── import-export.md
-│   ├── nba.md
-│   ├── mlb.md
-│   ├── wnba.md
-│   └── program.md
-├── resources/
-│   ├── views/
-│   │   ├── layouts/
-│   │   ├── components/
-│   │   │   ├── atomics/
-│   │   │   ├── molecules/
-│   │   │   ├── icons/
-│   │   │   └── program/
-│   │   ├── livewire/
-│   │   │   ├── shared/
-│   │   │   ├── sports/
-│   │   │   │   ├── mlb/
-│   │   │   │   ├── nba/
-│   │   │   │   └── wnba/
-│   │   │   ├── programs/
-│   │   │   ├── contacts/
-│   │   │   └── logos/
-│   │   ├── admin/
-│   │   ├── auth/
-│   │   └── profile/
-│   ├── css/
-│   ├── js/
-│   └── markdown/
-├── routes/
-│   ├── web.php
-│   ├── api.php
-│   ├── admin.php
-│   ├── sports.php
-│   └── console.php
-├── storage/
-│   └── app/
-│       ├── imports/
-│       ├── exports/
-│       └── temp/
-├── tests/
-│   ├── Feature/
-│   ├── Unit/
-│   └── Browser/
-├── .env.example
-├── .gitignore
-├── composer.json
-├── package.json
-├── README.md
-└── vite.config.js
+â”œâ”€â”€ app/
+â”‚   â”œâ”€â”€ Actions/
+â”‚   â”‚   â”œâ”€â”€ Auth/                    # Logic Jetstream/Fortify: táº¡o user, reset pass
+â”‚   â”‚   â””â”€â”€ Team/                    # Logic team Jetstream
+â”‚   â”œâ”€â”€ Console/
+â”‚   â”‚   â””â”€â”€ Commands/                # Lá»‡nh artisan update NBA/WNBA/MLB data
+â”‚   â”œâ”€â”€ Domain/
+â”‚   â”‚   â”œâ”€â”€ Sports/
+â”‚   â”‚   â”‚   â”œâ”€â”€ MLB/
+â”‚   â”‚   â”‚   â”‚   â”œâ”€â”€ Models/
+â”‚   â”‚   â”‚   â”‚   â”œâ”€â”€ Services/
+â”‚   â”‚   â”‚   â”‚   â”œâ”€â”€ Imports/
+â”‚   â”‚   â”‚   â”‚   â”œâ”€â”€ Exports/
+â”‚   â”‚   â”‚   â”‚   â””â”€â”€ Livewire/
+â”‚   â”‚   â”‚   â”œâ”€â”€ NBA/
+â”‚   â”‚   â”‚   â”‚   â”œâ”€â”€ Models/
+â”‚   â”‚   â”‚   â”‚   â”œâ”€â”€ Services/
+â”‚   â”‚   â”‚   â”‚   â”œâ”€â”€ Imports/
+â”‚   â”‚   â”‚   â”‚   â”œâ”€â”€ Exports/
+â”‚   â”‚   â”‚   â”‚   â””â”€â”€ Livewire/
+â”‚   â”‚   â”‚   â””â”€â”€ WNBA/
+â”‚   â”‚   â”‚       â”œâ”€â”€ Models/
+â”‚   â”‚   â”‚       â”œâ”€â”€ Services/
+â”‚   â”‚   â”‚       â”œâ”€â”€ Imports/
+â”‚   â”‚   â”‚       â”œâ”€â”€ Exports/
+â”‚   â”‚   â”‚       â””â”€â”€ Livewire/
+â”‚   â”‚   â”œâ”€â”€ Programs/
+â”‚   â”‚   â”‚   â”œâ”€â”€ Models/
+â”‚   â”‚   â”‚   â”œâ”€â”€ Services/
+â”‚   â”‚   â”‚   â”œâ”€â”€ Imports/
+â”‚   â”‚   â”‚   â”œâ”€â”€ Exports/
+â”‚   â”‚   â”‚   â””â”€â”€ Livewire/
+â”‚   â”‚   â”œâ”€â”€ Contacts/
+â”‚   â”‚   â”‚   â”œâ”€â”€ Models/
+â”‚   â”‚   â”‚   â”œâ”€â”€ Services/
+â”‚   â”‚   â”‚   â””â”€â”€ Livewire/
+â”‚   â”‚   â””â”€â”€ Logos/
+â”‚   â”‚       â”œâ”€â”€ Models/
+â”‚   â”‚       â”œâ”€â”€ Services/
+â”‚   â”‚       â””â”€â”€ Livewire/
+â”‚   â”œâ”€â”€ Http/
+â”‚   â”‚   â”œâ”€â”€ Controllers/
+â”‚   â”‚   â”‚   â”œâ”€â”€ Api/
+â”‚   â”‚   â”‚   â”œâ”€â”€ Admin/
+â”‚   â”‚   â”‚   â””â”€â”€ Web/
+â”‚   â”‚   â”œâ”€â”€ Middleware/
+â”‚   â”‚   â””â”€â”€ Requests/
+â”‚   â”œâ”€â”€ Livewire/
+â”‚   â”‚   â”œâ”€â”€ Shared/
+â”‚   â”‚   â”œâ”€â”€ Admin/
+â”‚   â”‚   â”œâ”€â”€ Dashboard/
+â”‚   â”‚   â””â”€â”€ Modals/
+â”‚   â”œâ”€â”€ Models/
+â”‚   â”œâ”€â”€ Policies/
+â”‚   â”œâ”€â”€ Providers/
+â”‚   â””â”€â”€ Support/
+â”‚       â”œâ”€â”€ Traits/
+â”‚       â”œâ”€â”€ Helpers/
+â”‚       â””â”€â”€ Constants/
+â”œâ”€â”€ config/
+â”‚   â”œâ”€â”€ basketball_logos.php
+â”‚   â”œâ”€â”€ repository.php
+â”‚   â””â”€â”€ ...
+â”œâ”€â”€ database/
+â”‚   â”œâ”€â”€ migrations/
+â”‚   â”‚   â”œâ”€â”€ auth/
+â”‚   â”‚   â”œâ”€â”€ sports/
+â”‚   â”‚   â”œâ”€â”€ programs/
+â”‚   â”‚   â”œâ”€â”€ contacts/
+â”‚   â”‚   â””â”€â”€ logos/
+â”‚   â”œâ”€â”€ seeders/
+â”‚   â””â”€â”€ factories/
+â”œâ”€â”€ docs/
+â”‚   â”œâ”€â”€ architecture.md
+â”‚   â”œâ”€â”€ authentication.md
+â”‚   â”œâ”€â”€ database.md
+â”‚   â”œâ”€â”€ import-export.md
+â”‚   â”œâ”€â”€ nba.md
+â”‚   â”œâ”€â”€ mlb.md
+â”‚   â”œâ”€â”€ wnba.md
+â”‚   â””â”€â”€ program.md
+â”œâ”€â”€ resources/
+â”‚   â”œâ”€â”€ views/
+â”‚   â”‚   â”œâ”€â”€ layouts/
+â”‚   â”‚   â”œâ”€â”€ components/
+â”‚   â”‚   â”‚   â”œâ”€â”€ atomics/
+â”‚   â”‚   â”‚   â”œâ”€â”€ molecules/
+â”‚   â”‚   â”‚   â”œâ”€â”€ icons/
+â”‚   â”‚   â”‚   â””â”€â”€ program/
+â”‚   â”‚   â”œâ”€â”€ livewire/
+â”‚   â”‚   â”‚   â”œâ”€â”€ shared/
+â”‚   â”‚   â”‚   â”œâ”€â”€ sports/
+â”‚   â”‚   â”‚   â”‚   â”œâ”€â”€ mlb/
+â”‚   â”‚   â”‚   â”‚   â”œâ”€â”€ nba/
+â”‚   â”‚   â”‚   â”‚   â””â”€â”€ wnba/
+â”‚   â”‚   â”‚   â”œâ”€â”€ programs/
+â”‚   â”‚   â”‚   â”œâ”€â”€ contacts/
+â”‚   â”‚   â”‚   â””â”€â”€ logos/
+â”‚   â”‚   â”œâ”€â”€ admin/
+â”‚   â”‚   â”œâ”€â”€ auth/
+â”‚   â”‚   â””â”€â”€ profile/
+â”‚   â”œâ”€â”€ css/
+â”‚   â”œâ”€â”€ js/
+â”‚   â””â”€â”€ markdown/
+â”œâ”€â”€ routes/
+â”‚   â”œâ”€â”€ web.php
+â”‚   â”œâ”€â”€ api.php
+â”‚   â”œâ”€â”€ admin.php
+â”‚   â”œâ”€â”€ sports.php
+â”‚   â””â”€â”€ console.php
+â”œâ”€â”€ storage/
+â”‚   â””â”€â”€ app/
+â”‚       â”œâ”€â”€ imports/
+â”‚       â”œâ”€â”€ exports/
+â”‚       â””â”€â”€ temp/
+â”œâ”€â”€ tests/
+â”‚   â”œâ”€â”€ Feature/
+â”‚   â”œâ”€â”€ Unit/
+â”‚   â””â”€â”€ Browser/
+â”œâ”€â”€ .env.example
+â”œâ”€â”€ .gitignore
+â”œâ”€â”€ composer.json
+â”œâ”€â”€ package.json
+â”œâ”€â”€ README.md
+â””â”€â”€ vite.config.js
 ```
 
-## Quy ước sử dụng
+## Quy Æ°á»›c sá»­ dá»¥ng
 
-- `app/Actions/`: logic nghiệp vụ theo nhóm chức năng.
-- `app/Domain/`: business domain chính của app.
-- `app/Http/Controllers/Api/`: trả data cho frontend/app ngoài.
-- `app/Http/Controllers/Admin/`: module quản trị.
-- `app/Http/Controllers/Web/`: render page web chính.
-- `app/Livewire/Shared/`: component dùng chung.
-- `routes/admin.php`, `routes/sports.php`: tách route theo domain.
-- `docs/`: mô tả kiến trúc, database, import/export, và spec theo domain.
+- `app/Actions/`: logic nghiá»‡p vá»¥ theo nhÃ³m chá»©c nÄƒng.
+- `app/Domain/`: business domain chÃ­nh cá»§a app.
+- `app/Http/Controllers/Api/`: tráº£ data cho frontend/app ngoÃ i.
+- `app/Http/Controllers/Admin/`: module quáº£n trá»‹.
+- `app/Http/Controllers/Web/`: render page web chÃ­nh.
+- `app/Livewire/Shared/`: component dÃ¹ng chung.
+- `routes/admin.php`, `routes/sports.php`: tÃ¡ch route theo domain.
+- `docs/`: mÃ´ táº£ kiáº¿n trÃºc, database, import/export, vÃ  spec theo domain.
 
-## Ghi chú cho AI
+## Ghi chÃº cho AI
 
-Khi user nói "đọc doc" hoặc hỏi về tree project, ưu tiên:
+Khi user nÃ³i "Ä‘á»c doc" hoáº·c há»i vá» tree project, Æ°u tiÃªn:
 
 1. [docs/architecture.md](docs/architecture.md)
 2. [docs/CLAUDE.md](docs/CLAUDE.md)
-3. Tài liệu trong [docs/business-processes/](docs/business-processes)
-4. Tài liệu trong [docs/connectors/](docs/connectors)
+3. TÃ i liá»‡u trong [docs/business-processes/](docs/business-processes)
+4. TÃ i liá»‡u trong [docs/connectors/](docs/connectors)
+## Vertex AI Gemini
+
+The Vertex AI Gemini API request contract is documented in:
+
+`	ext
+docs/vertex-ai-gemini.md
+` 
+
+## Product Schema
+
+Current Offorest product workflow uses the simplified product schema documented in:
+
+```text
+docs/offorest-data-model.md
+```
+
+Current product-domain files:
+
+```text
+Route
+ ↓
+Livewire Page
+ ↓
+Service
+ ↓
+Repository
+ ↓
+Model / Database
+ ↓
+Blade View
+```
+
+For pages with inline work in progress, Livewire state should be preserved with `#[Session]` on safe draft fields. Do not persist sensitive fields such as passwords or secret tokens.
+
+Current application files:
+
+```text
+app/Actions/CreateUserWithProductAccess.php
+app/Actions/ToggleUserProductAccess.php
+app/Livewire/Pages/Admin/ListUser.php
+app/Livewire/Pages/Sticker/ListSticker.php
+app/Livewire/Pages/Sticker/ProductDesignCard.php
+app/Livewire/Pages/Mockup/Index.php
+app/Livewire/Pages/Redesign/Index.php
+app/Livewire/Pages/Poster/Index.php
+app/Models/Product.php
+app/Models/Prompt.php
+app/Models/ProductDesignAsset.php
+app/Models/VertexApiCredential.php
+app/Repositories/ProductRepository.php
+app/Repositories/ProductDesignAssetRepository.php
+app/Repositories/PromptRepository.php
+app/Repositories/UserRepository.php
+app/Services/StickerService.php
+app/Services/UserAccessService.php
+app/Support/ProductRegistry.php
+app/Http/Middleware/EnsureUserHasProductAccess.php
+resources/views/livewire/pages/{product}/{page-name}.blade.php
+resources/views/livewire/pages/admin/list-user.blade.php
+resources/views/errors/403.blade.php
+resources/views/errors/404.blade.php
+resources/views/errors/500.blade.php
+```
+

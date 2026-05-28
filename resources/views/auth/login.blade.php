@@ -1,6 +1,10 @@
 @extends('layouts.guest')
 
 @section('content')
+@php
+    $turnstile = app(\App\Support\TurnstileVerifier::class);
+@endphp
+
 <div class="relative min-h-screen overflow-hidden">
     <div class="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.55),transparent_24%),radial-gradient(circle_at_80%_80%,rgba(59,130,246,0.20),transparent_26%),radial-gradient(circle_at_50%_50%,rgba(14,165,233,0.18),transparent_30%)]"></div>
     <div class="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.20),rgba(255,255,255,0.04))]"></div>
@@ -10,18 +14,11 @@
 
         <div class="w-full max-w-md rounded-[2rem] border border-white/40 bg-white/45 p-8 shadow-[0_25px_80px_rgba(15,23,42,0.18)] backdrop-blur-2xl ring-1 ring-white/50 sm:p-10">
             <div class="text-center">
-                <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white/65 shadow-inner shadow-white/70 ring-1 ring-white/70">
-                    <svg viewBox="0 0 64 64" class="h-8 w-8 text-sky-400" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                        <path d="M14 33C19 25 28 20 39 20c4.7 0 8.9 1 12 2.8-2.2 5.8-7 10.2-13 12.1-6.2 1.9-12.8 1.1-19-1.9-2.2-1-4.2-2.3-5-3z" fill="currentColor" opacity="0.35"/>
-                        <path d="M15 31.5c3.8-2.6 8.9-4.4 14.8-4.4 8 0 14.9 3 19.6 7.9-4.2 6.2-11.2 10-18.6 10-5.8 0-11.4-2.1-15.8-6-1.8-1.6-3-3.1-4-4.6 1.2-1 2.4-1.9 4-2.9z" fill="currentColor" opacity="0.8"/>
-                        <circle cx="47.5" cy="15.5" r="2" fill="currentColor" opacity="0.55"/>
-                        <circle cx="54" cy="20" r="1.2" fill="currentColor" opacity="0.45"/>
-                        <circle cx="41.5" cy="12.5" r="1.1" fill="currentColor" opacity="0.4"/>
-                    </svg>
+                <div class="mx-auto flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-white/75 shadow-inner shadow-white/70 ring-1 ring-white/70">
+                    <img src="{{ asset('images/offorest-logo.jpg') }}" alt="{{ config('app.name', 'Offorest') }}" class="h-full w-full object-cover">
                 </div>
-
-                <h1 class="mt-6 text-2xl font-semibold tracking-[0.18em] text-slate-900">CHÀO MỪNG BẠN</h1>
-                <p class="mt-2 text-sm text-slate-600">Vui lòng đăng nhập để tiếp tục.</p>
+                <h1 class="mt-6 text-2xl font-semibold tracking-[0.18em] text-slate-900">OFFOREST</h1>
+                <p class="mt-2 text-sm text-slate-600">Chào mừng bạn. Vui lòng đăng nhập để tiếp tục.</p>
             </div>
 
             @if (session('status'))
@@ -30,6 +27,8 @@
 
             <form class="mt-6 space-y-4" method="POST" action="{{ url('login') }}">
                 @csrf
+                <input type="text" name="website" tabindex="-1" autocomplete="off" class="hidden">
+                <input type="hidden" name="started_at" value="{{ now()->timestamp }}">
 
                 <div>
                     <div class="relative">
@@ -84,6 +83,13 @@
                     @error('password') <div class="mt-2 px-3 text-sm text-red-600">{{ $message }}</div> @enderror
                 </div>
 
+                @if ($turnstile->enabled())
+                    <div class="flex justify-center">
+                        <div class="cf-turnstile" data-sitekey="{{ $turnstile->siteKey() }}"></div>
+                    </div>
+                    @error('login') <div class="mt-2 px-3 text-sm text-red-600">{{ $message }}</div> @enderror
+                @endif
+
                 <div class="flex items-center justify-between gap-4 pt-1">
                     <label for="remember" class="inline-flex items-center gap-2 text-sm text-slate-600">
                         <input
@@ -121,7 +127,7 @@
                         <span class="text-xl font-semibold text-[#EA4335]">G</span>
                     </button>
                     <button type="button" class="flex h-12 w-12 items-center justify-center rounded-full bg-white/80 shadow-md ring-1 ring-white/70 transition hover:-translate-y-0.5 hover:bg-white" aria-label="Đăng nhập bằng Apple">
-                        <span class="text-xl font-semibold text-slate-900"></span>
+                        <span class="text-xl font-semibold text-slate-900">A</span>
                     </button>
                     <button type="button" class="flex h-12 w-12 items-center justify-center rounded-full bg-white/80 shadow-md ring-1 ring-white/70 transition hover:-translate-y-0.5 hover:bg-white" aria-label="Đăng nhập bằng Facebook">
                         <span class="text-xl font-semibold text-[#1877F2]">f</span>
@@ -136,3 +142,9 @@
     </div>
 </div>
 @endsection
+
+@if ($turnstile->enabled())
+    @push('scripts')
+        <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    @endpush
+@endif

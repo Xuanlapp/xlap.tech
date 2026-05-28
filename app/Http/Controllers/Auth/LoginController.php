@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Auth\Events\Lockout;
+use App\Models\User;
+use App\Support\LoginSecurity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
 class LoginController extends Controller
@@ -17,54 +17,45 @@ class LoginController extends Controller
         return view('auth.login');
     }
 
-    public function login(Request $request)
+    public function login(Request $request, LoginSecurity $security)
     {
         $request->validate([
             'login' => ['required', 'string', 'max:255'],
             'password' => ['required', 'string'],
+            'website' => ['nullable', 'string'],
+            'started_at' => ['nullable', 'integer'],
+            'cf-turnstile-response' => ['nullable', 'string'],
         ]);
 
         $login = $request->input('login');
         $loginField = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'name';
 
-        $this->ensureIsNotRateLimited($login);
+        $security->assertCanAttempt(
+            $login,
+            $request->input('website'),
+            $request->integer('started_at'),
+            $request->input('cf-turnstile-response'),
+            'login'
+        );
 
-        if (! Auth::attempt([$loginField => $login, 'password' => $request->input('password')], $request->boolean('remember'))) {
-            RateLimiter::hit($this->throttleKey($login));
+        $user = User::where($loginField, $login)->first();
+        $passwordHash = $user?->password ?? $security->dummyPasswordHash();
+
+        if (! $user || ! Hash::check($request->input('password'), $passwordHash)) {
+            $security->recordFailedAttempt($login);
 
             throw ValidationException::withMessages([
                 'login' => trans('auth.failed'),
             ]);
         }
 
-        RateLimiter::clear($this->throttleKey($login));
+        Auth::login($user, $request->boolean('remember'));
+
+        $security->clearSuccessfulAttempt($login);
 
         $request->session()->regenerate();
 
         return redirect()->intended(route('dashboard', [], false));
-    }
-
-    protected function ensureIsNotRateLimited(string $login): void
-    {
-        if (! RateLimiter::tooManyAttempts($this->throttleKey($login), 5)) {
-            return;
-        }
-
-        event(new Lockout(request()));
-
-        $seconds = RateLimiter::availableIn($this->throttleKey($login));
-
-        throw ValidationException::withMessages([
-            'login' => trans('auth.throttle', [
-                'seconds' => $seconds,
-                'minutes' => ceil($seconds / 60),
-            ]),
-        ]);
-    }
-
-    protected function throttleKey(string $login): string
-    {
-        return Str::transliterate(Str::lower($login).'|'.request()->ip());
     }
 
     public function logout(Request $request)

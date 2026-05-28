@@ -1,6 +1,7 @@
 <?php
 
 use App\Livewire\Forms\LoginForm;
+use App\Support\TurnstileVerifier;
 use Illuminate\Support\Facades\Session;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -8,6 +9,11 @@ use Livewire\Volt\Component;
 new #[Layout('layouts.guest')] class extends Component
 {
     public LoginForm $form;
+
+    public function mount(): void
+    {
+        $this->form->startedAt = now()->timestamp;
+    }
 
     /**
      * Handle an incoming authentication request.
@@ -33,23 +39,20 @@ new #[Layout('layouts.guest')] class extends Component
 
         <div class="w-full max-w-md rounded-[2rem] border border-white/40 bg-white/45 p-8 shadow-[0_25px_80px_rgba(15,23,42,0.18)] backdrop-blur-2xl ring-1 ring-white/50 sm:p-10">
             <div class="text-center">
-                <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white/65 shadow-inner shadow-white/70 ring-1 ring-white/70">
-                    <svg viewBox="0 0 64 64" class="h-8 w-8 text-sky-400" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                        <path d="M14 33C19 25 28 20 39 20c4.7 0 8.9 1 12 2.8-2.2 5.8-7 10.2-13 12.1-6.2 1.9-12.8 1.1-19-1.9-2.2-1-4.2-2.3-5-3z" fill="currentColor" opacity="0.35"/>
-                        <path d="M15 31.5c3.8-2.6 8.9-4.4 14.8-4.4 8 0 14.9 3 19.6 7.9-4.2 6.2-11.2 10-18.6 10-5.8 0-11.4-2.1-15.8-6-1.8-1.6-3-3.1-4-4.6 1.2-1 2.4-1.9 4-2.9z" fill="currentColor" opacity="0.8"/>
-                        <circle cx="47.5" cy="15.5" r="2" fill="currentColor" opacity="0.55"/>
-                        <circle cx="54" cy="20" r="1.2" fill="currentColor" opacity="0.45"/>
-                        <circle cx="41.5" cy="12.5" r="1.1" fill="currentColor" opacity="0.4"/>
-                    </svg>
+                <div class="mx-auto flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-white/75 shadow-inner shadow-white/70 ring-1 ring-white/70">
+                    <img src="{{ asset('images/offorest-logo.jpg') }}" alt="{{ config('app.name', 'Offorest') }}" class="h-full w-full object-cover">
                 </div>
 
-                <h1 class="mt-6 text-2xl font-semibold tracking-[0.18em] text-slate-900">CHÀO MỪNG BẠN</h1>
-                <p class="mt-2 text-sm text-slate-600">Vui lòng đăng nhập để tiếp tục.</p>
+                <h1 class="mt-6 text-2xl font-semibold tracking-[0.18em] text-slate-900">OFFOREST</h1>
+                <p class="mt-2 text-sm text-slate-600">Chào mừng bạn. Vui lòng đăng nhập để tiếp tục.</p>
             </div>
 
             <x-auth-session-status class="mt-5" :status="session('status')" />
 
             <form class="mt-6 space-y-4" wire:submit="login">
+                <input type="text" tabindex="-1" autocomplete="off" class="hidden" wire:model="form.website">
+                <input type="hidden" wire:model="form.startedAt">
+
                 <div>
                     <div class="relative">
                         <span class="pointer-events-none absolute inset-y-0 left-4 flex items-center text-slate-400">
@@ -104,6 +107,19 @@ new #[Layout('layouts.guest')] class extends Component
                     <x-input-error :messages="$errors->get('form.password')" class="mt-2 px-3 text-sm" />
                 </div>
 
+                @if (app(TurnstileVerifier::class)->enabled())
+                    <div wire:ignore class="flex justify-center">
+                        <div
+                            class="cf-turnstile"
+                            data-sitekey="{{ app(TurnstileVerifier::class)->siteKey() }}"
+                            data-callback="offorestTurnstileVerified"
+                            data-expired-callback="offorestTurnstileExpired"
+                            data-error-callback="offorestTurnstileExpired"
+                        ></div>
+                    </div>
+                    <x-input-error :messages="$errors->get('form.login')" class="mt-2 px-3 text-sm" />
+                @endif
+
                 <div class="flex items-center justify-between gap-4 pt-1">
                     <label for="remember" class="inline-flex items-center gap-2 text-sm text-slate-600">
                         <input
@@ -141,7 +157,7 @@ new #[Layout('layouts.guest')] class extends Component
                         <span class="text-xl font-semibold text-[#EA4335]">G</span>
                     </button>
                     <button type="button" class="flex h-12 w-12 items-center justify-center rounded-full bg-white/80 shadow-md ring-1 ring-white/70 transition hover:-translate-y-0.5 hover:bg-white" aria-label="Đăng nhập bằng Apple">
-                        <span class="text-xl font-semibold text-slate-900"></span>
+                        <span class="text-xl font-semibold text-slate-900">A</span>
                     </button>
                     <button type="button" class="flex h-12 w-12 items-center justify-center rounded-full bg-white/80 shadow-md ring-1 ring-white/70 transition hover:-translate-y-0.5 hover:bg-white" aria-label="Đăng nhập bằng Facebook">
                         <span class="text-xl font-semibold text-[#1877F2]">f</span>
@@ -155,3 +171,20 @@ new #[Layout('layouts.guest')] class extends Component
         </div>
     </div>
 </div>
+
+@if (app(TurnstileVerifier::class)->enabled())
+    @once
+        @push('scripts')
+            <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+            <script>
+                window.offorestTurnstileVerified = function (token) {
+                    Livewire.find(document.querySelector('[wire\\:id]').getAttribute('wire:id')).set('form.turnstileToken', token);
+                };
+
+                window.offorestTurnstileExpired = function () {
+                    Livewire.find(document.querySelector('[wire\\:id]').getAttribute('wire:id')).set('form.turnstileToken', '');
+                };
+            </script>
+        @endpush
+    @endonce
+@endif

@@ -1,0 +1,195 @@
+<?php
+
+namespace App\Http\Livewire\Modals\Nba;
+
+use App\Models\Nba_team;
+use Exception;
+use App\Models\panini_nba_player;
+use Illuminate\Support\Facades\Log;
+use LivewireUI\Modal\ModalComponent;
+use App\Services\NbaFetchDataService;
+use Illuminate\Support\Facades\Storage;
+use App\Http\Livewire\Traits\Notification;
+use Jantinnerezo\LivewireAlert\LivewireAlert;
+
+class UpdatePlayerStat extends ModalComponent
+{
+    use Notification, LivewireAlert;
+
+    protected $dataHandler;
+    public $player_ids;
+    public $logFile = 'nba_player_update_log.txt';
+    public $itemsToRemove = [];
+    public $updating = false;
+    public $totalPlayers = 0;
+
+    public function render()
+    {
+        return view('livewire.modals.nba.update-player-stat');
+    }
+
+    public function mount($player_ids)
+    {
+
+        $this->player_ids = array_map('intval', $player_ids);
+        // 檢查 Log 檔案是否存在，如果不存在則建立
+        $this->ensureLogFileExists();
+        $this->checkPlayerIds();
+        // 設置 $updating 的值
+        $this->updating = !$this->isLogFileEmpty();
+    }
+
+    public function boot(NbaFetchDataService $dataHandler)
+    {
+        $this->dataHandler = $dataHandler;
+    }
+
+    private function checkPlayerIds()
+    {
+        if (empty($this->player_ids)) {
+
+            $this->closeModal();
+        }
+    }
+
+    protected function addToItemsToRemove($player_id)
+    {
+        $this->itemsToRemove[] = $player_id;
+    }
+
+    protected function ensureLogFileExists()
+    {
+        // $logFilePath = storage_path('app/public/' . $this->logFile);
+
+        // 如果 Log 檔案不存在，則建立一個空的 Log 檔案
+        if (!Storage::disk('local')->exists('public/' . $this->logFile)) {
+            Storage::disk('local')->put('public/' . $this->logFile, '');
+        }
+    }
+
+    public function updatePlayers()
+    {
+        // 檢查是否有未完成的更新
+        if (empty($this->player_ids)) {
+            $this->closeModal();
+            $this->showAlertMessage('warning', 'Player not selected!');
+        } else {
+            if ($this->isLogFileEmpty()) {
+                // $this->closeModal();
+                $this->writePlayerIdsToLog();
+                $this->updating = false;
+            }
+            $this->resumeUpdates();
+        }
+    }
+
+    public function resetUpdate()
+    {
+        // 清空 Log 檔案
+        $this->clearLogFile();
+
+        // 重設更新狀態
+        $this->updating = false;
+    }
+
+    protected function clearLogFile()
+    {
+        // 清空 Log 檔案
+        file_put_contents(storage_path('app/public/' . $this->logFile), '');
+    }
+
+    protected function resumeUpdates()
+    {
+        // 進行更新操作
+        $playerId = $this->getNextPlayerIdFromLog();
+
+        set_time_limit(600);
+
+
+        if ($playerId) {
+            // 更新球員資料
+            try {
+                // 更新操作
+                $player = panini_nba_player::where('id', $playerId)->first();
+                $playerStats = $player->stats();
+                $statIds = $playerStats->pluck('id');
+                foreach ($statIds as $statId) {
+                    $this->dataHandler->UploadTeam($statId);
+                }
+                // $this->dataHandler->testing($player->nba_player_id);
+                if ($player) {
+                    if ($this->dataHandler->saveData($player, 'update')) {
+                        $this->addToItemsToRemove($playerId);
+                        $this->removePlayerIdFromLog($playerId);
+                    } else {
+                        $this->addToItemsToRemove($playerId);
+                        throw new Exception('Data is EMPTY');
+                    }
+                }
+                // 更新完成後，刪除球員 ID
+            } catch (\Exception $e) {
+                // 處理錯誤
+//                Log::channel('mylog')->error("Update player #{$playerId} Error message:{$e->getMessage()}");
+                $this->removePlayerIdFromLog($playerId);
+            }
+
+            // 如果還有未完成的更新，繼續
+            sleep(1);
+            $this->updating = true;
+            $this->resumeUpdates();
+            // Log::channel('mylog')->info('now updating ' . $playerId);
+            // Log::channel('mylog')->info('updating status ' . $this->updating);
+        } else {
+            $this->updating = false;
+            // update whole list
+            $this->emit('updateList');
+            $this->emit('updateSelectedItems', $this->itemsToRemove);
+            // close modal
+            $this->closeModal();
+            $this->showAlertMessage('success', 'Players Stats Updated!');
+        }
+    }
+
+    protected function writePlayerIdsToLog()
+    {
+        // 寫入要更新的球員 ID 到日誌文件
+//        Log::channel('mylog')->info($this->player_ids);
+//        $this->totalPlayers = count($this->player_ids);
+        file_put_contents(storage_path('app/public/' . $this->logFile), implode("\n", $this->player_ids));
+    }
+
+    protected function getNextPlayerIdFromLog()
+    {
+        // 從日誌文件中獲取下一個要更新的球員 ID
+        $logContents = file_get_contents(storage_path('app/public/' . $this->logFile));
+
+        if ($logContents) {
+            $playerIds = explode("\n", $logContents);
+            return array_shift($playerIds);
+        }
+
+        return null;
+    }
+
+    protected function removePlayerIdFromLog($playerId)
+    {
+        // 從日誌文件中刪除已完成更新的球員 ID
+        $logContents = file_get_contents(storage_path('app/public/' . $this->logFile));
+        $updatedPlayerIds = array_diff(explode("\n", $logContents), [$playerId]);
+        file_put_contents(storage_path('app/public/' . $this->logFile), implode("\n", $updatedPlayerIds));
+    }
+
+    protected function isLogFileEmpty()
+    {
+        // 檢查 Log 檔案是否為空
+        return file_exists(storage_path('app/public/' . $this->logFile)) && filesize(storage_path('app/public/' . $this->logFile)) === 0;
+    }
+
+    /**
+     * Supported: 'sm', 'md', 'lg', 'xl', '2xl', '3xl', '4xl', '5xl', '6xl', '7xl'
+     */
+    public static function modalMaxWidth(): string
+    {
+        return 'lg';
+    }
+}

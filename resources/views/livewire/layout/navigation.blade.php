@@ -14,97 +14,97 @@ new class extends Component
 
         $this->redirect('/', navigate: true);
     }
+
+    /**
+     * Navigation data for the current user.
+     *
+     * @return array<string, mixed>
+     */
+    public function with(): array
+    {
+        $products = auth()->user()
+            ? auth()->user()->products()->where('is_active', true)->orderBy('name')->get()
+            : collect();
+
+        return [
+            'products' => $products,
+        ];
+    }
 }; ?>
 
-<nav x-data="{ open: false }" class="bg-white border-b border-gray-100">
-    <!-- Primary Navigation Menu -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-16">
-            <div class="flex">
-                <!-- Logo -->
-                <div class="shrink-0 flex items-center">
-                    <a href="{{ route('dashboard') }}" wire:navigate>
-                        <x-application-logo class="block h-9 w-auto fill-current text-gray-800" />
+<nav x-data="{ open: false }" class="border-b border-cyan-400/70 bg-[#111217] text-white">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="flex min-h-20 items-center gap-4">
+            <a href="{{ route('dashboard') }}" wire:navigate class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-white">
+                <x-application-logo class="h-9 w-9" />
+            </a>
+
+            <div class="hidden flex-1 items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] p-2 shadow-inner shadow-white/5 lg:flex">
+                @foreach ($products as $product)
+                    <a
+                        href="{{ route('offorest.products.'.$product->slug) }}"
+                        wire:navigate
+                        class="inline-flex items-center gap-3 rounded-full px-5 py-3 text-sm font-medium transition {{ request()->routeIs('offorest.products.'.$product->slug) ? 'bg-white/20 text-white shadow-sm' : 'text-white/75 hover:bg-white/10 hover:text-white' }}"
+                    >
+                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                            @if ($product->slug === 'redesign')
+                                <path d="M12 20h9" />
+                                <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                            @else
+                                <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" />
+                            @endif
+                        </svg>
+                        <span>{{ $product->name }}</span>
                     </a>
-                </div>
-
-                <!-- Navigation Links -->
-                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                    <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" wire:navigate>
-                        {{ __('Dashboard') }}
-                    </x-nav-link>
-                </div>
+                @endforeach
+                @if (auth()->user()->is_admin)
+                    <a
+                        href="{{ route('offorest.admin.users') }}"
+                        wire:navigate
+                        class="inline-flex items-center gap-3 rounded-full px-5 py-3 text-sm font-medium transition {{ request()->routeIs('offorest.admin.users') ? 'bg-white/20 text-white shadow-sm' : 'text-white/75 hover:bg-white/10 hover:text-white' }}"
+                    >
+                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                            <circle cx="9" cy="7" r="4" />
+                            <path d="M19 8v6" />
+                            <path d="M22 11h-6" />
+                        </svg>
+                        <span>Admin</span>
+                    </a>
+                @endif
             </div>
 
-            <!-- Settings Dropdown -->
-            <div class="hidden sm:flex sm:items-center sm:ms-6">
-                <x-dropdown align="right" width="48">
-                    <x-slot name="trigger">
-                        <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150">
-                            <div x-data="{{ json_encode(['name' => auth()->user()->name]) }}" x-text="name" x-on:profile-updated.window="name = $event.detail.name"></div>
-
-                            <div class="ms-1">
-                                <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-                                </svg>
-                            </div>
-                        </button>
-                    </x-slot>
-
-                    <x-slot name="content">
-                        <x-dropdown-link :href="route('profile')" wire:navigate>
-                            {{ __('Profile') }}
-                        </x-dropdown-link>
-
-                        <!-- Authentication -->
-                        <button wire:click="logout" class="w-full text-start">
-                            <x-dropdown-link>
-                                {{ __('Log Out') }}
-                            </x-dropdown-link>
-                        </button>
-                    </x-slot>
-                </x-dropdown>
-            </div>
-
-            <!-- Hamburger -->
-            <div class="-me-2 flex items-center sm:hidden">
-                <button @click="open = ! open" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 focus:text-gray-500 transition duration-150 ease-in-out">
-                    <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
-                        <path :class="{'hidden': open, 'inline-flex': ! open }" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                        <path :class="{'hidden': ! open, 'inline-flex': open }" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+            <div class="ml-auto hidden items-center gap-3 lg:flex">
+                <a href="{{ route('profile') }}" wire:navigate class="rounded-full border border-white/10 px-4 py-2 text-sm text-white/70 hover:bg-white/10 hover:text-white">
+                    {{ auth()->user()->name }}
+                </a>
+                <button wire:click="logout" class="rounded-full border border-white/10 px-4 py-2 text-sm text-white/70 hover:bg-white/10 hover:text-white">
+                    Log out
                 </button>
             </div>
+
+            <button @click="open = ! open" class="ml-auto inline-flex h-10 w-10 items-center justify-center rounded-md border border-white/10 text-white/70 lg:hidden">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 6h16" />
+                    <path d="M4 12h16" />
+                    <path d="M4 18h16" />
+                </svg>
+            </button>
         </div>
     </div>
 
-    <!-- Responsive Navigation Menu -->
-    <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
-        <div class="pt-2 pb-3 space-y-1">
-            <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" wire:navigate>
-                {{ __('Dashboard') }}
-            </x-responsive-nav-link>
-        </div>
-
-        <!-- Responsive Settings Options -->
-        <div class="pt-4 pb-1 border-t border-gray-200">
-            <div class="px-4">
-                <div class="font-medium text-base text-gray-800" x-data="{{ json_encode(['name' => auth()->user()->name]) }}" x-text="name" x-on:profile-updated.window="name = $event.detail.name"></div>
-                <div class="font-medium text-sm text-gray-500">{{ auth()->user()->email }}</div>
-            </div>
-
-            <div class="mt-3 space-y-1">
-                <x-responsive-nav-link :href="route('profile')" wire:navigate>
-                    {{ __('Profile') }}
-                </x-responsive-nav-link>
-
-                <!-- Authentication -->
-                <button wire:click="logout" class="w-full text-start">
-                    <x-responsive-nav-link>
-                        {{ __('Log Out') }}
-                    </x-responsive-nav-link>
-                </button>
-            </div>
+    <div x-show="open" x-cloak class="border-t border-white/10 px-4 py-3 lg:hidden">
+        <div class="space-y-2">
+            @foreach ($products as $product)
+                <a href="{{ route('offorest.products.'.$product->slug) }}" wire:navigate class="block rounded-md px-3 py-2 text-sm {{ request()->routeIs('offorest.products.'.$product->slug) ? 'bg-white/15 text-white' : 'text-white/70' }}">
+                    {{ $product->name }}
+                </a>
+            @endforeach
+            @if (auth()->user()->is_admin)
+                <a href="{{ route('offorest.admin.users') }}" wire:navigate class="block rounded-md px-3 py-2 text-sm {{ request()->routeIs('offorest.admin.users') ? 'bg-white/15 text-white' : 'text-white/70' }}">Admin</a>
+            @endif
+            <a href="{{ route('profile') }}" wire:navigate class="block rounded-md px-3 py-2 text-sm text-white/70">Profile</a>
+            <button wire:click="logout" class="block w-full rounded-md px-3 py-2 text-left text-sm text-white/70">Log out</button>
         </div>
     </div>
 </nav>

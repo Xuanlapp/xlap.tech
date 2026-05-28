@@ -1,155 +1,198 @@
-# 🔐 Authentication & Login Security
+# Authentication & Login Security
 
-Tài liệu này mô tả cách làm trang đăng nhập, các lớp bảo vệ, và các bước áp dụng cho project này.
+Tai lieu nay mo ta luong dang nhap va cac lop bao ve dang ap dung trong project XLAP.
 
-## Mục tiêu
+## Muc tieu
 
-- Làm trang đăng nhập theo style glassmorphism giống mockup.
-- Tắt đăng ký công khai.
-- Giảm rủi ro brute force, dò tài khoản, và login bot.
-- Giữ thông báo lỗi chung chung, không lộ thông tin nhạy cảm.
+- Cho phep dang nhap bang email hoac ten dang nhap.
+- Giam rui ro brute force, bot submit form, va spam request vao endpoint login.
+- Khong tiet lo tai khoan nao ton tai hay khong ton tai.
+- Giu session an toan sau khi dang nhap thanh cong.
 
-## Luồng đăng nhập hiện tại
+## Luong dang nhap
 
-1. User mở trang login.
-2. Nhập Email hoặc Tên đăng nhập.
-3. Hệ thống kiểm tra rate limit.
-4. Xác thực bằng password hash của Laravel.
-5. Nếu đúng, regenerate session.
-6. Nếu sai, trả lỗi chung: Thông tin đăng nhập không đúng.
+1. User mo trang `GET /login`.
+2. Trang login tao 2 truong an:
+   - `website`: honeypot, user that khong nhap.
+   - `startedAt` / `started_at`: timestamp khi form duoc render.
+3. Khi submit, he thong kiem tra:
+   - IP co gui qua nhieu request trong 60 giay khong.
+   - Tai khoan + IP co sai qua nhieu lan khong.
+   - Honeypot co bi dien khong.
+   - Form co bi submit qua nhanh khong.
+   - Turnstile token co hop le khong, neu CAPTCHA dang bat.
+4. Neu qua duoc cac lop bao ve, Laravel moi thuc hien `Auth::attempt`.
+5. Neu dung mat khau, session duoc regenerate va user vao dashboard.
+6. Neu sai, tra ve loi chung: `These credentials do not match our records.`
 
-## Giao diện login
+## File lien quan
 
-- Nền mờ, sáng, dạng glass card.
-- Ô nhập bo tròn lớn.
-- Nút đăng nhập gradient xanh cyan.
-- Có:
-  - Email / Tên đăng nhập
-  - Mật khẩu
-  - Quên mật khẩu
-  - Remember me
-  - Buttons social mang tính UI nếu sau này tích hợp OAuth
+- `app/Support/LoginSecurity.php`
+  Chua logic bao ve dung chung cho MVC controller va Livewire form.
+- `app/Livewire/Forms/LoginForm.php`
+  Xu ly dang nhap qua Volt/Livewire.
+- `app/Http/Controllers/Auth/LoginController.php`
+  Xu ly fallback `POST /login`.
+- `resources/views/livewire/pages/auth/login.blade.php`
+  Giao dien login chinh.
+- `resources/views/auth/login.blade.php`
+  Giao dien login fallback neu dung form POST thuong.
+- `routes/web.php`
+  Khai bao `GET /login` va `POST /login`.
 
-## Các lớp bảo vệ cần có
+## Cac lop bao ve hien co
 
-### 1. HTTPS / SSL
+### 1. Rate limit theo IP
 
-- Bắt buộc chạy qua HTTPS.
-- Không cho login hoạt động qua HTTP ở môi trường production.
-- Cấu hình nên bật:
-  - `SESSION_SECURE_COOKIE=true`
-  - `SESSION_HTTP_ONLY=true`
-  - `SESSION_SAME_SITE=lax`
+`LoginSecurity` gioi han so request login tu cung mot IP:
 
-### 2. Rate limit đăng nhập
+- Toi da: 20 request / 60 giay.
+- Ap dung truoc khi kiem tra mat khau.
+- Muc dich: chan bot flood endpoint bang nhieu email khac nhau.
 
-- Dùng rate limiter của Laravel.
-- Hiện tại login đã giới hạn theo key: login + IP.
-- Gợi ý: 5 lần sai thì khóa tạm.
-- Có thể tăng/giảm thời gian khóa theo policy.
+### 2. Rate limit theo tai khoan + IP
 
-### 3. CAPTCHA sau khi sai nhiều lần
+Moi cap `login + IP` bi gioi han:
 
-- Không bật ngay từ đầu.
-- Chỉ hiện khi:
-  - sai mật khẩu nhiều lần
-  - IP đăng nhập quá nhanh
-  - hành vi giống bot
-- Gợi ý tích hợp:
-  - Cloudflare Turnstile
-  - Google reCAPTCHA
-  - hCaptcha
+- Toi da: 5 lan sai / 60 giay.
+- Khi vuot qua, Laravel tra loi theo `auth.throttle`.
+- Muc dich: chan brute force mot tai khoan cu the.
 
-### 4. Không báo lỗi quá chi tiết
+### 3. Soft lockout tang dan
 
-- Không phân biệt rõ:
-  - Email không tồn tại
-  - Mật khẩu sai
-- Chỉ báo chung:
-  - Thông tin đăng nhập không đúng.
+Sau moi lan sai, `LoginSecurity` tang thoi gian khoa mem theo so lan thu:
 
-### 5. Mật khẩu hash chuẩn
+- Tu lan thu 5: 60 giay.
+- Tu lan thu 8: 300 giay.
+- Tu lan thu 12: 900 giay.
 
-- Dùng cơ chế hash mặc định của Laravel: bcrypt hoặc argon.
-- Không lưu mật khẩu dạng text.
+Day la soft lockout, khong khoa vinh vien tai khoan. Cach nay giam brute force nhung tranh viec attacker loi dung hard lockout de khoa tai khoan nguoi dung.
 
-### 6. CSRF protection
+### 4. Honeypot field
 
-- Form login phải có CSRF protection của Laravel.
-- Với Livewire, token được xử lý qua layout và middleware.
+Form co field an ten `website`.
 
-### 7. Session an toàn
+- User that khong nhin thay field nay.
+- Bot tu dong dien tat ca input se dien field nay.
+- Neu field co gia tri, request bi chan va ghi log warning.
 
-- Regenerate session sau khi login.
-- Không tái sử dụng session cũ.
-- Bật cookie an toàn khi đã chạy HTTPS.
+### 5. Timing check
 
-### 8. Email verify / 2FA
+Form co timestamp luc render.
 
-- Nếu hệ thống có dữ liệu quan trọng, nên bật:
-  - email verification
-  - 2FA bằng authenticator hoặc OTP email
+- Neu submit qua nhanh duoi 1 giay, request bi xem la automated.
+- Muc dich: chan script submit truc tiep ngay sau khi load.
+- Khong nen dat nguong qua cao de tranh lam kho user dung password manager.
 
-### 9. Log đăng nhập đáng ngờ
+### 6. Cloudflare Turnstile CAPTCHA
 
-Nên lưu:
+Turnstile la lop CAPTCHA phu cho login.
 
-- IP
-- user agent
-- thời gian
-- số lần sai
-- tài khoản bị thử
+- Widget chi hien khi bat cau hinh trong `.env`.
+- Server verify token voi Cloudflare truoc khi check password.
+- Token khong hop le thi dung login ngay va khong tao session.
+- Khong hardcode secret key trong source code.
 
-### 10. Chặn brute force ở server
+Bien cau hinh:
 
-- Bật firewall.
-- Đổi port SSH.
-- Cài fail2ban.
-- Dùng Cloudflare nếu có thể.
+```env
+TURNSTILE_ENABLED=true
+TURNSTILE_SITE_KEY=site-key-tu-cloudflare
+TURNSTILE_SECRET_KEY=secret-key-tu-cloudflare
+```
 
-## Bước triển khai cho project này
+Sau khi sua `.env`, chay:
 
-### Bước 1: Tắt Register
+```bash
+php artisan config:clear
+php artisan optimize:clear
+```
 
-- Xóa route register trong [routes/auth.php](routes/auth.php).
-- Xóa link Register ở navigation.
-- Không cho đăng ký công khai.
+Neu khong co key hoac `TURNSTILE_ENABLED=false`, CAPTCHA se tu tat de local/test khong bi chan.
 
-### Bước 2: Dùng trang login mới
+### 7. Giam timing leak khi user khong ton tai
 
-- Cập nhật [resources/views/livewire/pages/auth/login.blade.php](resources/views/livewire/pages/auth/login.blade.php).
-- Dùng UI glassmorphism.
-- Giữ các field tối thiểu cần thiết.
+Khi login sai, code van chay `Hash::check` voi dummy bcrypt hash neu user khong ton tai.
 
-### Bước 3: Giữ rate limit trong `LoginForm`
+Muc dich la lam duong xu ly cua "email khong ton tai" va "mat khau sai" gan giong nhau hon, tranh quick-exit qua som.
 
-- `App\Livewire\Forms\LoginForm` đang chặn brute force bằng rate limiter.
-- Key nên gắn với login + IP.
+### 8. Loi dang nhap chung chung
 
-### Bước 4: Thêm CAPTCHA khi cần
+He thong khong phan biet:
 
-- Khi triển khai production, thêm Turnstile hoặc reCAPTCHA vào form.
-- Chỉ hiện khi user có dấu hiệu bất thường.
+- Email khong ton tai.
+- Ten dang nhap khong ton tai.
+- Mat khau sai.
+- Bot bi chan.
 
-### Bước 5: Bảo vệ session và cookie
+Tat ca deu tra ve thong diep chung de tranh lo thong tin tai khoan.
 
-- Bật secure cookie khi đã có SSL.
-- Kiểm tra `APP_URL` dùng `https://`.
+### 9. Password policy
 
-### Bước 6: Theo dõi đăng nhập đáng ngờ
+`AppServiceProvider` cau hinh `Password::defaults()`:
 
-- Ghi log vào database hoặc audit log.
-- Có thể tách riêng bảng `login_attempts` sau.
+- Toi thieu 12 ky tu.
+- Toi da 128 ky tu.
+- Can co chu hoa/chu thuong va so.
 
-## Quy ước cho project
+Khong cat ngam password va khong luu password dang text. Password duoc hash qua co che cua Laravel.
 
-- Không bật Register công khai nếu không có yêu cầu rõ ràng.
-- Không hiển thị lỗi chi tiết ở login.
-- Không dùng password text.
-- Luôn ưu tiên bảo mật trước UI.
+### 10. Session safety
 
-## Liên kết liên quan
+Sau khi login thanh cong:
 
-- [docs/CLAUDE.md](docs/CLAUDE.md)
-- [docs/memory.md](docs/memory.md)
-- [docs/architecture.md](docs/architecture.md)
+- Session duoc regenerate.
+- Rate limit theo account duoc clear.
+- Logout invalidate session va regenerate CSRF token.
+
+## Cau hinh production nen bat
+
+Trong `.env` production:
+
+```env
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://xlap.com.vn
+
+SESSION_SECURE_COOKIE=true
+SESSION_HTTP_ONLY=true
+SESSION_SAME_SITE=lax
+```
+
+Sau khi sua `.env`, chay:
+
+```bash
+php artisan config:clear
+php artisan cache:clear
+```
+
+## Deploy checklist
+
+Sau khi deploy code login/security:
+
+```bash
+composer install --no-dev --optimize-autoloader
+php artisan optimize:clear
+php artisan route:clear
+php artisan config:clear
+npm ci
+npm run build
+```
+
+Dam bao server co cac file build:
+
+```text
+public/build/manifest.json
+public/build/assets/*.css
+public/build/assets/*.js
+```
+
+## Huong phat trien tiep theo
+
+- Them Cloudflare Turnstile neu bi bot tan cong that.
+- Turnstile da co san trong code; bat bang `.env` khi co site key va secret key.
+- Luu login attempts vao database de xem lich su IP dang ngo.
+- Them 2FA cho tai khoan admin.
+- Them passkey/WebAuthn khi can bao mat cao hon password.
+- Them man hinh lich su dang nhap va session dang hoat dong cho user.
+- Dat Cloudflare/WAF rule cho `/login` va `/livewire/update`.
