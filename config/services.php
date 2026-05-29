@@ -45,4 +45,8 @@ return [
         'model' => env('VERTEX_MODEL', 'gemini-2.5-flash-image'),
     ],
 
+    'psd_mockup_renderer' => [
+        'command' => env('PSD_MOCKUP_RENDERER_COMMAND', 'node scripts/psd-renderer/render.js'),
+    ],
+
 ];

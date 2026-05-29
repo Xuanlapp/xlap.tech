@@ -254,6 +254,24 @@ php artisan route:cache           # Cache routes
 
 ---
 
-**Last Updated:** May 25, 2026  
+## Sticker PSD Mockup Memory
+
+- Source of truth: [docs/sticker-psd-mockup.md](sticker-psd-mockup.md).
+- Chuc nang hien nam o Sticker card, cot `4. Mockup Tu Chon`.
+- User co the luu nhieu PSD, nhung moi user/product/function chi co 1 PSD active.
+- Sticker custom PSD dung `function_key = sticker_custom_mockup`.
+- Renderer command mac dinh: `PSD_MOCKUP_RENDERER_COMMAND="node scripts/psd-renderer/render.js"`.
+- PSD can co layer `Design` hoac `Desgin` va cac folder `MOCKUP 1`, `MOCKUP 2`, ...
+- Dau vao render la anh master tu `redesign` cua o `2. Create Master`.
+- PNG render xong luu tu `mockup2` den `mockup11`; `mockup1` de danh cho Lifestyle image.
+- UI chi hien slot mockup co output that, khong hien placeholder mockup trong.
+- O `4. Mockup Tu Chon` phai dung cung `aspect-[4/4.45]` voi cac o 1, 2, 3 va scroll noi bo trong khung.
+- Khong bat trim mac dinh cho design vi co the lam anh bi phong to: `OFFOREST_TRIM_MOCKUP_DESIGN=false`.
+- Renderer phai render full PSD stack va toggle tung group `MOCKUP *`; khong render rieng children cua group.
+- Khi replace Design, chi thay `designLayer.canvas`, giu metadata `effects`, `opacity`, `blendMode`, `mask`, `placedLayer`.
+
+---
+
+**Last Updated:** May 29, 2026  
 **Version:** 1.0  
 **Status:** Active

@@ -2,7 +2,7 @@
 
 namespace App\Livewire\Pages\Admin;
 
-use App\Services\UserAccessService;
+use App\Services\User\UserAccessService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Validation\Rules\Password;
 use Livewire\Attributes\Session;

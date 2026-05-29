@@ -2,8 +2,8 @@
 
 namespace App\Livewire\Modals\Sticker;
 
-use App\Services\ImageLinkPreviewService;
-use App\Services\StickerService;
+use App\Services\Image\ImageLinkPreviewService;
+use App\Services\Sticker\StickerService;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -121,6 +121,7 @@ class EditProductDetail extends Component
         );
 
         $this->dispatch('sticker-product-design-updated', assetId: $this->assetId);
+        $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da cap nhat item Sticker.');
         $this->close();
     }
 

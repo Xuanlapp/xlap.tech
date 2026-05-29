@@ -3,8 +3,8 @@
 namespace App\Livewire\Modals\Sticker;
 
 use App\Livewire\Pages\Sticker\ListSticker;
-use App\Services\ImageLinkPreviewService;
-use App\Services\StickerService;
+use App\Services\Image\ImageLinkPreviewService;
+use App\Services\Sticker\StickerService;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -64,11 +64,10 @@ class AddProductDesign extends Component
             }],
         ]);
 
-        $service = app(StickerService::class);
-        $asset = $service->createDraftAsset(auth()->user(), $validated['keyword']);
-        $service->updateImageLink(auth()->user(), $asset->id, $validated['imageLink']);
+        app(StickerService::class)->createAsset(auth()->user(), $validated['keyword'], $validated['imageLink']);
 
         $this->dispatch('product-design-created')->to(ListSticker::class);
+        $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da them item Sticker moi.');
         $this->close();
     }
 

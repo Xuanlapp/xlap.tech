@@ -82,3 +82,43 @@ Root components added:
 - `x-badge`: status label.
 - `x-alert`: info/success/warning/danger message.
 - `x-form-field`: wraps label, input slot, hint, and error.
+- `x-toast`: global toast notification listener.
+
+## Toast Notifications
+
+`x-toast` is mounted once in `resources/views/layouts/app.blade.php`.
+
+Use it for short success/error feedback after Livewire actions. It auto hides after 2 seconds.
+
+Success:
+
+```php
+$this->dispatch('toast',
+    type: 'success',
+    title: 'Successfully saved!',
+    message: 'Da luu thanh cong.'
+);
+```
+
+Error:
+
+```php
+$this->dispatch('toast',
+    type: 'error',
+    title: 'Action failed!',
+    message: 'Co loi xay ra.'
+);
+```
+
+Rules:
+
+- Use green toast for successful saves or generation actions.
+- Use red toast for failed actions or caught exceptions.
+- Do not keep permanent success/error boxes on the page when the message is only temporary feedback.
+- Keep the toast mounted in the layout, not inside each page, so every Livewire component can dispatch the same `toast` browser event.
+
+Current file:
+
+```text
+resources/views/components/toast.blade.php
+```

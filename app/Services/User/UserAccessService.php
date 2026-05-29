@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\User;
 
 use App\Actions\CreateUserWithProductAccess;
 use App\Actions\ToggleUserProductAccess;
 use App\Models\Product;
 use App\Models\User;
-use App\Repositories\ProductRepository;
-use App\Repositories\UserRepository;
+use App\Repositories\Product\ProductRepository;
+use App\Repositories\User\UserRepository;
 use Illuminate\Database\Eloquent\Collection;
 
 class UserAccessService

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Image;
 
 use Illuminate\Support\Facades\URL;
 
@@ -13,13 +13,24 @@ class ImageLinkPreviewService
         }
 
         $url = trim($url);
+
+        if (str_starts_with($url, '/storage/')) {
+            return $url;
+        }
+
         $host = parse_url($url, PHP_URL_HOST);
+        $path = parse_url($url, PHP_URL_PATH) ?: '';
 
         if (! is_string($host)) {
             return $url;
         }
 
         $host = strtolower($host);
+        $appHost = parse_url((string) config('app.url'), PHP_URL_HOST);
+
+        if (is_string($appHost) && $host === strtolower($appHost) && str_starts_with($path, '/storage/')) {
+            return $path;
+        }
 
         $previewUrl = $url;
 

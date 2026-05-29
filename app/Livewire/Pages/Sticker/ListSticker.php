@@ -2,22 +2,17 @@
 
 namespace App\Livewire\Pages\Sticker;
 
-use App\Services\StickerService;
+use App\Services\Sticker\StickerService;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
 class ListSticker extends Component
 {
-    public ?string $statusMessage = null;
-
-    public ?string $errorMessage = null;
-
     #[On('product-design-created')]
     public function productDesignCreated(): void
     {
-        $this->statusMessage = 'Da them item Sticker.';
-        $this->errorMessage = null;
+        //
     }
 
     public function render(): View

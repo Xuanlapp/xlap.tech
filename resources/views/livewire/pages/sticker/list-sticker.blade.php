@@ -6,30 +6,28 @@
                 <h1 class="text-2xl font-bold tracking-tight">List Sticker</h1>
             </div>
 
-            <div class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-500 shadow-sm">
-                <span>{{ $assets->count() }} items</span>
+            <div class="flex flex-wrap items-center gap-2">
                 <button
                     type="button"
-                    wire:click="$dispatch('openModal', { component: 'modals.sticker.add-product-design' })"
-                    class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-cyan-500 text-sm font-bold leading-none text-white hover:bg-cyan-600"
-                    aria-label="Add sticker item"
+                    wire:click="$dispatch('openModal', { component: 'modals.prompt.detail-prompt', arguments: { productSlug: 'sticker' } })"
+                    class="inline-flex h-10 items-center justify-center rounded-full border border-indigo-200 bg-white px-4 text-sm font-semibold text-indigo-600 shadow-sm hover:bg-indigo-50"
                 >
-                    +
+                    Prompt
                 </button>
+
+                <div class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-500 shadow-sm">
+                    <span>{{ $assets->count() }} items</span>
+                    <button
+                        type="button"
+                        wire:click="$dispatch('openModal', { component: 'modals.sticker.add-product-design' })"
+                        class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-cyan-500 text-sm font-bold leading-none text-white hover:bg-cyan-600"
+                        aria-label="Add sticker item"
+                    >
+                        +
+                    </button>
+                </div>
             </div>
         </div>
-
-        @if ($statusMessage)
-            <div class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
-                {{ $statusMessage }}
-            </div>
-        @endif
-
-        @if ($errorMessage)
-            <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-                {{ $errorMessage }}
-            </div>
-        @endif
 
         <div class="space-y-5">
             @forelse ($assets as $asset)
@@ -48,4 +46,6 @@
 
     <livewire:modals.sticker.add-product-design />
     <livewire:modals.sticker.edit-product-detail />
+    <livewire:modals.sticker.psd-mockup-template />
+    <livewire:modals.prompt.detail-prompt />
 </div>

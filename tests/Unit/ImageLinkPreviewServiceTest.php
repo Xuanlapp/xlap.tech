@@ -2,7 +2,7 @@
 
 namespace Tests\Unit;
 
-use App\Services\ImageLinkPreviewService;
+use App\Services\Image\ImageLinkPreviewService;
 use Tests\TestCase;
 
 class ImageLinkPreviewServiceTest extends TestCase
@@ -43,6 +43,16 @@ class ImageLinkPreviewServiceTest extends TestCase
         $this->assertSame(
             'https://www.dropbox.com/s/example/file.png?raw=1',
             $this->targetUrl($service->previewUrl('https://www.dropbox.com/s/example/file.png?dl=0'))
+        );
+    }
+
+    public function test_it_keeps_local_storage_urls(): void
+    {
+        $service = new ImageLinkPreviewService;
+
+        $this->assertSame(
+            '/storage/generated/sticker/redesign/master.png',
+            $service->previewUrl('/storage/generated/sticker/redesign/master.png')
         );
     }
 

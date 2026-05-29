@@ -35,6 +35,7 @@
             </main>
 
             <livewire:modals.image.review-image />
+            <x-toast />
         </div>
     </body>
 </html>

@@ -77,4 +77,12 @@ class User extends Authenticatable
     {
         return $this->hasMany(ProductDesignAsset::class);
     }
+
+    /**
+     * PSD mockup templates uploaded by the user.
+     */
+    public function psdMockupTemplates(): HasMany
+    {
+        return $this->hasMany(PsdMockupTemplate::class);
+    }
 }

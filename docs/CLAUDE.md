@@ -397,5 +397,9 @@ Khi nói chuyện với AI:
 
 ---
 
-**Last Updated:** May 25, 2026  
+## Current Feature Docs
+
+- Sticker PSD custom mockup: [docs/sticker-psd-mockup.md](sticker-psd-mockup.md)
+
+**Last Updated:** May 29, 2026  
 **Version:** 1.0

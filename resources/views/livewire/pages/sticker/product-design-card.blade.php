@@ -20,23 +20,11 @@
             </x-button>
         </div>
 
-        <label class="inline-flex items-center gap-2 text-xs font-semibold text-blue-600">
+        <x-label class="inline-flex items-center gap-2 text-xs font-semibold text-blue-600">
             <input type="checkbox" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
             Create
-        </label>
+        </x-label>
     </div>
-
-    @if ($statusMessage)
-        <div class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
-            {{ $statusMessage }}
-        </div>
-    @endif
-
-    @if ($errorMessage)
-        <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
-            {{ $errorMessage }}
-        </div>
-    @endif
 
     <div class="grid gap-5 lg:grid-cols-4">
         <div class="min-w-0">
@@ -67,34 +55,52 @@
             <div class="mb-2 flex h-5 items-center justify-between gap-2">
                 <x-label class="truncate text-xs font-bold uppercase text-blue-600">2. Create Master</x-label>
                 @if ($asset->image_link)
-                    <x-ui.button color="blue" variant="ghost" size="xs" type="button" wire:click="generateRedesign" wire:loading.attr="disabled" class="shrink-0">
-                        Create Master
+                    <x-ui.button color="blue" variant="ghost" size="xs" type="button" wire:click="generateRedesign" wire:loading.attr="disabled" wire:target="generateRedesign" class="shrink-0">
+                        <span wire:loading.remove wire:target="generateRedesign">Create Master</span>
+                        <span wire:loading wire:target="generateRedesign">Creating...</span>
                     </x-ui.button>
                 @endif
             </div>
 
-            <x-image-preview reviewable class="aspect-[4/4.45] rounded-xl border border-slate-200 bg-slate-50" :src="$asset->redesign_preview_url" :original="$asset->redesign" alt="Redesign image">
-                <span class="px-4 text-center text-sm font-medium text-slate-400">
-                    {{ $asset->image_link ? 'Waiting for creation...' : 'Cho anh nguon' }}
-                </span>
-            </x-image-preview>
+            <div class="relative aspect-[4/4.45] overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                <div wire:loading.flex wire:target="generateRedesign" class="absolute inset-0 z-10 bg-slate-50">
+                    <x-spinner />
+                </div>
+
+                <div wire:loading.class="invisible" wire:target="generateRedesign" class="h-full w-full">
+                    <x-image-preview reviewable class="h-full w-full" :src="$asset->redesign_preview_url" :original="$asset->redesign" alt="Redesign image">
+                        <span class="px-4 text-center text-sm font-medium text-slate-400">
+                            {{ $asset->image_link ? 'Waiting for creation...' : 'Cho anh nguon' }}
+                        </span>
+                    </x-image-preview>
+                </div>
+            </div>
         </div>
 
         <div class="min-w-0 {{ $asset->redesign ? '' : 'opacity-55' }}">
             <div class="mb-2 flex h-5 items-center justify-between gap-2">
                 <x-label class="truncate text-xs font-bold uppercase text-emerald-700">3. Lifestyle Image</x-label>
                 @if ($asset->redesign)
-                    <x-ui.button color="emerald" variant="ghost" size="xs" type="button" wire:click="generateFinalImages" wire:loading.attr="disabled" class="shrink-0">
-                        Generate Lifestyle
+                    <x-ui.button color="emerald" variant="ghost" size="xs" type="button" wire:click="generateFinalImages" wire:loading.attr="disabled" wire:target="generateFinalImages" class="shrink-0">
+                        <span wire:loading.remove wire:target="generateFinalImages">Generate Lifestyle</span>
+                        <span wire:loading wire:target="generateFinalImages">Generating...</span>
                     </x-ui.button>
                 @endif
             </div>
 
-            <x-image-preview reviewable class="aspect-[4/4.45] rounded-xl border border-slate-200 bg-slate-50" :src="$asset->mockup1_preview_url" :original="$asset->mockup1" alt="Lifestyle image">
-                <span class="px-4 text-center text-sm font-medium text-slate-400">
-                    {{ $asset->redesign ? 'Bam Generate de tao lifestyle' : 'Cho anh master' }}
-                </span>
-            </x-image-preview>
+            <div class="relative aspect-[4/4.45] overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                <div wire:loading.flex wire:target="generateFinalImages" class="absolute inset-0 z-10 bg-slate-50">
+                    <x-spinner />
+                </div>
+
+                <div wire:loading.class="invisible" wire:target="generateFinalImages" class="h-full w-full">
+                    <x-image-preview reviewable class="h-full w-full" :src="$asset->mockup1_preview_url" :original="$asset->mockup1" alt="Lifestyle image">
+                        <span class="px-4 text-center text-sm font-medium text-slate-400">
+                            {{ $asset->redesign ? 'Bam Generate de tao lifestyle' : 'Cho anh master' }}
+                        </span>
+                    </x-image-preview>
+                </div>
+            </div>
 
             <p class="mt-2 text-xs italic text-slate-500">Lifestyle co the upload, khong co thi bo qua.</p>
         </div>
@@ -103,19 +109,82 @@
             <div class="mb-2 flex h-5 items-center justify-between gap-2">
                 <x-label class="truncate text-xs font-bold uppercase text-orange-600">4. Mockup Tu Chon</x-label>
                 @if ($asset->redesign)
-                    <x-ui.button color="orange" variant="ghost" size="xs" type="button" wire:click="generateFinalImages" wire:loading.attr="disabled" class="shrink-0">
-                        Generate PSD
-                    </x-ui.button>
+                    <button
+                        type="button"
+                        wire:click="generatePsdMockups"
+                        wire:loading.attr="disabled"
+                        wire:target="generatePsdMockups"
+                        class="shrink-0 text-xs font-semibold text-orange-600 hover:text-orange-700 disabled:opacity-60"
+                    >
+                        <span wire:loading.remove wire:target="generatePsdMockups">✦ Generate + Update</span>
+                        <span wire:loading wire:target="generatePsdMockups">Generating...</span>
+                    </button>
                 @endif
             </div>
 
-            <x-image-preview reviewable class="aspect-[4/4.45] rounded-xl border border-slate-200 bg-slate-50" :src="$asset->mockup2_preview_url" :original="$asset->mockup2" alt="Mockup image">
-                <span class="px-4 text-center text-sm font-medium text-slate-400">
-                    {{ $asset->redesign ? 'Chon anh mockup cua ban' : 'Cho anh master' }}
-                </span>
-            </x-image-preview>
 
-            <p class="mt-2 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-xs text-slate-500">Template rieng: Dang dung template mac dinh.</p>
+            @php
+                $psdMockups = collect(range(2, 11))
+                    ->map(fn ($slot) => [
+                        'slot' => $slot,
+                        'src' => $asset->getAttribute("mockup{$slot}_preview_url"),
+                        'original' => $asset->getAttribute("mockup{$slot}"),
+                    ])
+                    ->filter(fn ($mockup) => filled($mockup['original']));
+            @endphp
+
+            <div class="relative aspect-[4/4.45] overflow-hidden rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
+                <div wire:loading.flex wire:target="generatePsdMockups" class="absolute inset-0 z-10 items-center justify-center rounded-xl bg-white/95">
+                    <x-spinner />
+                </div>
+
+                <div wire:loading.class="invisible" wire:target="generatePsdMockups" class="flex h-full min-h-0 flex-col">
+                    <div class="mb-2 flex items-center justify-between gap-2 px-1">
+                        <span class="text-xs font-bold uppercase text-slate-600">
+                            {{ $psdMockups->count() }} MOCKUP
+                        </span>
+
+                        @if ($psdMockups->isNotEmpty())
+                            <span class="text-[11px] font-medium text-slate-400">Scroll</span>
+                        @endif
+                    </div>
+
+                    @if ($psdMockups->isNotEmpty())
+                        <div class="min-h-0 flex-1 overflow-y-auto pr-1">
+                            <div class="grid grid-cols-2 gap-2">
+                                @foreach ($psdMockups as $mockup)
+                                    <button
+                                        type="button"
+                                        wire:click="$dispatch('review-image', { src: @js($mockup['src']), original: @js($mockup['original']), title: @js('MOCKUP '.($mockup['slot'] - 1)) })"
+                                        class="aspect-[4/3] overflow-hidden rounded-lg border border-slate-100 bg-slate-50 shadow-sm transition hover:border-orange-300 hover:ring-2 hover:ring-orange-100"
+                                    >
+                                        <img src="{{ $mockup['src'] }}" alt="MOCKUP {{ $mockup['slot'] - 1 }}" class="h-full w-full object-cover">
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+                    @else
+                        <div class="flex min-h-0 flex-1 items-center justify-center px-4 py-6 text-center text-sm font-medium text-slate-400">
+                            {{ $asset->redesign ? 'Bam Generate PSD de tao mockup' : 'Cho anh master' }}
+                        </div>
+                    @endif
+                </div>
+            </div>
+            
+            <div class="mt-2 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-xs text-slate-500">
+                <div class="flex items-center justify-between gap-2">
+                    <span class="min-w-0 truncate">
+                        PSD: {{ $activePsdTemplate?->name ?? 'Chua chon PSD' }}
+                    </span>
+                    <button
+                        type="button"
+                        wire:click="$dispatch('openModal', { component: 'modals.sticker.psd-mockup-template' })"
+                        class="shrink-0 font-semibold text-orange-600 hover:text-orange-700"
+                    >
+                        Chon PSD
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 </article>

@@ -13,6 +13,7 @@ product_user
 vertex_api_credentials
 prompts
 product_design_assets
+psd_mockup_templates
 ```
 
 Laravel system tables such as `sessions`, `jobs`, `failed_jobs`, `cache`, and `migrations` remain framework-owned tables.
@@ -75,6 +76,38 @@ Stores per-user, per-product prompt slots. Each product page can have prompt but
 
 The table has a unique key on `user_id + product_id + prompt_number`.
 
+Prompt UI rules:
+
+- Prompt management opens from the product page with the shared `openModal` event.
+- Current modal: `App\Livewire\Modals\Prompt\DetailPrompt`.
+- Current view: `resources/views/livewire/modals/prompt/detail-prompt.blade.php`.
+- The modal receives `productSlug`, then loads only prompts owned by the current authenticated user for that product.
+- A product page can have at most 4 prompts.
+- Show the add `+` button only while the user has fewer than 4 prompts for that product.
+- Existing prompts can be edited and saved.
+- Prompts cannot be deleted from the UI.
+- Default prompt names by slot are: `Design`, `Mockup1`, `Mockup2`, `Mockup3`.
+
+Open modal example:
+
+```blade
+wire:click="$dispatch('openModal', { component: 'modals.prompt.detail-prompt', arguments: { productSlug: 'sticker' } })"
+```
+
+Save flow:
+
+```text
+DetailPrompt modal
+ ↓
+PromptService
+ ↓
+PromptRepository
+ ↓
+prompts table
+ ↓
+toast success/error
+```
+
 ## product_design_assets
 
 Stores product row data: keyword, source image link, redesign output, and mockup output links.
@@ -96,11 +129,81 @@ For the Sticker page workflow:
 - `mockup1`: image generated from `redesign` and prompt number 2, shown in column 3.
 - `mockup2`: image generated from `redesign` and prompt number 3, shown in column 4.
 
+For custom PSD mockups:
+
+- Full renderer and UI documentation: `docs/sticker-psd-mockup.md`.
+- The user uploads PSD templates through `App\Livewire\Modals\Sticker\PsdMockupTemplate`.
+- A user can store many PSD files, but only one PSD can be active for one function.
+- Sticker custom PSD uses `function_key = sticker_custom_mockup`.
+- `Generate PSD` uses the active PSD template, the master image from `redesign`, and replaces the PSD layer named `Design`.
+- PSD folders named `MOCKUP 1`, `MOCKUP 2`, ... are rendered as PNG outputs by `scripts/psd-renderer/render.js`.
+- Rendered PNG outputs are stored from `mockup2` onward, so `MOCKUP 1` maps to `mockup2`, `MOCKUP 2` maps to `mockup3`, and so on.
+- Current renderer supports PNG export only. GIF/sheet update can be added later as a separate step.
+
+## psd_mockup_templates
+
+Stores user-uploaded PSD files for custom mockup rendering.
+
+- `id`: primary key.
+- `user_id`: owner.
+- `product_id`: product/page this PSD belongs to.
+- `function_key`: feature key, for example `sticker_custom_mockup`.
+- `name`: user-facing PSD name.
+- `original_filename`: uploaded filename.
+- `storage_path`: path on the public storage disk.
+- `is_active`: selected PSD for this user/product/function.
+- `created_at`, `updated_at`: timestamps.
+
+Selection rule:
+
+```text
+User can have many PSD templates.
+User + Product + function_key can have only one active PSD at a time.
+Uploading a new PSD for the same function automatically deactivates older PSD files.
+```
+
+Render flow:
+
+```text
+ProductDesignCard::generatePsdMockups
+StickerService
+PsdMockupTemplateService active template
+PsdMockupRenderer
+Node ag-psd renderer
+ProductDesignAssetRepository update mockup2..mockup11
+toast success/error
+```
+
 Sticker data entry uses progressive disclosure:
 
 1. The user enters `keyword` inline on the list page.
 2. After submitting the keyword, the page opens the `image_link` input.
 3. After saving `image_link`, the source image is shown and the generation controls unlock.
+
+Current Sticker UI is split into a parent page and child card components:
+
+- `App\Livewire\Pages\Sticker\ListSticker`: parent page. It loads the list and mounts each card with a stable Livewire key.
+- `App\Livewire\Pages\Sticker\ProductDesignCard`: one card/item. It owns per-item actions such as generate master and generate final images.
+- `App\Livewire\Modals\Sticker\AddProductDesign`: add item modal.
+- `App\Livewire\Modals\Sticker\EditProductDetail`: edit item modal.
+
+Add/edit flow:
+
+```text
+Add item:
+Add modal -> StickerService -> ProductDesignAssetRepository -> DB
+          -> dispatch product-design-created
+          -> ListSticker refreshes list and appends the new card
+          -> dispatch toast success
+
+Edit item:
+Edit modal -> StickerService -> DB
+           -> dispatch sticker-product-design-updated with assetId
+           -> only matching ProductDesignCard refreshes itself
+           -> dispatch toast success
+```
+
+This structure is intentional. Do not put all item logic back into `ListSticker`, because that causes the whole page to re-render and can reset unfinished work in other cards.
 
 Image preview supports direct image/CDN URLs and normalizes common shared links such as Google Drive and Dropbox before rendering. The browser loads images through a signed `/image-preview` route, so providers that block normal hotlinking are handled more consistently. If the source URL is a product page instead of an actual image, or the provider blocks server-side fetching, the UI shows a fallback link that opens the original URL.
 
@@ -113,10 +216,12 @@ User hasOne VertexApiCredential
 User belongsToMany Product
 User hasMany Prompt
 User hasMany ProductDesignAsset
+User hasMany PsdMockupTemplate
 
 Product belongsToMany User
 Product hasMany Prompt
 Product hasMany ProductDesignAsset
+Product hasMany PsdMockupTemplate
 ```
 
 ## App structure
@@ -126,19 +231,31 @@ app/Models/Product.php
 app/Models/VertexApiCredential.php
 app/Models/Prompt.php
 app/Models/ProductDesignAsset.php
+app/Models/PsdMockupTemplate.php
 app/Actions/CreateUserWithProductAccess.php
 app/Actions/ToggleUserProductAccess.php
-app/Repositories/ProductRepository.php
-app/Repositories/ProductDesignAssetRepository.php
-app/Repositories/PromptRepository.php
-app/Repositories/UserRepository.php
-app/Services/StickerService.php
-app/Services/UserAccessService.php
+app/Repositories/Product/ProductRepository.php
+app/Repositories/Product/ProductDesignAssetRepository.php
+app/Repositories/Product/PsdMockupTemplateRepository.php
+app/Repositories/Prompt/PromptRepository.php
+app/Repositories/User/UserRepository.php
+app/Services/Prompt/PromptService.php
+app/Services/Sticker/StickerService.php
+app/Services/Sticker/PsdMockupTemplateService.php
+app/Services/Sticker/PsdMockupRenderer.php
+scripts/psd-renderer/render.js
+app/Services/User/UserAccessService.php
+app/Services/Image/ImageLinkPreviewService.php
+app/Services/Vertex/VertexImageGenerator.php
 app/Support/ProductRegistry.php
 app/Http/Middleware/EnsureUserIsAdmin.php
 app/Livewire/Pages/Admin/ListUser.php
 app/Livewire/Pages/Sticker/ListSticker.php
 app/Livewire/Pages/Sticker/ProductDesignCard.php
+app/Livewire/Modals/Prompt/DetailPrompt.php
+app/Livewire/Modals/Sticker/PsdMockupTemplate.php
 resources/views/livewire/pages/{product}/{page-name}.blade.php
+resources/views/livewire/modals/prompt/detail-prompt.blade.php
+resources/views/livewire/modals/sticker/psd-mockup-template.blade.php
 resources/views/livewire/pages/admin/list-user.blade.php
 ```

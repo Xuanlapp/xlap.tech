@@ -167,6 +167,12 @@ Current Offorest product workflow uses the simplified product schema documented 
 docs/offorest-data-model.md
 ```
 
+Sticker custom PSD mockup workflow is documented in:
+
+```text
+docs/sticker-psd-mockup.md
+```
+
 Current product-domain files:
 
 ```text
@@ -196,22 +202,95 @@ app/Livewire/Pages/Sticker/ProductDesignCard.php
 app/Livewire/Pages/Mockup/Index.php
 app/Livewire/Pages/Redesign/Index.php
 app/Livewire/Pages/Poster/Index.php
+app/Livewire/Modals/Prompt/DetailPrompt.php
+app/Livewire/Modals/Sticker/PsdMockupTemplate.php
 app/Models/Product.php
 app/Models/Prompt.php
 app/Models/ProductDesignAsset.php
+app/Models/PsdMockupTemplate.php
 app/Models/VertexApiCredential.php
-app/Repositories/ProductRepository.php
-app/Repositories/ProductDesignAssetRepository.php
-app/Repositories/PromptRepository.php
-app/Repositories/UserRepository.php
-app/Services/StickerService.php
-app/Services/UserAccessService.php
+app/Repositories/Product/ProductRepository.php
+app/Repositories/Product/ProductDesignAssetRepository.php
+app/Repositories/Product/PsdMockupTemplateRepository.php
+app/Repositories/Prompt/PromptRepository.php
+app/Repositories/User/UserRepository.php
+app/Services/Prompt/PromptService.php
+app/Services/Sticker/StickerService.php
+app/Services/Sticker/PsdMockupTemplateService.php
+app/Services/Sticker/PsdMockupRenderer.php
+app/Services/User/UserAccessService.php
+app/Services/Image/ImageLinkPreviewService.php
+app/Services/Vertex/VertexImageGenerator.php
 app/Support/ProductRegistry.php
 app/Http/Middleware/EnsureUserHasProductAccess.php
 resources/views/livewire/pages/{product}/{page-name}.blade.php
+resources/views/livewire/modals/prompt/detail-prompt.blade.php
+resources/views/livewire/modals/sticker/psd-mockup-template.blade.php
 resources/views/livewire/pages/admin/list-user.blade.php
 resources/views/errors/403.blade.php
 resources/views/errors/404.blade.php
 resources/views/errors/500.blade.php
 ```
 
+## Livewire UI Rules
+
+- Full-page Livewire components must render one root element only.
+- For full-page components, prefer `return view(...)->layout('layouts.app')` in the Livewire class instead of wrapping the Blade file in `<x-app-layout>`.
+- Keep long lists split into parent page + child item components. Example: `ListSticker` mounts `ProductDesignCard` for each item.
+- For modals, use the shared `openModal` event pattern:
+
+```blade
+wire:click="$dispatch('openModal', { component: 'modals.sticker.edit-product-detail', arguments: { assetId: {{ $asset->id }} } })"
+```
+
+Prompt modal example:
+
+```blade
+wire:click="$dispatch('openModal', { component: 'modals.prompt.detail-prompt', arguments: { productSlug: 'sticker' } })"
+```
+
+Each modal listens for `openModal`, checks the `component` name, then loads its own data.
+
+```php
+#[On('openModal')]
+public function openModal(string $component, array $arguments = []): void
+{
+    if ($component !== 'modals.sticker.edit-product-detail') {
+        return;
+    }
+
+    $this->open((int) $arguments['assetId']);
+}
+```
+
+- Add/edit forms should use `wire:submit.prevent="save"` so Livewire handles the request without a normal page submit.
+- Temporary success/error feedback should use `x-toast` through the `toast` event. See `docs/ui-components.md`.
+
+## Commands After Code Changes
+
+Run these commands depending on the change:
+
+```bash
+# After editing PHP classes
+php -l app/Livewire/Pages/Sticker/ListSticker.php
+php -l app/Livewire/Pages/Sticker/ProductDesignCard.php
+php -l app/Livewire/Modals/Sticker/AddProductDesign.php
+php -l app/Livewire/Modals/Sticker/EditProductDetail.php
+php -l app/Livewire/Modals/Prompt/DetailPrompt.php
+php -l app/Services/Prompt/PromptService.php
+php -l app/Repositories/Prompt/PromptRepository.php
+
+# After editing Blade files
+php artisan view:clear
+
+# After changing routes/config/events
+php artisan optimize:clear
+
+# After changing CSS/JS/Vite assets for production
+npm run build
+
+# During local development when CSS/JS changes need hot reload
+npm run dev
+```
+
+If `php artisan view:cache` fails on Windows with `Access is denied` in `bootstrap/cache`, close processes locking the app files or rerun the terminal with proper permissions. `view:clear` is enough after normal Blade edits during development.

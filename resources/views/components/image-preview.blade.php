@@ -7,7 +7,7 @@
 
 <div
     x-data="{ failed: false }"
-    {{ $attributes->merge(['class' => 'flex items-center justify-center overflow-hidden rounded-md bg-[#101010]']) }}
+    {{ $attributes->merge(['class' => 'flex items-center justify-center overflow-hidden rounded-md bg-slate-50']) }}
 >
     @if ($src)
         @if ($reviewable)
