@@ -14,6 +14,7 @@ vertex_api_credentials
 prompts
 product_design_assets
 psd_mockup_templates
+activity_logs
 ```
 
 Laravel system tables such as `sessions`, `jobs`, `failed_jobs`, `cache`, and `migrations` remain framework-owned tables.
@@ -35,7 +36,7 @@ Stores the product/page list shown in the app navigation.
 - `is_active`: controls whether the product can be shown/used.
 - `created_at`, `updated_at`: timestamps.
 
-Seeded products: `redesign`, `mockup`, `sticker`, `poster`.
+Seeded products: `redesign`, `mockup`, `sticker`, `ornament`, `poster`.
 
 ## product_user
 
@@ -119,15 +120,19 @@ Stores product row data: keyword, source image link, redesign output, and mockup
 - `keyword`: keyword from sheet/import/manual entry.
 - `image_link`: source image link, stored as `VARCHAR(1000)` because source URLs can be long.
 - `redesign`: redesign output link/text.
+- `lifestyle1`, `lifestyle2`, `lifestyle3`: Lifestyle Image outputs stored separately from custom PSD mockups.
 - `mockup1` through `mockup11`: mockup output links/text.
+- `is_approved`: marks items accepted by the user after at least one mockup exists.
+- `approved_at`: timestamp for the latest approval action.
+- `drive_uploaded_at`: timestamp for the latest successful approved-image export to Google Drive.
 - `created_at`, `updated_at`: timestamps.
 
 For the Sticker page workflow:
 
 - `image_link`: source image shown in column 1.
 - `redesign`: image generated from `image_link` and prompt number 1, shown in column 2.
-- `mockup1`: image generated from `redesign` and prompt number 2, shown in column 3.
-- `mockup2`: image generated from `redesign` and prompt number 3, shown in column 4.
+- Sticker UI does not use the Lifestyle Image step.
+- `mockup1` through `mockup11`: custom PSD mockup slots for column 3. New outputs append to the first empty slot, so the image created first is stored first.
 
 For custom PSD mockups:
 
@@ -137,8 +142,36 @@ For custom PSD mockups:
 - Sticker custom PSD uses `function_key = sticker_custom_mockup`.
 - `Generate PSD` uses the active PSD template, the master image from `redesign`, and replaces the PSD layer named `Design`.
 - PSD folders named `MOCKUP 1`, `MOCKUP 2`, ... are rendered as PNG outputs by `scripts/psd-renderer/render.js`.
-- Rendered PNG outputs are stored from `mockup2` onward, so `MOCKUP 1` maps to `mockup2`, `MOCKUP 2` maps to `mockup3`, and so on.
+- Rendered PNG outputs append to the first empty `mockup1` through `mockup11` slot. Do not reserve `mockup1` for Lifestyle.
+- Approval is allowed only after at least one `mockup1` through `mockup11` value exists.
+- Approval is also allowed when at least one `lifestyle1`, `lifestyle2`, or `lifestyle3` value exists.
+- Approved items must be unapproved before editing source details.
+- Sticker list filters: `all`, `unapproved` (not approved, including items with or without `redesign`), and `approved`.
 - Current renderer supports PNG export only. GIF/sheet update can be added later as a separate step.
+
+The Ornament page mirrors the Sticker workflow with its own product slug, Livewire components, prompts, PSD templates, and generated output folders under `generated/ornament/...`.
+
+Approved local images can be exported to Google Drive by schedule or admin action:
+
+- Command: `php artisan offorest:upload-approved-images-to-drive`.
+- Schedule: daily at `22:00`, defined in `routes/console.php`.
+- Manual trigger: Admin page button `Upload images to Drive`.
+- Only local `/storage/...` URLs are uploaded. After upload, the database column is replaced with the Google Drive URL and the local file is deleted.
+
+## activity_logs
+
+Stores audit trail entries for user, admin, and automated system actions.
+
+- `user_id`: actor user when available, nullable for system jobs.
+- `actor_type`: `user`, `admin`, or `system`.
+- `event`: machine-readable event key, for example `drive_export.image_uploaded`.
+- `description`: human-readable summary.
+- `subject_type`, `subject_id`: optional affected model.
+- `properties`: JSON detail payload for later processing/reporting.
+- `ip_address`, `user_agent`: request metadata when available.
+- `occurred_at`: event time.
+
+Admin page: `/offorest/admin/logs`.
 
 ## psd_mockup_templates
 
@@ -170,7 +203,7 @@ StickerService
 PsdMockupTemplateService active template
 PsdMockupRenderer
 Node ag-psd renderer
-ProductDesignAssetRepository update mockup2..mockup11
+ProductDesignAssetRepository append mockup1..mockup11
 toast success/error
 ```
 
@@ -186,6 +219,15 @@ Current Sticker UI is split into a parent page and child card components:
 - `App\Livewire\Pages\Sticker\ProductDesignCard`: one card/item. It owns per-item actions such as generate master and generate final images.
 - `App\Livewire\Modals\Sticker\AddProductDesign`: add item modal.
 - `App\Livewire\Modals\Sticker\EditProductDetail`: edit item modal.
+
+Sticker list pagination:
+
+- `ListSticker` uses Livewire `WithPagination`.
+- Available page sizes are `5`, `10`, `20`, `50`, `100`, `200`, `400`.
+- The chosen page size is stored with `#[Session(key: 'sticker.per-page')]`.
+- Changing page size resets the user to page 1.
+- `StickerService::paginatedAssetsForUser()` calls `ProductDesignAssetRepository::paginateForUserAndProduct()`, so the database only loads the current page.
+- Each visible row is still mounted as `ProductDesignCard` with key `sticker-product-design-card-{id}`.
 
 Add/edit flow:
 

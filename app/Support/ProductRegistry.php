@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Livewire\Pages\Mockup\Index as MockupPage;
+use App\Livewire\Pages\Ornament\ListOrnament;
 use App\Livewire\Pages\Poster\Index as PosterPage;
 use App\Livewire\Pages\Redesign\Index as RedesignPage;
 use App\Livewire\Pages\Sticker\ListSticker;
@@ -45,6 +46,16 @@ class ProductRegistry
                 'path' => 'sticker',
                 'component' => ListSticker::class,
                 'sort_order' => 30,
+                'is_active' => true,
+            ],
+            [
+                'name' => 'Ornament',
+                'slug' => 'ornament',
+                'description' => 'Create ornament-ready artwork.',
+                'route_name' => 'offorest.products.ornament',
+                'path' => 'ornament',
+                'component' => ListOrnament::class,
+                'sort_order' => 35,
                 'is_active' => true,
             ],
             [

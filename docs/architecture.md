@@ -199,11 +199,14 @@ app/Actions/ToggleUserProductAccess.php
 app/Livewire/Pages/Admin/ListUser.php
 app/Livewire/Pages/Sticker/ListSticker.php
 app/Livewire/Pages/Sticker/ProductDesignCard.php
+app/Livewire/Pages/Ornament/ListOrnament.php
+app/Livewire/Pages/Ornament/ProductDesignCard.php
 app/Livewire/Pages/Mockup/Index.php
 app/Livewire/Pages/Redesign/Index.php
 app/Livewire/Pages/Poster/Index.php
 app/Livewire/Modals/Prompt/DetailPrompt.php
 app/Livewire/Modals/Sticker/PsdMockupTemplate.php
+app/Livewire/Modals/Ornament/PsdMockupTemplate.php
 app/Models/Product.php
 app/Models/Prompt.php
 app/Models/ProductDesignAsset.php
@@ -218,6 +221,9 @@ app/Services/Prompt/PromptService.php
 app/Services/Sticker/StickerService.php
 app/Services/Sticker/PsdMockupTemplateService.php
 app/Services/Sticker/PsdMockupRenderer.php
+app/Services/Ornament/OrnamentService.php
+app/Services/Ornament/PsdMockupTemplateService.php
+app/Services/Ornament/PsdMockupRenderer.php
 app/Services/User/UserAccessService.php
 app/Services/Image/ImageLinkPreviewService.php
 app/Services/Vertex/VertexImageGenerator.php
@@ -237,6 +243,7 @@ resources/views/errors/500.blade.php
 - Full-page Livewire components must render one root element only.
 - For full-page components, prefer `return view(...)->layout('layouts.app')` in the Livewire class instead of wrapping the Blade file in `<x-app-layout>`.
 - Keep long lists split into parent page + child item components. Example: `ListSticker` mounts `ProductDesignCard` for each item.
+- For long lists, use Livewire `WithPagination` in the parent page and query through the repository with `paginate()`, not `get()`, so large pages do not load every row.
 - For modals, use the shared `openModal` event pattern:
 
 ```blade

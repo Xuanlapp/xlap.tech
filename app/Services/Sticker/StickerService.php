@@ -10,6 +10,7 @@ use App\Repositories\Product\ProductRepository;
 use App\Repositories\Prompt\PromptRepository;
 use App\Services\Vertex\VertexImageGenerator;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
 use InvalidArgumentException;
 use RuntimeException;
 
@@ -18,6 +19,8 @@ class StickerService
     private const MAX_KEYWORD_LENGTH = 255;
 
     private const MAX_IMAGE_LINK_LENGTH = 1000;
+
+    private ?Product $stickerProduct = null;
 
     public function __construct(
         private readonly ProductRepository $products,
@@ -30,7 +33,7 @@ class StickerService
 
     public function product(): Product
     {
-        return $this->products->findActiveBySlug('sticker');
+        return $this->stickerProduct ??= $this->products->findActiveBySlug('sticker');
     }
 
     /**
@@ -39,6 +42,27 @@ class StickerService
     public function assetsForUser(User $user): Collection
     {
         return $this->assets->forUserAndProduct($user->id, $this->product()->id);
+    }
+
+    /**
+     * @return LengthAwarePaginator<ProductDesignAsset>
+     */
+    public function paginatedAssetsForUser(
+        User $user,
+        int $perPage,
+        string $status = 'all',
+        string $pageName = 'page',
+    ): LengthAwarePaginator
+    {
+        return $this->assets->paginateForUserAndProduct($user->id, $this->product()->id, $perPage, $status, $pageName);
+    }
+
+    /**
+     * @return array{all: int, unapproved: int, approved: int}
+     */
+    public function statusCountsForUser(User $user): array
+    {
+        return $this->assets->statusCountsForUserAndProduct($user->id, $this->product()->id);
     }
 
     public function createDraftAsset(User $user, string $keyword): ProductDesignAsset
@@ -79,12 +103,16 @@ class StickerService
 
     public function updateKeyword(User $user, int $assetId, string $keyword): void
     {
-        $this->assetForUser($user, $assetId)->update(['keyword' => $this->normalizeKeyword($keyword)]);
+        $asset = $this->assetForUser($user, $assetId);
+        $this->ensureSourceDetailsEditable($asset);
+        $asset->update(['keyword' => $this->normalizeKeyword($keyword)]);
     }
 
     public function updateImageLink(User $user, int $assetId, string $imageLink): void
     {
-        $this->assetForUser($user, $assetId)->update(['image_link' => $this->normalizeImageLink($imageLink)]);
+        $asset = $this->assetForUser($user, $assetId);
+        $this->ensureSourceDetailsEditable($asset);
+        $asset->update(['image_link' => $this->normalizeImageLink($imageLink)]);
     }
 
     /**
@@ -92,8 +120,12 @@ class StickerService
      */
     public function updateProductDetail(User $user, int $assetId, string $keyword, string $imageLink): ProductDesignAsset
     {
+        $asset = $this->assetForUser($user, $assetId);
+
+        $this->ensureSourceDetailsEditable($asset);
+
         return $this->assets->updateSourceDetails(
-            $this->assetForUser($user, $assetId),
+            $asset,
             $this->normalizeKeyword($keyword),
             $this->normalizeImageLink($imageLink),
         );
@@ -105,6 +137,7 @@ class StickerService
     public function generateRedesign(User $user, int $assetId): ProductDesignAsset
     {
         $asset = $this->assetForUser($user, $assetId);
+        $this->ensureNotApproved($asset);
 
         if (! $asset->image_link) {
             throw new RuntimeException('Dong nay chua co image_link.');
@@ -117,8 +150,30 @@ class StickerService
                 imageUri: $asset->image_link,
                 prompt: $this->promptContent($user, 1),
                 folder: 'generated/sticker/redesign',
+                removeBackground: (bool) config('services.background_removal.enabled', false),
             ),
         );
+    }
+
+    /**
+     * Select an existing generated master image as the current Sticker redesign.
+     */
+    public function selectRedesign(User $user, int $assetId, string $redesign): ProductDesignAsset
+    {
+        $asset = $this->assetForUser($user, $assetId);
+        $this->ensureNotApproved($asset);
+
+        return $this->assets->selectRedesign($asset, $this->normalizeImageLink($redesign));
+    }
+
+    /**
+     * Remove a generated master image from the candidate list after it becomes a new item.
+     */
+    public function removeRedesignCandidate(User $user, int $assetId, string $redesign): ProductDesignAsset
+    {
+        $asset = $this->assetForUser($user, $assetId);
+
+        return $this->assets->removeRedesignCandidate($asset, $this->normalizeImageLink($redesign));
     }
 
     /**
@@ -127,26 +182,34 @@ class StickerService
     public function generateFinalImages(User $user, int $assetId): ProductDesignAsset
     {
         $asset = $this->assetForUser($user, $assetId);
+        $this->ensureNotApproved($asset);
 
         if (! $asset->redesign) {
             throw new RuntimeException('Can tao anh redesign truoc.');
         }
 
-        $mockup1 = $this->generator->generate(
+        $lifestyle1 = $this->generator->generate(
             user: $user,
             imageUri: $asset->redesign,
             prompt: $this->promptContent($user, 2),
             folder: 'generated/sticker/final',
         );
 
-        $mockup2 = $this->generator->generate(
+        $lifestyle2 = $this->generator->generate(
             user: $user,
             imageUri: $asset->redesign,
             prompt: $this->promptContent($user, 3),
             folder: 'generated/sticker/final',
         );
 
-        return $this->assets->updateFinalImages($asset, $mockup1, $mockup2);
+        $lifestyle3 = $this->generator->generate(
+            user: $user,
+            imageUri: $asset->redesign,
+            prompt: $this->promptContent($user, 4),
+            folder: 'generated/sticker/final',
+        );
+
+        return $this->assets->updateLifestyleImages($asset, $lifestyle1, $lifestyle2, $lifestyle3);
     }
 
     /**
@@ -155,6 +218,7 @@ class StickerService
     public function generatePsdMockups(User $user, int $assetId): ProductDesignAsset
     {
         $asset = $this->assetForUser($user, $assetId);
+        $this->ensureNotApproved($asset);
 
         if (! $asset->redesign) {
             throw new RuntimeException('Can tao anh master truoc khi render PSD.');
@@ -170,6 +234,36 @@ class StickerService
             $asset,
             $this->psdRenderer->render($template, $asset->redesign, $asset->id),
         );
+    }
+
+    /**
+     * Toggle approval after the item has at least one Lifestyle or mockup output.
+     */
+    public function toggleApproval(User $user, int $assetId): ProductDesignAsset
+    {
+        $asset = $this->assetForUser($user, $assetId);
+
+        if (! $asset->hasApprovableOutput()) {
+            throw new RuntimeException('Can co it nhat mot anh mockup hoac lifestyle truoc khi duyet.');
+        }
+
+        return $this->assets->setApproval($asset, ! $asset->is_approved);
+    }
+
+    private function ensureNotApproved(ProductDesignAsset $asset): void
+    {
+        if ($asset->is_approved) {
+            throw new RuntimeException('Item da duyet. Hay bo duyet truoc khi edit.');
+        }
+    }
+
+    private function ensureSourceDetailsEditable(ProductDesignAsset $asset): void
+    {
+        $this->ensureNotApproved($asset);
+
+        if ($asset->redesign) {
+            throw new RuntimeException('Item da co Create Master nen khong the edit.');
+        }
     }
 
     private function normalizeKeyword(string $keyword): string
@@ -199,7 +293,7 @@ class StickerService
             throw new InvalidArgumentException('Link anh khong duoc qua '.self::MAX_IMAGE_LINK_LENGTH.' ky tu.');
         }
 
-        if (! filter_var($imageLink, FILTER_VALIDATE_URL)) {
+        if (! str_starts_with($imageLink, '/storage/') && ! filter_var($imageLink, FILTER_VALIDATE_URL)) {
             throw new InvalidArgumentException('Link anh khong hop le.');
         }
 

@@ -124,6 +124,7 @@ return new class extends Migration
             ['name' => 'Redesign', 'slug' => 'redesign', 'description' => 'Create redesign outputs from the source image.'],
             ['name' => 'Mockup', 'slug' => 'mockup', 'description' => 'Create product mockup images.'],
             ['name' => 'Sticker', 'slug' => 'sticker', 'description' => 'Create sticker-ready artwork.'],
+            ['name' => 'Ornament', 'slug' => 'ornament', 'description' => 'Create ornament-ready artwork.'],
             ['name' => 'Poster', 'slug' => 'poster', 'description' => 'Create poster-style assets.'],
         ];
 

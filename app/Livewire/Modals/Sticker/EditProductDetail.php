@@ -2,6 +2,8 @@
 
 namespace App\Livewire\Modals\Sticker;
 
+use App\Livewire\Pages\Sticker\ListSticker;
+use App\Livewire\Pages\Sticker\StickerStatusPanel;
 use App\Services\Image\ImageLinkPreviewService;
 use App\Services\Sticker\StickerService;
 use Illuminate\Contracts\View\View;
@@ -55,6 +57,18 @@ class EditProductDetail extends Component
 
         $asset = app(StickerService::class)->assetForUser(auth()->user(), $assetId);
         $preview = app(ImageLinkPreviewService::class);
+
+        if ($asset->is_approved) {
+            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: 'Item da duyet. Hay bo duyet truoc khi edit.');
+
+            return;
+        }
+
+        if ($asset->redesign) {
+            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: 'Item da co Create Master nen khong the edit.');
+
+            return;
+        }
 
         $this->assetId = $asset->id;
         $this->keyword = (string) $asset->keyword;
@@ -121,6 +135,10 @@ class EditProductDetail extends Component
         );
 
         $this->dispatch('sticker-product-design-updated', assetId: $this->assetId);
+        $this->dispatch('sticker-product-design-updated')->to(ListSticker::class);
+        $this->dispatch('sticker-product-design-updated')->to(StickerStatusPanel::class);
+        $this->dispatch('sticker-counts-updated')->to(ListSticker::class);
+        $this->dispatch('sticker-counts-updated')->to(StickerStatusPanel::class);
         $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da cap nhat item Sticker.');
         $this->close();
     }

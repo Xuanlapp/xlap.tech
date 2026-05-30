@@ -63,6 +63,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Active Google Drive OAuth connection owned by the user.
+     */
+    public function googleDriveConnection(): HasOne
+    {
+        return $this->hasOne(GoogleDriveConnection::class)->where('is_active', true)->latestOfMany();
+    }
+
+    /**
      * Prompts owned by the user.
      */
     public function prompts(): HasMany

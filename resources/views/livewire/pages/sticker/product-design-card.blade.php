@@ -9,15 +9,38 @@
                 {{ $asset->keyword ?: 'Sticker item' }}
             </h2>
 
-            <x-button
-                color="slate"
-                variant="ghost"
-                size="xs"
-                type="button"
-                wire:click="$dispatch('openModal', { component: 'modals.sticker.edit-product-detail', arguments: { assetId: {{ $asset->id }} } })"
-            >
-                Edit item
-            </x-button>
+            @if (! $asset->is_approved && ! $asset->redesign)
+                <x-button
+                    color="slate"
+                    variant="ghost"
+                    size="xs"
+                    type="button"
+                    wire:click="$dispatch('openModal', { component: 'modals.sticker.edit-product-detail', arguments: { assetId: {{ $asset->id }} } })"
+                >
+                    Edit item
+                </x-button>
+            @endif
+
+            @if ($asset->is_approved)
+                <x-badge color="green">
+                    Da duyet
+                </x-badge>
+            @elseif ($asset->hasApprovableOutput())
+                <x-button
+                    color="cyan"
+                    variant="solid"
+                    size="xs"
+                    type="button"
+                    wire:click="toggleApproval"
+                    wire:loading.attr="disabled"
+                    wire:target="toggleApproval"
+                >
+                    <span wire:loading.remove wire:target="toggleApproval">
+                        Duyet
+                    </span>
+                    <span wire:loading wire:target="toggleApproval">Saving...</span>
+                </x-button>
+            @endif
         </div>
 
         <x-label class="inline-flex items-center gap-2 text-xs font-semibold text-blue-600">
@@ -26,7 +49,7 @@
         </x-label>
     </div>
 
-    <div class="grid gap-5 lg:grid-cols-4">
+    <div class="grid gap-5 lg:grid-cols-3">
         <div class="min-w-0">
             <div class="mb-2 flex h-5 items-center justify-between gap-2">
                 <x-label class="truncate text-xs font-bold uppercase text-slate-600">1. Source Image</x-label>
@@ -54,8 +77,8 @@
         <div class="min-w-0 {{ $asset->image_link ? '' : 'opacity-55' }}">
             <div class="mb-2 flex h-5 items-center justify-between gap-2">
                 <x-label class="truncate text-xs font-bold uppercase text-blue-600">2. Create Master</x-label>
-                @if ($asset->image_link)
-                    <x-ui.button color="blue" variant="ghost" size="xs" type="button" wire:click="generateRedesign" wire:loading.attr="disabled" wire:target="generateRedesign" class="shrink-0">
+                @if ($asset->image_link && ! $asset->is_approved)
+                    <x-ui.button color="blue" variant="ghost" size="xs" type="button" x-on:click="window.dispatchEvent(new CustomEvent('sticker-generation-started'))" wire:click="generateRedesign" wire:loading.attr="disabled" wire:target="generateRedesign" class="shrink-0">
                         <span wire:loading.remove wire:target="generateRedesign">Create Master</span>
                         <span wire:loading wire:target="generateRedesign">Creating...</span>
                     </x-ui.button>
@@ -67,50 +90,54 @@
                     <x-spinner />
                 </div>
 
+                @php
+                    $redesignGallery = $asset->getAttribute('redesign_gallery') ?: [];
+                    $selectedRedesignIndex = collect($redesignGallery)->search(fn ($image) => ($image['original'] ?? null) === $asset->redesign);
+                    $selectedRedesignIndex = $selectedRedesignIndex === false ? 0 : $selectedRedesignIndex;
+                @endphp
+
                 <div wire:loading.class="invisible" wire:target="generateRedesign" class="h-full w-full">
-                    <x-image-preview reviewable class="h-full w-full" :src="$asset->redesign_preview_url" :original="$asset->redesign" alt="Redesign image">
-                        <span class="px-4 text-center text-sm font-medium text-slate-400">
+                    @if ($asset->redesign)
+                        <button
+                            type="button"
+                            wire:click="$dispatch('review-image', { src: @js($asset->redesign_preview_url), original: @js($asset->redesign), title: 'Create Master', gallery: @js($redesignGallery), currentIndex: @js($selectedRedesignIndex), action: 'sticker-redesign', productSlug: 'sticker', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
+                            class="block h-full w-full"
+                        >
+                            <img src="{{ $asset->redesign_preview_url }}" alt="Redesign image" class="h-full w-full object-contain">
+                        </button>
+                    @else
+                        <div class="flex h-full w-full items-center justify-center px-4 text-center text-sm font-medium text-slate-400">
                             {{ $asset->image_link ? 'Waiting for creation...' : 'Cho anh nguon' }}
-                        </span>
-                    </x-image-preview>
+                        </div>
+                    @endif
                 </div>
             </div>
+
+            @if (count($redesignGallery) > 1)
+                <div class="mt-2 rounded-lg border border-slate-200 bg-white p-2">
+                    <div class="mb-2 text-[11px] font-bold uppercase text-slate-500">Anh Create Master da tao</div>
+                    <div class="flex gap-2 overflow-x-auto pb-1">
+                        @foreach ($redesignGallery as $index => $image)
+                            <button
+                                type="button"
+                                wire:click="$dispatch('review-image', { src: @js($image['src']), original: @js($image['original']), title: @js($image['title']), gallery: @js($redesignGallery), currentIndex: {{ $index }}, action: 'sticker-redesign', productSlug: 'sticker', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
+                                class="h-16 w-16 shrink-0 overflow-hidden rounded-md border {{ ($image['original'] ?? null) === $asset->redesign ? 'border-blue-500 ring-2 ring-blue-100' : 'border-slate-200' }} bg-slate-50"
+                            >
+                                <img src="{{ $image['src'] }}" alt="{{ $image['title'] }}" class="h-full w-full object-cover">
+                            </button>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
         </div>
 
         <div class="min-w-0 {{ $asset->redesign ? '' : 'opacity-55' }}">
             <div class="mb-2 flex h-5 items-center justify-between gap-2">
-                <x-label class="truncate text-xs font-bold uppercase text-emerald-700">3. Lifestyle Image</x-label>
-                @if ($asset->redesign)
-                    <x-ui.button color="emerald" variant="ghost" size="xs" type="button" wire:click="generateFinalImages" wire:loading.attr="disabled" wire:target="generateFinalImages" class="shrink-0">
-                        <span wire:loading.remove wire:target="generateFinalImages">Generate Lifestyle</span>
-                        <span wire:loading wire:target="generateFinalImages">Generating...</span>
-                    </x-ui.button>
-                @endif
-            </div>
-
-            <div class="relative aspect-[4/4.45] overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
-                <div wire:loading.flex wire:target="generateFinalImages" class="absolute inset-0 z-10 bg-slate-50">
-                    <x-spinner />
-                </div>
-
-                <div wire:loading.class="invisible" wire:target="generateFinalImages" class="h-full w-full">
-                    <x-image-preview reviewable class="h-full w-full" :src="$asset->mockup1_preview_url" :original="$asset->mockup1" alt="Lifestyle image">
-                        <span class="px-4 text-center text-sm font-medium text-slate-400">
-                            {{ $asset->redesign ? 'Bam Generate de tao lifestyle' : 'Cho anh master' }}
-                        </span>
-                    </x-image-preview>
-                </div>
-            </div>
-
-            <p class="mt-2 text-xs italic text-slate-500">Lifestyle co the upload, khong co thi bo qua.</p>
-        </div>
-
-        <div class="min-w-0 {{ $asset->redesign ? '' : 'opacity-55' }}">
-            <div class="mb-2 flex h-5 items-center justify-between gap-2">
-                <x-label class="truncate text-xs font-bold uppercase text-orange-600">4. Mockup Tu Chon</x-label>
-                @if ($asset->redesign)
+                <x-label class="truncate text-xs font-bold uppercase text-orange-600">3. Mockup Tu Chon</x-label>
+                @if ($asset->redesign && ! $asset->is_approved)
                     <button
                         type="button"
+                        x-on:click="window.dispatchEvent(new CustomEvent('sticker-generation-started'))"
                         wire:click="generatePsdMockups"
                         wire:loading.attr="disabled"
                         wire:target="generatePsdMockups"
@@ -124,13 +151,21 @@
 
 
             @php
-                $psdMockups = collect(range(2, 11))
+                $psdMockups = collect(range(1, 11))
                     ->map(fn ($slot) => [
                         'slot' => $slot,
                         'src' => $asset->getAttribute("mockup{$slot}_preview_url"),
                         'original' => $asset->getAttribute("mockup{$slot}"),
                     ])
                     ->filter(fn ($mockup) => filled($mockup['original']));
+                $psdMockupGallery = $psdMockups
+                    ->values()
+                    ->map(fn ($mockup) => [
+                        'src' => $mockup['src'],
+                        'original' => $mockup['original'],
+                        'title' => 'MOCKUP '.$mockup['slot'],
+                    ])
+                    ->all();
             @endphp
 
             <div class="relative aspect-[4/4.45] overflow-hidden rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
@@ -155,10 +190,10 @@
                                 @foreach ($psdMockups as $mockup)
                                     <button
                                         type="button"
-                                        wire:click="$dispatch('review-image', { src: @js($mockup['src']), original: @js($mockup['original']), title: @js('MOCKUP '.($mockup['slot'] - 1)) })"
+                                        wire:click="$dispatch('review-image', { src: @js($mockup['src']), original: @js($mockup['original']), title: @js('MOCKUP '.$mockup['slot']), gallery: @js($psdMockupGallery), currentIndex: {{ $loop->index }} })"
                                         class="aspect-[4/3] overflow-hidden rounded-lg border border-slate-100 bg-slate-50 shadow-sm transition hover:border-orange-300 hover:ring-2 hover:ring-orange-100"
                                     >
-                                        <img src="{{ $mockup['src'] }}" alt="MOCKUP {{ $mockup['slot'] - 1 }}" class="h-full w-full object-cover">
+                                        <img src="{{ $mockup['src'] }}" alt="MOCKUP {{ $mockup['slot'] }}" class="h-full w-full object-cover">
                                     </button>
                                 @endforeach
                             </div>
@@ -174,7 +209,7 @@
             <div class="mt-2 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-xs text-slate-500">
                 <div class="flex items-center justify-between gap-2">
                     <span class="min-w-0 truncate">
-                        PSD: {{ $activePsdTemplate?->name ?? 'Chua chon PSD' }}
+                        PSD: {{ $activePsdTemplateName ?? 'Chua chon PSD' }}
                     </span>
                     <button
                         type="button"

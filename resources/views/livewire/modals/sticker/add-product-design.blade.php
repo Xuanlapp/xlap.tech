@@ -14,7 +14,7 @@
                 <form wire:submit.prevent="save" class="relative rounded-lg bg-white shadow-sm">
                     <div class="flex items-center justify-between rounded-t border-b border-gray-200 p-4 md:p-5">
                         <div>
-                            <h3 class="text-xl font-semibold text-gray-900">Thêm Sticker</h3>
+                            <h3 class="text-xl font-semibold text-gray-900">Add Items </h3>
                             <p class="mt-1 text-sm text-gray-500">Nhập keyword và link ảnh nguồn.</p>
                         </div>
 
@@ -38,7 +38,7 @@
                                 wire:model="keyword"
                                 type="text"
                                 class="block w-full"
-                                placeholder="Vui lòng có chữ sản phẩm ví vụ: sticker"
+                                placeholder="Vui lòng có chữ sản phẩm ví vụ:Lap sticker"
                                 autofocus
                             />
                             @error('keyword') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
@@ -50,9 +50,9 @@
                                 <x-input
                                     id="sticker-image-link"
                                     wire:model.live.debounce.400ms="imageLink"
-                                    type="url"
+                                    type="text"
                                     class="block w-full pr-11 {{ $isImageLink === false ? 'border-red-500 bg-red-50 text-red-900 focus:border-red-500 focus:ring-red-200' : '' }} {{ $isImageLink === true ? 'border-emerald-500 bg-emerald-50 text-emerald-900 focus:border-emerald-500 focus:ring-emerald-200' : '' }}"
-                                    placeholder="https://...jpg"
+                                    placeholder="https://...png"
                                 />
 
                                 @if ($isImageLink === true)
@@ -74,10 +74,19 @@
                             @elseif ($isImageLink === true)
                                 <p class="mt-2 text-sm text-emerald-600">Link ảnh hợp lệ.</p>
                             @else
-                                <p class="mt-2 text-sm text-gray-500">Hỗ trợ JPG, PNG, WebP, GIF, AVIF, SVG, Google Drive và Dropbox.</p>
+                                <p class="mt-2 text-sm text-gray-500">Hỗ trợ JPG, PNG, WebP, Google Drive và Dropbox.</p>
                             @endif
                             @error('imageLink') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                         </div>
+
+                        @if ($imagePreviewUrl)
+                            <div>
+                                <p class="mb-2 text-sm font-medium text-gray-900">Review anh se them</p>
+                                <div class="overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+                                    <img src="{{ $imagePreviewUrl }}" alt="Review image" class="max-h-80 w-full object-contain">
+                                </div>
+                            </div>
+                        @endif
                     </div>
 
                     <div class="flex items-center gap-3 rounded-b border-t border-gray-200 p-4 md:p-5">

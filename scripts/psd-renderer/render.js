@@ -106,8 +106,12 @@ async function replaceDesignLayers(psd, masterImagePath) {
         const height = placedHeight || Math.max(1, Math.round((layer.bottom ?? 0) - (layer.top ?? 0)));
         const canvas = createCanvas(width, height);
         const ctx = canvas.getContext('2d');
+        const originalDesignCanvas = layerSourceCanvas(layer);
+        const targetRect = originalDesignCanvas
+            ? scaleRectToCanvas(alphaBoundsFromCanvas(originalDesignCanvas), originalDesignCanvas, width, height)
+            : { left: 0, top: 0, width, height };
 
-        drawImageContain(ctx, image, width, height);
+        drawImageContainInRect(ctx, trimTransparentCanvas(image), scaledAroundCenter(targetRect, designFitScale()));
 
         layer.canvas = canvas;
         layer.imageData = undefined;
@@ -137,12 +141,51 @@ async function prepareMasterImage(masterImagePath) {
         : canvas;
 }
 
+function layerSourceCanvas(layer) {
+    if (layer?.canvas && typeof layer.canvas.getContext === 'function') {
+        return layer.canvas;
+    }
+
+    if (!layer?.imageData?.data || !layer.imageData.width || !layer.imageData.height) {
+        return null;
+    }
+
+    const width = toPositiveInt(layer.imageData.width, 0);
+    const height = toPositiveInt(layer.imageData.height, 0);
+
+    if (!width || !height) {
+        return null;
+    }
+
+    const canvas = createCanvas(width, height);
+    const context = canvas.getContext('2d');
+    const imageData = context.createImageData(width, height);
+    const pixels = layer.imageData.data instanceof Uint8ClampedArray
+        ? layer.imageData.data
+        : new Uint8ClampedArray(layer.imageData.data);
+
+    imageData.data.set(pixels.subarray(0, imageData.data.length));
+    context.putImageData(imageData, 0, 0);
+
+    return canvas;
+}
+
 function shouldTrimMasterImage() {
     return String(process.env.OFFOREST_TRIM_MOCKUP_DESIGN || '').toLowerCase() === 'true';
 }
 
 function shouldRemoveEdgeWhiteBackground() {
     return String(process.env.OFFOREST_REMOVE_EDGE_WHITE || 'true').toLowerCase() !== 'false';
+}
+
+function designFitScale() {
+    const parsed = Number(process.env.OFFOREST_MOCKUP_DESIGN_SCALE || 0.72);
+
+    if (!Number.isFinite(parsed)) {
+        return 0.72;
+    }
+
+    return Math.max(0.1, Math.min(1, parsed));
 }
 
 function removeEdgeWhiteBackground(ctx, width, height) {
@@ -244,16 +287,88 @@ function trimTransparentBounds(ctx, width, height) {
     return trimmed;
 }
 
-function drawImageContain(ctx, image, targetWidth, targetHeight) {
+function trimTransparentCanvas(canvas) {
+    if (!canvas || typeof canvas.getContext !== 'function') {
+        return canvas;
+    }
+
+    return trimTransparentBounds(canvas.getContext('2d'), canvas.width, canvas.height);
+}
+
+function alphaBoundsFromCanvas(canvas) {
+    const width = toPositiveInt(canvas?.width, 1);
+    const height = toPositiveInt(canvas?.height, 1);
+    const context = canvas.getContext('2d');
+    const data = context.getImageData(0, 0, width, height).data;
+    let left = width;
+    let top = height;
+    let right = -1;
+    let bottom = -1;
+
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const alpha = data[((y * width + x) * 4) + 3];
+
+            if (alpha <= 8) {
+                continue;
+            }
+
+            left = Math.min(left, x);
+            top = Math.min(top, y);
+            right = Math.max(right, x);
+            bottom = Math.max(bottom, y);
+        }
+    }
+
+    if (right < left || bottom < top) {
+        return { left: 0, top: 0, width, height };
+    }
+
+    return {
+        left,
+        top,
+        width: right - left + 1,
+        height: bottom - top + 1,
+    };
+}
+
+function scaleRectToCanvas(rect, sourceCanvas, targetWidth, targetHeight) {
+    const scaleX = targetWidth / toPositiveInt(sourceCanvas?.width, targetWidth);
+    const scaleY = targetHeight / toPositiveInt(sourceCanvas?.height, targetHeight);
+
+    return {
+        left: rect.left * scaleX,
+        top: rect.top * scaleY,
+        width: Math.max(1, rect.width * scaleX),
+        height: Math.max(1, rect.height * scaleY),
+    };
+}
+
+function scaledAroundCenter(rect, scale) {
+    const safeScale = Math.max(0.1, Math.min(1, Number(scale) || 1));
+    const width = Math.max(1, rect.width * safeScale);
+    const height = Math.max(1, rect.height * safeScale);
+
+    return {
+        left: rect.left + (rect.width - width) / 2,
+        top: rect.top + (rect.height - height) / 2,
+        width,
+        height,
+    };
+}
+
+function drawImageContainInRect(ctx, image, rect) {
+    const targetWidth = toPositiveInt(rect?.width, 1);
+    const targetHeight = toPositiveInt(rect?.height, 1);
     const imageWidth = image.width || targetWidth;
     const imageHeight = image.height || targetHeight;
     const scale = Math.min(targetWidth / imageWidth, targetHeight / imageHeight);
     const width = imageWidth * scale;
     const height = imageHeight * scale;
-    const left = (targetWidth - width) / 2;
-    const top = (targetHeight - height) / 2;
+    const left = (Number(rect?.left) || 0) + (targetWidth - width) / 2;
+    const top = (Number(rect?.top) || 0) + (targetHeight - height) / 2;
 
-    ctx.clearRect(0, 0, targetWidth, targetHeight);
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     ctx.drawImage(image, left, top, width, height);
 }
 

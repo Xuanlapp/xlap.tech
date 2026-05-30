@@ -14,6 +14,10 @@ class ProductDesignAsset extends Model
         'keyword',
         'image_link',
         'redesign',
+        'redesign_candidates',
+        'lifestyle1',
+        'lifestyle2',
+        'lifestyle3',
         'mockup1',
         'mockup2',
         'mockup3',
@@ -25,7 +29,38 @@ class ProductDesignAsset extends Model
         'mockup9',
         'mockup10',
         'mockup11',
+        'is_approved',
+        'approved_at',
+        'drive_uploaded_at',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_approved' => 'boolean',
+            'redesign_candidates' => 'array',
+            'approved_at' => 'datetime',
+            'drive_uploaded_at' => 'datetime',
+        ];
+    }
+
+    /**
+     * Determine whether at least one generated mockup is available for approval.
+     */
+    public function hasApprovableOutput(): bool
+    {
+        if (filled($this->lifestyle1) || filled($this->lifestyle2) || filled($this->lifestyle3)) {
+            return true;
+        }
+
+        for ($slot = 1; $slot <= 11; $slot++) {
+            if (filled($this->getAttribute("mockup{$slot}"))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     /**
      * User that owns this design row.

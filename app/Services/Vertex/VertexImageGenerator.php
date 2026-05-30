@@ -4,6 +4,7 @@ namespace App\Services\Vertex;
 
 use App\Models\User;
 use App\Models\VertexApiCredential;
+use App\Services\Image\BackgroundRemovalService;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
@@ -16,10 +17,20 @@ class VertexImageGenerator
     private const OUTPUT_PPI = 300;
     private const PNG_SIGNATURE = "\x89PNG\r\n\x1a\n";
 
+    public function __construct(
+        private readonly ?BackgroundRemovalService $backgroundRemoval = null,
+    ) {}
+
     /**
      * Generate an image from an input image URI and prompt, then persist it on the public disk.
      */
-    public function generate(User $user, string $imageUri, string $prompt, string $folder = 'generated'): string
+    public function generate(
+        User $user,
+        string $imageUri,
+        string $prompt,
+        string $folder = 'generated',
+        bool $removeBackground = false,
+    ): string
     {
         $credential = $user->vertexApiCredential()
             ->where('is_active', true)
@@ -70,7 +81,7 @@ class VertexImageGenerator
             throw new RuntimeException('Vertex API không trả về ảnh.');
         }
 
-        return $this->storeGeneratedImage($imageBase64, $folder);
+        return $this->storeGeneratedImage($imageBase64, $folder, $removeBackground);
     }
 
     /**
@@ -395,7 +406,7 @@ class VertexImageGenerator
         return null;
     }
 
-    private function storeGeneratedImage(string $imageBase64, string $folder): string
+    private function storeGeneratedImage(string $imageBase64, string $folder, bool $removeBackground): string
     {
         $path = trim($folder, '/').'/'.uniqid('vertex_', true).'.png';
 
@@ -405,9 +416,18 @@ class VertexImageGenerator
             throw new RuntimeException('Vertex API tra ve du lieu anh khong hop le.');
         }
 
+        if ($removeBackground) {
+            $imageBytes = $this->backgroundRemoval()->remove($imageBytes);
+        }
+
         Storage::disk('public')->put($path, $this->withPrintResolution($imageBytes, self::OUTPUT_PPI));
 
         return '/storage/'.$path;
+    }
+
+    private function backgroundRemoval(): BackgroundRemovalService
+    {
+        return $this->backgroundRemoval ?? app(BackgroundRemovalService::class);
     }
 
     /**

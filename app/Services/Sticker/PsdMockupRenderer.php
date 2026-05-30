@@ -98,8 +98,10 @@ class PsdMockupRenderer
 
     private function absoluteInputPath(string $imageUri): string
     {
-        if (str_starts_with($imageUri, '/storage/')) {
-            return public_path(ltrim($imageUri, '/'));
+        $path = parse_url($imageUri, PHP_URL_PATH) ?: $imageUri;
+
+        if (str_starts_with($path, '/storage/')) {
+            return public_path(ltrim($path, '/'));
         }
 
         return $imageUri;

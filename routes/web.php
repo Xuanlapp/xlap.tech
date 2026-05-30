@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Admin\GoogleDriveOAuthController;
 use App\Http\Controllers\ImagePreviewController;
+use App\Livewire\Pages\Admin\ActivityLogs;
 use App\Livewire\Pages\Admin\ListUser;
 use App\Support\ProductRegistry;
 use Illuminate\Support\Facades\Route;
@@ -44,6 +46,18 @@ Route::middleware(['auth', 'verified'])->prefix('offorest')->group(function (): 
     Route::get('admin/users', ListUser::class)
         ->middleware('admin')
         ->name('offorest.admin.users');
+
+    Route::get('admin/logs', ActivityLogs::class)
+        ->middleware('admin')
+        ->name('offorest.admin.logs');
+
+    Route::get('admin/google-drive/connect', [GoogleDriveOAuthController::class, 'connect'])
+        ->middleware('admin')
+        ->name('offorest.admin.google-drive.connect');
+
+    Route::get('admin/google-drive/callback', [GoogleDriveOAuthController::class, 'callback'])
+        ->middleware('admin')
+        ->name('offorest.admin.google-drive.callback');
 });
 
 require __DIR__.'/auth.php';

@@ -43,9 +43,9 @@ class UserAccessService
         return ($this->createUserWithProductAccess)($data);
     }
 
-    public function toggleProduct(int $userId, int $productId): void
+    public function toggleProduct(int $userId, int $productId): bool
     {
-        ($this->toggleUserProductAccess)(
+        return ($this->toggleUserProductAccess)(
             targetUser: $this->users->find($userId),
             product: Product::findOrFail($productId),
         );

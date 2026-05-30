@@ -257,18 +257,56 @@ php artisan route:cache           # Cache routes
 ## Sticker PSD Mockup Memory
 
 - Source of truth: [docs/sticker-psd-mockup.md](sticker-psd-mockup.md).
-- Chuc nang hien nam o Sticker card, cot `4. Mockup Tu Chon`.
+- Chuc nang hien nam o Sticker card, cot `3. Mockup Tu Chon`.
 - User co the luu nhieu PSD, nhung moi user/product/function chi co 1 PSD active.
 - Sticker custom PSD dung `function_key = sticker_custom_mockup`.
 - Renderer command mac dinh: `PSD_MOCKUP_RENDERER_COMMAND="node scripts/psd-renderer/render.js"`.
 - PSD can co layer `Design` hoac `Desgin` va cac folder `MOCKUP 1`, `MOCKUP 2`, ...
 - Dau vao render la anh master tu `redesign` cua o `2. Create Master`.
-- PNG render xong luu tu `mockup2` den `mockup11`; `mockup1` de danh cho Lifestyle image.
+- PNG render xong append vao slot trong dau tien tu `mockup1` den `mockup11`; anh nao tao truoc ghi truoc, anh tao sau ghi sau.
+- Sticker khong dung Lifestyle Image trong UI; PSD Mockup Tu Chon dung `mockup1` den `mockup11`.
+- Khong clear cac mockup cu khi render PSD, tru khi user co yeu cau reset/replace rieng.
+- Sticker item chi duoc duyet khi co it nhat mot mockup. DB luu `is_approved` va `approved_at`.
+- Sticker item chi duoc edit source detail khi chua co `redesign`. Sau khi da tao anh `2. Create Master`, UI an nut `Edit item` va backend chan sua source detail.
+- Sticker list co 3 filter: `all`, `unapproved` (gom ca chua co master va da co master nhung chua duyet), `approved`.
+- Sticker list co `StickerStatusPanel` rieng cho tung tab va pagination query DB rieng. Alpine chi an/hien panel, khong request parent khi click tab.
+- Moi Sticker panel dung Livewire lazy-load lan dau khi mo tab va giu mounted sau do. Vi vay card dang generate van tiep tuc chay khi user chuyen tab; quay lai tab cu khong mat spinner/state. Parent lay PSD active mot lan va truyen ten xuong cac card de tranh query lap khi render nhieu card.
+- Preview local `/storage/...` can co cache-bust theo `filemtime` de khong bi browser giu anh render lan dau.
 - UI chi hien slot mockup co output that, khong hien placeholder mockup trong.
-- O `4. Mockup Tu Chon` phai dung cung `aspect-[4/4.45]` voi cac o 1, 2, 3 va scroll noi bo trong khung.
+- O `3. Mockup Tu Chon` phai dung cung `aspect-[4/4.45]` voi cac o 1, 2 va scroll noi bo trong khung.
+- Sticker giu lich su anh `2. Create Master` trong `product_design_assets.redesign_candidates`; bam Create Master nhieu lan khong mat anh cu.
+- Khi review anh Create Master, user co the chon anh dang xem lam `redesign` hien tai hoac tao Sticker item moi tu anh do. Modal Add Item phai prefill keyword/image link va hien preview anh.
+- Khi review nhieu anh mockup, modal review ho tro previous/next trong gallery.
 - Khong bat trim mac dinh cho design vi co the lam anh bi phong to: `OFFOREST_TRIM_MOCKUP_DESIGN=false`.
+- Khi thay Design vao PSD, lay alpha bounds cua Design goc lam target rect, nhan `OFFOREST_MOCKUP_DESIGN_SCALE` mac dinh `0.72`, trim transparent bounds cua master, roi fit dong ti le vao fit rect; khong stretch va khong phong to ra ngoai vung Design goc.
 - Renderer phai render full PSD stack va toggle tung group `MOCKUP *`; khong render rieng children cua group.
 - Khi replace Design, chi thay `designLayer.canvas`, giu metadata `effects`, `opacity`, `blendMode`, `mask`, `placedLayer`.
+
+## Ornament Memory
+
+- Ornament copy y chang workflow Sticker, nhung dung product slug `ornament`.
+- Ornament co page/modal/service rieng trong `app/Livewire/Pages/Ornament`, `app/Livewire/Modals/Ornament`, `app/Services/Ornament`.
+- Ornament generated output dung `generated/ornament/redesign`, `generated/ornament/final`, va `generated/ornament/mockups/{assetId}`.
+- Ornament PSD function key dung `ornament_custom_mockup`, tach rieng voi Sticker PSD.
+
+## Google Drive Export Memory
+
+- Approved image export command: `php artisan offorest:upload-approved-images-to-drive`.
+- Schedule chay moi ngay luc 22:00 server time trong `routes/console.php`.
+- Admin co nut `Upload images to Drive` o trang Admin de chay ngay lap tuc.
+- Chi upload cac image column local bat dau bang `/storage/` cua item `is_approved = true`.
+- Sau khi upload thanh cong, DB column duoc thay bang Google Drive URL, set `drive_uploaded_at`, roi xoa file local tuong ung de giam dung luong may.
+- Google Drive upload uu tien OAuth 2.0 connection trong `google_drive_connections`; service account chi la fallback cu.
+- Admin connect OAuth tai `/offorest/admin/google-drive/connect`, callback `/offorest/admin/google-drive/callback`.
+- Config OAuth can co `GOOGLE_DRIVE_CLIENT_ID`, `GOOGLE_DRIVE_CLIENT_SECRET`, `GOOGLE_DRIVE_FOLDER_ID`; tuy chon `GOOGLE_DRIVE_REDIRECT_URI`, `GOOGLE_DRIVE_MAKE_PUBLIC=true`, `GOOGLE_DRIVE_SCOPES=https://www.googleapis.com/auth/drive.file`.
+
+## Activity Log Memory
+
+- Audit log table: `activity_logs`.
+- Admin-only logs page: `/offorest/admin/logs`, route `offorest.admin.logs`.
+- Log service: `App\Services\Logging\ActivityLogService`.
+- Log cac event user/admin/system quan trong, gom Drive export image-level va batch summary.
+- Drive export ghi `drive_export.image_uploaded` cho tung anh va `drive_export.completed` cho moi batch.
 
 ---
 

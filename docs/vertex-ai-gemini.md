@@ -95,9 +95,77 @@ Per job fields:
 
 Response handling:
 
-- Store generated image files as `assets`
+- Decode generated image bytes from the Vertex inline response.
+- If the caller explicitly requests it and `OFFOREST_REMOVE_VERTEX_BACKGROUND=true`, run background removal before writing the file.
+- Store the final generated image files as `assets`
 - Link them through `ai_job_outputs`
 - Store text/error/usage metadata in `vertex_ai_requests`
+
+## Background removal before storage
+
+The current save flow is:
+
+```text
+Vertex inline image base64
+ -> decode bytes
+ -> optional caller-scoped TransformersPHP background removal
+ -> normalize output PNG / 300 PPI
+ -> Storage::disk('public')->put(...)
+```
+
+Config:
+
+```env
+OFFOREST_REMOVE_VERTEX_BACKGROUND=false
+OFFOREST_BACKGROUND_REMOVAL_ENGINE=magic_eraser
+OFFOREST_BACKGROUND_REMOVAL_MODEL=briaai/RMBG-1.4
+OFFOREST_BACKGROUND_REMOVAL_IMAGE_DRIVER=GD
+OFFOREST_BACKGROUND_REMOVAL_CLEAN_ALPHA=true
+OFFOREST_BACKGROUND_REMOVAL_ALPHA_MIN_OPACITY=45
+OFFOREST_BACKGROUND_REMOVAL_MIN_COMPONENT_AREA=180
+OFFOREST_BACKGROUND_REMOVAL_EDGE_MARGIN_RATIO=0.015
+OFFOREST_BACKGROUND_REMOVAL_FOREGROUND_GAP_RATIO=0.08
+OFFOREST_BACKGROUND_REMOVAL_EDGE_FLOOD_CLEAN=true
+OFFOREST_BACKGROUND_REMOVAL_EDGE_COLOR_TOLERANCE=58
+OFFOREST_BACKGROUND_REMOVAL_EDGE_FLOOD_MIN_OPACITY=12
+OFFOREST_BACKGROUND_REMOVAL_EDGE_COLOR_SAMPLES=3
+OFFOREST_BACKGROUND_REMOVAL_EDGE_COLOR_BUCKET_SIZE=24
+```
+
+`VertexImageGenerator::generate()` does not remove backgrounds globally. The caller must pass
+`removeBackground: true`, and the service still checks `OFFOREST_REMOVE_VERTEX_BACKGROUND`.
+Sticker currently requests background removal only for the master redesign image.
+
+The default local engine is `magic_eraser`: it runs inside Laravel with PHP/GD, samples
+dominant edge colors, flood-fills background-colored regions from the image edges, and
+cleans disconnected alpha components. It does not call `rembg` or another shell
+background-removal command during image generation.
+
+The optional `transformersphp` engine runs inside Laravel with `codewithkyrian/transformers`,
+`AutoModel`, `AutoProcessor`, and the BRIA RMBG-1.4 model.
+
+After the model applies the mask, Offorest cleans the output alpha channel before
+storing the PNG. The cleaner first samples dominant edge colors and flood-fills
+background-colored regions from the image edges. It then removes weak alpha pixels,
+edge-touching alpha components, and disconnected components that are far from the
+main foreground. Increase `EDGE_COLOR_TOLERANCE` or `MIN_COMPONENT_AREA` if old
+background texture remains; lower them if intentional sticker details disappear.
+
+Runtime requirements:
+
+```bash
+composer require codewithkyrian/transformers
+php vendor/bin/transformers download briaai/RMBG-1.4
+```
+
+PHP must have FFI enabled for CLI and the web runtime:
+
+```ini
+extension=ffi
+ffi.enable=true
+```
+
+The model cache is stored in `storage/app/transformers-cache` and must not be committed.
 
 ## Tables
 

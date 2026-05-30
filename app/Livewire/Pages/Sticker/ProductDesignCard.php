@@ -2,8 +2,10 @@
 
 namespace App\Livewire\Pages\Sticker;
 
+use App\Livewire\Pages\Sticker\ListSticker;
 use App\Models\ProductDesignAsset;
 use App\Services\Image\ImageLinkPreviewService;
+use App\Services\Logging\ActivityLogService;
 use App\Services\Sticker\PsdMockupTemplateService;
 use App\Services\Sticker\StickerService;
 use Illuminate\Contracts\View\View;
@@ -15,9 +17,12 @@ class ProductDesignCard extends Component
 {
     public int $assetId;
 
-    public function mount(int $assetId): void
+    public ?string $activePsdTemplateName = null;
+
+    public function mount(int $assetId, ?string $activePsdTemplateName = null): void
     {
         $this->assetId = $assetId;
+        $this->activePsdTemplateName = $activePsdTemplateName;
     }
 
     #[On('sticker-product-design-updated')]
@@ -31,31 +36,60 @@ class ProductDesignCard extends Component
     public function generateRedesign(): void
     {
         try {
-            app(StickerService::class)->generateRedesign(auth()->user(), $this->assetId);
+            $asset = app(StickerService::class)->generateRedesign(auth()->user(), $this->assetId);
+            app(ActivityLogService::class)->record(
+                event: 'sticker.master_generated',
+                description: 'User generated Sticker master image.',
+                subject: $asset,
+                properties: ['item_number' => $asset->item_number, 'redesign' => $asset->redesign],
+            );
 
+            $this->dispatch('sticker-product-design-workflow-updated')->to(ListSticker::class);
+            $this->dispatch('sticker-product-design-workflow-updated')->to(StickerStatusPanel::class);
             $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da tao anh master.');
         } catch (RuntimeException $exception) {
             $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
-        }
-    }
-
-    public function generateFinalImages(): void
-    {
-        try {
-            app(StickerService::class)->generateFinalImages(auth()->user(), $this->assetId);
-
-            $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da tao anh lifestyle va mockup.');
-        } catch (RuntimeException $exception) {
-            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
+        } finally {
+            $this->dispatch('sticker-generation-finished');
         }
     }
 
     public function generatePsdMockups(): void
     {
         try {
-            app(StickerService::class)->generatePsdMockups(auth()->user(), $this->assetId);
+            $asset = app(StickerService::class)->generatePsdMockups(auth()->user(), $this->assetId);
+            app(ActivityLogService::class)->record(
+                event: 'sticker.psd_mockups_generated',
+                description: 'User rendered Sticker PSD mockups.',
+                subject: $asset,
+                properties: ['item_number' => $asset->item_number],
+            );
 
             $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da render PSD mockup.');
+        } catch (RuntimeException $exception) {
+            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
+        } finally {
+            $this->dispatch('sticker-generation-finished');
+        }
+    }
+
+    public function toggleApproval(): void
+    {
+        try {
+            $asset = app(StickerService::class)->toggleApproval(auth()->user(), $this->assetId);
+            $message = $asset->is_approved ? 'Da duyet item.' : 'Da bo duyet item.';
+            app(ActivityLogService::class)->record(
+                event: $asset->is_approved ? 'sticker.item_approved' : 'sticker.item_unapproved',
+                description: $asset->is_approved ? 'User approved Sticker item.' : 'User unapproved Sticker item.',
+                subject: $asset,
+                properties: ['item_number' => $asset->item_number],
+            );
+
+            $this->dispatch('sticker-product-design-approval-updated')->to(ListSticker::class);
+            $this->dispatch('sticker-product-design-approval-updated')->to(StickerStatusPanel::class);
+            $this->dispatch('sticker-counts-updated')->to(ListSticker::class);
+            $this->dispatch('sticker-counts-updated')->to(StickerStatusPanel::class);
+            $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: $message);
         } catch (RuntimeException $exception) {
             $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
         }
@@ -64,7 +98,8 @@ class ProductDesignCard extends Component
     #[On('psd-mockup-template-updated')]
     public function refreshWhenPsdTemplateUpdated(): void
     {
-        //
+        $this->activePsdTemplateName = app(PsdMockupTemplateService::class)
+            ->activeStickerTemplateForUser(auth()->user())?->name;
     }
 
     public function render(): View
@@ -74,7 +109,6 @@ class ProductDesignCard extends Component
 
         return view('livewire.pages.sticker.product-design-card', [
             'asset' => $asset,
-            'activePsdTemplate' => app(PsdMockupTemplateService::class)->activeStickerTemplateForUser(auth()->user()),
         ]);
     }
 
@@ -84,10 +118,19 @@ class ProductDesignCard extends Component
 
         $asset->setAttribute('image_preview_url', $imagePreview->previewUrl($asset->image_link));
         $asset->setAttribute('redesign_preview_url', $imagePreview->previewUrl($asset->redesign));
-        $asset->setAttribute('mockup1_preview_url', $imagePreview->previewUrl($asset->mockup1));
-        $asset->setAttribute('mockup2_preview_url', $imagePreview->previewUrl($asset->mockup2));
+        $asset->setAttribute('redesign_gallery', collect($asset->redesign_candidates ?: [])
+            ->push($asset->redesign)
+            ->filter()
+            ->unique()
+            ->values()
+            ->map(fn (string $url, int $index): array => [
+                'src' => $imagePreview->previewUrl($url),
+                'original' => $url,
+                'title' => 'Create Master '.($index + 1),
+            ])
+            ->all());
 
-        for ($slot = 3; $slot <= 11; $slot++) {
+        for ($slot = 1; $slot <= 11; $slot++) {
             $asset->setAttribute("mockup{$slot}_preview_url", $imagePreview->previewUrl($asset->{"mockup{$slot}"}));
         }
     }

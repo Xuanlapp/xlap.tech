@@ -2,6 +2,7 @@
 
 namespace App\Services\Image;
 
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\URL;
 
 class ImageLinkPreviewService
@@ -15,7 +16,7 @@ class ImageLinkPreviewService
         $url = trim($url);
 
         if (str_starts_with($url, '/storage/')) {
-            return $url;
+            return $this->versionedStorageUrl($url);
         }
 
         $host = parse_url($url, PHP_URL_HOST);
@@ -29,7 +30,7 @@ class ImageLinkPreviewService
         $appHost = parse_url((string) config('app.url'), PHP_URL_HOST);
 
         if (is_string($appHost) && $host === strtolower($appHost) && str_starts_with($path, '/storage/')) {
-            return $path;
+            return $this->versionedStorageUrl($path);
         }
 
         $previewUrl = $url;
@@ -51,6 +52,12 @@ class ImageLinkPreviewService
 
     public function looksLikeImageUrl(string $url): bool
     {
+        if (str_starts_with($url, '/storage/')) {
+            $path = parse_url($url, PHP_URL_PATH) ?: $url;
+
+            return preg_match('/\.(avif|gif|jpe?g|png|svg|webp)$/i', $path) === 1;
+        }
+
         $host = parse_url($url, PHP_URL_HOST);
         $path = parse_url($url, PHP_URL_PATH) ?: '';
 
@@ -104,5 +111,17 @@ class ImageLinkPreviewService
         $params['raw'] = '1';
 
         return $baseUrl.'?'.http_build_query($params);
+    }
+
+    private function versionedStorageUrl(string $url): string
+    {
+        $path = parse_url($url, PHP_URL_PATH) ?: $url;
+        $publicPath = public_path(ltrim($path, '/'));
+
+        if (! File::exists($publicPath)) {
+            return $path;
+        }
+
+        return $path.'?v='.File::lastModified($publicPath);
     }
 }

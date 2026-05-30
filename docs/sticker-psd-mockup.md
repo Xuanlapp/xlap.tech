@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-05-29
 
-Tai lieu nay la source of truth cho chuc nang **4. Mockup Tu Chon** tren trang Sticker.
+Tai lieu nay la source of truth cho chuc nang **3. Mockup Tu Chon** tren trang Sticker.
 
 Muc tieu cua chuc nang:
 
@@ -58,16 +58,18 @@ Renderer flags:
 
 ```env
 OFFOREST_ENABLE_CUSTOM_EFFECTS=false
-OFFOREST_REMOVE_EDGE_WHITE=true
+OFFOREST_REMOVE_EDGE_WHITE=false
 OFFOREST_TRIM_MOCKUP_DESIGN=false
+OFFOREST_MOCKUP_DESIGN_SCALE=0.72
 ```
 
 Y nghia:
 
 - `PSD_MOCKUP_RENDERER_COMMAND`: lenh Laravel goi de render PSD. Mac dinh la Node script local.
 - `OFFOREST_ENABLE_CUSTOM_EFFECTS=false`: chi apply custom layer effects cho layer Design vua replace. Khong apply toan PSD de tranh sai cac layer khac.
-- `OFFOREST_REMOVE_EDGE_WHITE=true`: co gang xoa vien nen trang o ria anh master truoc khi dat vao PSD.
+- `OFFOREST_REMOVE_EDGE_WHITE=false`: PSD renderer khong tu tach nen; anh master can duoc xu ly truoc o flow Sticker neu can.
 - `OFFOREST_TRIM_MOCKUP_DESIGN=false`: khong crop/trim canvas anh master. Mac dinh false de tranh anh bi phong to hon Design trong PSD.
+- `OFFOREST_MOCKUP_DESIGN_SCALE=0.72`: scale an toan khi fit master vao target rect cua Design goc. Giam so nay neu sticker van tran ra vung co dinh; tang len toi da `1` neu PSD can anh lon hon.
 
 Neu gap loi:
 
@@ -108,14 +110,14 @@ Sticker card
   -> bam Create Master
   -> asset.redesign co anh master
   -> user chon/upload PSD
-  -> bam Generate + Update o 4. Mockup Tu Chon
+  -> bam Generate + Update o 3. Mockup Tu Chon
   -> ProductDesignCard::generatePsdMockups()
   -> StickerService::generatePsdMockups()
   -> PsdMockupTemplateService lay active PSD
   -> PsdMockupRenderer goi Node script
   -> scripts/psd-renderer/render.js render PNG
   -> ProductDesignAssetRepository::updatePsdMockups()
-  -> UI show mockup2..mockup11
+  -> UI show mockup1..mockup11
 ```
 
 ## Laravel Side
@@ -153,7 +155,7 @@ Va append preview URL cho `image_link`, `redesign`, `mockup1` den `mockup11`.
 2. Bat buoc asset phai co `redesign`.
 3. Lay active PSD template cua user cho Sticker custom mockup.
 4. Goi `PsdMockupRenderer::render($template, $asset->redesign, $asset->id)`.
-5. Luu ket qua vao `mockup2` tro di.
+5. Append ket qua vao slot trong dau tien tu `mockup1` tro di.
 
 Ly do dung `redesign`: o `2. Create Master` la anh dau vao chuan de dua vao PSD layer Design.
 
@@ -281,7 +283,32 @@ Mac dinh khong trim canvas design:
 OFFOREST_TRIM_MOCKUP_DESIGN=false
 ```
 
-Ly do: neu trim/crop anh master truoc khi ve vao target canvas, anh co the bi phong to hon Design trong PSD. Mac dinh hien tai la giu canvas goc va fit vao kich thuoc layer Design.
+Anh master phai duoc fit vao layer Design ma khong lam meo ti le:
+
+```js
+const scale = Math.min(targetWidth / imageWidth, targetHeight / imageHeight)
+ctx.drawImage(image, left, top, imageWidth * scale, imageHeight * scale)
+```
+
+Khong stretch truc tiep bang `ctx.drawImage(image, 0, 0, targetWidth, targetHeight)` cho sticker mockup, vi neu ti le anh master khac ti le layer Design thi anh se bi bop/det/meo.
+
+Truoc khi replace, renderer phai doc alpha bounds cua layer `Design` goc trong PSD. Day la vung pixel that cua Design cu. Anh master moi chi duoc fit trong vung nay, khong fit vao toan bo canvas/placed layer neu canvas co padding trong suot.
+
+Quy tac size hien tai:
+
+```text
+target canvas = kich thuoc layer/placedLayer de giu transform PSD
+target rect   = alpha bounds cua Design goc ben trong target canvas
+fit rect      = target rect * OFFOREST_MOCKUP_DESIGN_SCALE, can giua
+master image  = trim transparent bounds, fit dong ti le vao fit rect
+```
+
+Dieu nay giu ca 2 yeu cau:
+
+- Khong stretch lam meo anh.
+- Khong phong to hon vung `Design` goc trong PSD.
+
+Ly do khong stretch: Photoshop smart object/mockup thuong mong layer Design giu dung ti le hinh, roi transform layer vao tung vi tri mockup. Neu can fill kin ca width va height trong khi ti le khac nhau thi bat buoc se meo; voi sticker, uu tien giu ti le dung hon fill kin tuyet doi.
 
 Chi bat `OFFOREST_TRIM_MOCKUP_DESIGN=true` khi that su muon crop transparent bounds cua anh master.
 
@@ -401,30 +428,40 @@ mockup11
 
 Trong Sticker flow hien tai:
 
-- `mockup1`: lifestyle image tu o `3. Lifestyle Image`.
-- PSD custom mockup bat dau tu `mockup2`.
+- `mockup1` den `mockup11`: cac output duoc tao theo thu tu. Output nao tao truoc ghi vao slot trong dau tien.
+- PSD custom mockup khong reserve slot rieng; neu chay truoc thi bat dau tu `mockup1`.
 
 Mapping:
 
 ```text
-MOCKUP 1 -> mockup2
+MOCKUP 1 -> first empty mockup slot
 MOCKUP 2 -> mockup3
 MOCKUP 3 -> mockup4
 ...
 MOCKUP 10 -> mockup11
 ```
 
-UI o `4. Mockup Tu Chon` chi dem va hien cac slot co du lieu that:
+UI o `3. Mockup Tu Chon` chi dem va hien cac slot co du lieu that:
 
 ```php
-$psdMockups = collect(range(2, 11))
+$psdMockups = collect(range(1, 11))
     ->map(...)
     ->filter(fn ($mockup) => filled($mockup['original']));
 ```
 
 Neu PSD chi render duoc 6 anh, UI hien `6 MOCKUP`, khong hien placeholder cho cac slot trong.
 
-## UI Rules For 4. Mockup Tu Chon
+Khi render PSD, repository append output vao slot trong dau tien tu `mockup1` den `mockup11`. Khong clear output cu neu user khong yeu cau reset/replace.
+
+Preview URL cho local `/storage/...` can co cache-bust theo `filemtime`, vi renderer co the ghi lai cung ten file PNG trong folder:
+
+```text
+/storage/generated/sticker/mockups/{assetId}/MOCKUP 1.png?v={filemtime}
+```
+
+Khong cache-bust thi trinh duyet co the van hien anh render cu, lam user tuong renderer dang lay anh master dau tien thay vi anh dang show o `2. Create Master`.
+
+## UI Rules For 3. Mockup Tu Chon
 
 File:
 
@@ -432,12 +469,12 @@ File:
 resources/views/livewire/pages/sticker/product-design-card.blade.php
 ```
 
-O `4. Mockup Tu Chon` phai nam cung hang va cung kich thuoc voi cac o:
+O `3. Mockup Tu Chon` phai nam cung hang va cung kich thuoc voi cac o:
 
 ```text
 1. Source Image
 2. Create Master
-3. Lifestyle Image
+3. Mockup Tu Chon
 ```
 
 Main preview box dung:
@@ -591,4 +628,4 @@ Tinh den 2026-05-29:
 - Da giu effect cua layer Design bang custom canvas effect pass.
 - Da output PNG vao `storage/app/public/generated/sticker/mockups/{assetId}`.
 - UI chi hien so mockup render duoc, hien nho trong o 4 va scroll noi bo.
-- O `4. Mockup Tu Chon` da can bang kich thuoc voi cac o 1, 2, 3.
+- O `3. Mockup Tu Chon` da can bang kich thuoc voi cac o 1, 2.
