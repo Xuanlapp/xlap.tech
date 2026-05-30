@@ -49,6 +49,8 @@ class ApprovedAssetDriveExportService
                 foreach (self::IMAGE_FIELDS as $field) {
                     $query->orWhere($field, 'like', '/storage/%');
                 }
+
+                $query->orWhereNotNull('redesign_candidates');
             })
             ->orderBy('id')
             ->get();
@@ -113,6 +115,12 @@ class ApprovedAssetDriveExportService
             ];
         }
 
+        $candidateCleanup = $this->cleanupRedesignCandidates($asset, $actor, $trigger);
+
+        if ($candidateCleanup['should_clear']) {
+            $updates['redesign_candidates'] = null;
+        }
+
         if ($updates === []) {
             return 0;
         }
@@ -123,7 +131,7 @@ class ApprovedAssetDriveExportService
             $asset->update($updates);
         });
 
-        foreach (array_unique($deletePaths) as $path) {
+        foreach (array_unique([...$deletePaths, ...$candidateCleanup['delete_paths']]) as $path) {
             File::delete($path);
         }
 
@@ -143,7 +151,55 @@ class ApprovedAssetDriveExportService
             );
         }
 
-        return count($updates) - 1;
+        return count($uploaded);
+    }
+
+    /**
+     * Delete local generated master candidates after the approved asset is exported.
+     *
+     * @return array{should_clear: bool, deleted: int, delete_paths: array<int, string>}
+     */
+    private function cleanupRedesignCandidates(ProductDesignAsset $asset, ?User $actor, string $trigger): array
+    {
+        $deletePaths = [];
+        $deleted = 0;
+        $candidates = $asset->redesign_candidates ?: [];
+
+        foreach ($candidates as $index => $url) {
+            if (! is_string($url) || ! str_starts_with($url, '/storage/')) {
+                continue;
+            }
+
+            $absolutePath = $this->absoluteStoragePath($url);
+
+            if (! $absolutePath || ! File::exists($absolutePath)) {
+                continue;
+            }
+
+            $deletePaths[] = $absolutePath;
+            $deleted++;
+
+            $this->activityLogs->record(
+                event: 'drive_export.redesign_candidate_deleted',
+                description: 'Deleted local redesign candidate after Drive export.',
+                subject: $asset,
+                properties: [
+                    'trigger' => $trigger,
+                    'product' => $asset->product?->slug,
+                    'item_number' => $asset->item_number,
+                    'candidate_index' => $index,
+                    'local_url' => $url,
+                ],
+                actor: $actor,
+                actorType: $trigger === 'manual' ? 'admin' : 'system',
+            );
+        }
+
+        return [
+            'should_clear' => $candidates !== [],
+            'deleted' => $deleted,
+            'delete_paths' => $deletePaths,
+        ];
     }
 
     private function absoluteStoragePath(string $url): ?string

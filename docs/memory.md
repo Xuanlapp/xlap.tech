@@ -296,6 +296,7 @@ php artisan route:cache           # Cache routes
 - Admin co nut `Upload images to Drive` o trang Admin de chay ngay lap tuc.
 - Chi upload cac image column local bat dau bang `/storage/` cua item `is_approved = true`.
 - Sau khi upload thanh cong, DB column duoc thay bang Google Drive URL, set `drive_uploaded_at`, roi xoa file local tuong ung de giam dung luong may.
+- Khi export Drive cho approved asset, xoa cac file local trong `redesign_candidates` va clear `redesign_candidates` trong DB de giam dung luong may; cac candidate nay khong tinh vao so anh upload chinh.
 - Google Drive upload uu tien OAuth 2.0 connection trong `google_drive_connections`; service account chi la fallback cu.
 - Admin connect OAuth tai `/offorest/admin/google-drive/connect`, callback `/offorest/admin/google-drive/callback`.
 - Config OAuth can co `GOOGLE_DRIVE_CLIENT_ID`, `GOOGLE_DRIVE_CLIENT_SECRET`, `GOOGLE_DRIVE_FOLDER_ID`; tuy chon `GOOGLE_DRIVE_REDIRECT_URI`, `GOOGLE_DRIVE_MAKE_PUBLIC=true`, `GOOGLE_DRIVE_SCOPES=https://www.googleapis.com/auth/drive.file`.

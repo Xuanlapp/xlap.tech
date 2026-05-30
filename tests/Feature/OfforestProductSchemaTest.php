@@ -600,9 +600,12 @@ class OfforestProductSchemaTest extends TestCase
         $product = Product::where('slug', 'sticker')->firstOrFail();
         $relativePath = 'generated/test-drive/export.png';
         $absolutePath = public_path('storage/'.$relativePath);
+        $candidateRelativePath = 'generated/test-drive/candidate.png';
+        $candidateAbsolutePath = public_path('storage/'.$candidateRelativePath);
 
         File::ensureDirectoryExists(dirname($absolutePath));
         File::put($absolutePath, 'fake image bytes');
+        File::put($candidateAbsolutePath, 'fake candidate bytes');
 
         $asset = ProductDesignAsset::create([
             'user_id' => $user->id,
@@ -610,6 +613,9 @@ class OfforestProductSchemaTest extends TestCase
             'item_number' => 1,
             'keyword' => 'drive export',
             'redesign' => '/storage/'.$relativePath,
+            'redesign_candidates' => [
+                '/storage/'.$candidateRelativePath,
+            ],
             'is_approved' => true,
             'approved_at' => now(),
         ]);
@@ -634,8 +640,15 @@ class OfforestProductSchemaTest extends TestCase
             'drive_uploaded_at' => null,
         ]);
         $this->assertFileDoesNotExist($absolutePath);
+        $this->assertFileDoesNotExist($candidateAbsolutePath);
+        $this->assertNull($asset->refresh()->redesign_candidates);
         $this->assertDatabaseHas('activity_logs', [
             'event' => 'drive_export.image_uploaded',
+            'subject_type' => ProductDesignAsset::class,
+            'subject_id' => $asset->id,
+        ]);
+        $this->assertDatabaseHas('activity_logs', [
+            'event' => 'drive_export.redesign_candidate_deleted',
             'subject_type' => ProductDesignAsset::class,
             'subject_id' => $asset->id,
         ]);
