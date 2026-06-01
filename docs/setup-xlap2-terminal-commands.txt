@@ -1,0 +1,261 @@
+FULL LENH POWERSHELL SETUP XLAP2
+================================
+
+# 1. Di vao xlap2
+Set-Location -LiteralPath "I:\XLAP\Web\VPS\xlap2"
+
+# 2. Copy .env tu xlap sang xlap2
+Copy-Item -LiteralPath "I:\XLAP\Web\VPS\xlap\.env" -Destination "I:\XLAP\Web\VPS\xlap2\.env" -Force
+
+# 3. Copy cache/model neu can dung tach nen giong xlap
+if (Test-Path -LiteralPath "I:\XLAP\Web\VPS\xlap\.transformers-cache") {
+    Copy-Item -LiteralPath "I:\XLAP\Web\VPS\xlap\.transformers-cache" -Destination "I:\XLAP\Web\VPS\xlap2" -Recurse -Force
+}
+
+# 4. Copy storage public de giu anh generated, PSD mockup, va file /storage/... cu
+if (Test-Path -LiteralPath "I:\XLAP\Web\VPS\xlap\storage\app\public") {
+    Copy-Item -LiteralPath "I:\XLAP\Web\VPS\xlap\storage\app\public" -Destination "I:\XLAP\Web\VPS\xlap2\storage\app" -Recurse -Force
+}
+
+# 5. Copy Google Drive service account neu xlap dang co file fallback nay
+if (Test-Path -LiteralPath "I:\XLAP\Web\VPS\xlap\storage\app\google-drive.json") {
+    Copy-Item -LiteralPath "I:\XLAP\Web\VPS\xlap\storage\app\google-drive.json" -Destination "I:\XLAP\Web\VPS\xlap2\storage\app\google-drive.json" -Force
+}
+
+# 6. Cai PHP dependencies
+php composer.phar install
+
+# 7. Cai Node dependencies cho Vite va PSD renderer
+npm ci
+
+# 8. Clear cache truoc khi tao link/build
+php artisan optimize:clear
+php artisan view:clear
+
+# 9. Tao storage link
+php artisan storage:link
+
+# Neu buoc tren bao "public/storage already exists", chay 2 lenh nay roi chay lai storage:link:
+# Remove-Item -LiteralPath "I:\XLAP\Web\VPS\xlap2\public\storage" -Force
+# php artisan storage:link
+
+# 10. Chay migrate database
+php artisan migrate
+
+# 11. Kiem tra PSD renderer mockup tu chon
+node --check scripts/psd-renderer/render.js
+
+# 12. Build frontend assets
+npm run build
+
+# 13. Kiem tra app
+php artisan about
+php artisan route:list
+
+# 14. Clear lai cache sau khi kiem tra/sua Cloudflare, Drive, PSD, tich hop ngoai
+php artisan optimize:clear
+php artisan config:clear
+
+# 15. Test command upload approved images len Google Drive
+# Chi chay lenh nay khi da cau hinh Google Drive dung va muon upload that.
+# Lenh nay co the thay DB image columns bang Google Drive URL va xoa file local da upload.
+# php artisan offorest:upload-approved-images-to-drive
+
+# 16. Test schedule neu can
+# php artisan schedule:run
+
+# 17. Chay web local tren port 8002
+php artisan serve --host=127.0.0.1 --port=8002
+
+
+LENH DEV HOT RELOAD
+===================
+
+# Terminal 1
+Set-Location -LiteralPath "I:\XLAP\Web\VPS\xlap2"
+php artisan serve --host=127.0.0.1 --port=8002
+
+# Terminal 2
+Set-Location -LiteralPath "I:\XLAP\Web\VPS\xlap2"
+npm run dev
+
+
+LENH CAP NHAT SAU KHI GIT PULL
+==============================
+
+Set-Location -LiteralPath "I:\XLAP\Web\VPS\xlap2"
+git pull
+php composer.phar install
+npm ci
+php artisan migrate
+php artisan optimize:clear
+php artisan view:clear
+node --check scripts/psd-renderer/render.js
+npm run build
+
+
+CAC BIEN .ENV CAN CO SAU KHI COPY TU XLAP
+=========================================
+
+# Mockup PSD tu chon
+PSD_MOCKUP_RENDERER_COMMAND="node scripts/psd-renderer/render.js"
+OFFOREST_ENABLE_CUSTOM_EFFECTS=false
+OFFOREST_REMOVE_EDGE_WHITE=false
+OFFOREST_TRIM_MOCKUP_DESIGN=false
+OFFOREST_MOCKUP_DESIGN_SCALE=0.72
+
+# Tach nen
+OFFOREST_REMOVE_VERTEX_BACKGROUND=true
+OFFOREST_BACKGROUND_REMOVAL_ENGINE=magic_eraser
+OFFOREST_BACKGROUND_REMOVAL_MODEL=briaai/RMBG-1.4
+OFFOREST_BACKGROUND_REMOVAL_IMAGE_DRIVER=GD
+OFFOREST_BACKGROUND_REMOVAL_CLEAN_ALPHA=true
+OFFOREST_BACKGROUND_REMOVAL_ALPHA_MIN_OPACITY=45
+OFFOREST_BACKGROUND_REMOVAL_MIN_COMPONENT_AREA=180
+OFFOREST_BACKGROUND_REMOVAL_EDGE_MARGIN_RATIO=0.015
+OFFOREST_BACKGROUND_REMOVAL_FOREGROUND_GAP_RATIO=0.08
+OFFOREST_BACKGROUND_REMOVAL_EDGE_FLOOD_CLEAN=true
+OFFOREST_BACKGROUND_REMOVAL_EDGE_COLOR_TOLERANCE=58
+OFFOREST_BACKGROUND_REMOVAL_EDGE_FLOOD_MIN_OPACITY=12
+OFFOREST_BACKGROUND_REMOVAL_EDGE_COLOR_SAMPLES=3
+OFFOREST_BACKGROUND_REMOVAL_EDGE_COLOR_BUCKET_SIZE=24
+
+# Google Drive OAuth
+GOOGLE_DRIVE_CLIENT_ID=...
+GOOGLE_DRIVE_CLIENT_SECRET=...
+GOOGLE_DRIVE_FOLDER_ID=...
+GOOGLE_DRIVE_REDIRECT_URI=...
+GOOGLE_DRIVE_MAKE_PUBLIC=true
+GOOGLE_DRIVE_SCOPES=https://www.googleapis.com/auth/drive.file
+GOOGLE_DRIVE_SUPPORTS_ALL_DRIVES=true
+
+# Cloudflare Turnstile bao mat login
+TURNSTILE_ENABLED=true
+TURNSTILE_SITE_KEY=...
+TURNSTILE_SECRET_KEY=...
+
+# Cloudflare R2 neu project dung S3/R2 de luu file
+# Luu y: config/filesystems.php hien tai doc AWS_* cho disk s3.
+# Neu muon dung R2 qua disk s3, set AWS_* bang gia tri R2 nhu ben duoi.
+FILESYSTEM_DISK=s3
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+AWS_DEFAULT_REGION=auto
+AWS_BUCKET=ten_bucket_r2
+AWS_ENDPOINT=https://account_id.r2.cloudflarestorage.com
+AWS_URL=https://domain_public_r2_neu_co
+AWS_USE_PATH_STYLE_ENDPOINT=true
+
+# Neu .env cu dang luu theo ten R2_* thi giu de tham khao, nhung Laravel disk s3 mac dinh khong doc cac bien nay neu chua sua config/filesystems.php.
+R2_ACCESS_KEY_ID=...
+R2_SECRET_ACCESS_KEY=...
+R2_BUCKET=...
+R2_ENDPOINT=https://account_id.r2.cloudflarestorage.com
+R2_URL=https://domain_public_r2_neu_co
+R2_REGION=auto
+R2_USE_PATH_STYLE_ENDPOINT=true
+
+
+CLOUDFLARE SECURITY CHECKLIST TREN DASHBOARD
+============================================
+
+# 1. DNS
+# - Neu xlap2 dung domain rieng, tao A/CNAME tro ve server.
+# - Bat proxy mau cam neu muon qua Cloudflare WAF/CDN.
+# - APP_URL trong .env phai khop domain that.
+
+# 2. SSL/TLS
+# - Nen dung Full strict neu server co SSL hop le.
+# - Bat Always Use HTTPS.
+# - Bat Automatic HTTPS Rewrites neu can.
+
+# 3. Turnstile
+# - Tao Turnstile site trong Cloudflare.
+# - Add domain cua xlap2 vao allowed domains.
+# - Copy Site Key vao TURNSTILE_SITE_KEY.
+# - Copy Secret Key vao TURNSTILE_SECRET_KEY.
+# - Sau khi sua .env:
+php artisan optimize:clear
+php artisan config:clear
+
+
+LENH XU LY BAO MAT DANG NHAP CLOUDFLARE TURNSTILE
+=================================================
+
+# Loi thuong gap tren man hinh login:
+# - "Vui long hoan tat xac minh bao mat."
+# - Widget Cloudflare bao "Khong the ket noi voi trang web"
+#
+# Nguyen nhan thuong gap:
+# - Copy .env tu xlap sang xlap2 nhung Turnstile key chi cho phep domain cu.
+# - Dang chay local bang 127.0.0.1:8002 hoac xlap2.test nhung domain nay chua add trong Cloudflare Turnstile.
+# - TURNSTILE_SITE_KEY/SECRET_KEY sai cap voi nhau.
+# - Trinh duyet/server bi chan ket noi den challenges.cloudflare.com.
+
+# CACH 1: Tat Turnstile khi test local xlap2
+# Chay trong PowerShell:
+Set-Location -LiteralPath "I:\XLAP\Web\VPS\xlap2"
+(Get-Content -LiteralPath ".env") `
+    -replace '^TURNSTILE_ENABLED=.*', 'TURNSTILE_ENABLED=false' |
+    Set-Content -LiteralPath ".env"
+php artisan optimize:clear
+php artisan config:clear
+
+# Sau do reload trang login va dang nhap lai.
+
+# CACH 2: Bat Turnstile cho domain xlap2 dung cach
+# Buoc lam tren Cloudflare Dashboard:
+# 1. Vao Cloudflare Dashboard -> Turnstile.
+# 2. Tao widget moi hoac sua widget cu.
+# 3. Them domain dang chay xlap2 vao allowed domains, vi du:
+#    xlap2.test
+#    localhost
+#    127.0.0.1
+#    ten-domain-production-cua-xlap2.com
+# 4. Copy Site Key va Secret Key moi.
+#
+# Sau do sua .env bang PowerShell:
+Set-Location -LiteralPath "I:\XLAP\Web\VPS\xlap2"
+(Get-Content -LiteralPath ".env") `
+    -replace '^TURNSTILE_ENABLED=.*', 'TURNSTILE_ENABLED=true' `
+    -replace '^TURNSTILE_SITE_KEY=.*', 'TURNSTILE_SITE_KEY=PASTE_SITE_KEY_HERE' `
+    -replace '^TURNSTILE_SECRET_KEY=.*', 'TURNSTILE_SECRET_KEY=PASTE_SECRET_KEY_HERE' |
+    Set-Content -LiteralPath ".env"
+php artisan optimize:clear
+php artisan config:clear
+
+# Kiem tra bien Turnstile app dang doc:
+php artisan tinker
+# Trong tinker chay:
+# config('services.turnstile.enabled');
+# config('services.turnstile.site_key');
+# filled(config('services.turnstile.secret_key'));
+# exit
+
+# CACH 3: Neu muon sua thu cong trong .env
+TURNSTILE_ENABLED=true
+TURNSTILE_SITE_KEY=site-key-tu-cloudflare
+TURNSTILE_SECRET_KEY=secret-key-tu-cloudflare
+
+# Sau khi sua:
+php artisan optimize:clear
+php artisan config:clear
+
+# 4. WAF/rate limit nen tao tren Cloudflare
+# - Bao ve /login
+# - Bao ve /livewire/update
+# - Bao ve /offorest/admin/*
+# - Co the block/challenge country/IP neu bi spam.
+
+# 5. R2
+# - Tao bucket R2 neu xlap2 dung storage rieng.
+# - Tao API token R2 co quyen doc/ghi bucket.
+# - Neu dung public URL/custom domain R2, set AWS_URL/R2_URL dung domain public.
+# - Neu chi copy .env tu xlap va dung chung R2 bucket thi xlap2 se ghi chung bucket voi xlap.
+
+# 6. Production env nen dung
+APP_ENV=production
+APP_DEBUG=false
+SESSION_SECURE_COOKIE=true
+SESSION_HTTP_ONLY=true
+SESSION_SAME_SITE=lax

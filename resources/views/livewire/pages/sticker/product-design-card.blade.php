@@ -77,7 +77,7 @@
         <div class="min-w-0 {{ $asset->image_link ? '' : 'opacity-55' }}">
             <div class="mb-2 flex h-5 items-center justify-between gap-2">
                 <x-label class="truncate text-xs font-bold uppercase text-blue-600">2. Create Master</x-label>
-                @if ($asset->image_link && ! $asset->is_approved)
+                @if ($asset->image_link && ! $asset->is_approved && ! $asset->hasCustomMockupOutput())
                     <x-ui.button color="blue" variant="ghost" size="xs" type="button" x-on:click="window.dispatchEvent(new CustomEvent('sticker-generation-started'))" wire:click="generateRedesign" wire:loading.attr="disabled" wire:target="generateRedesign" class="shrink-0">
                         <span wire:loading.remove wire:target="generateRedesign">Create Master</span>
                         <span wire:loading wire:target="generateRedesign">Creating...</span>
@@ -100,14 +100,14 @@
                     @if ($asset->redesign)
                         <button
                             type="button"
-                            wire:click="$dispatch('review-image', { src: @js($asset->redesign_preview_url), original: @js($asset->redesign), title: 'Create Master', gallery: @js($redesignGallery), currentIndex: @js($selectedRedesignIndex), action: 'sticker-redesign', productSlug: 'sticker', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
+                            wire:click="$dispatch('review-image', { src: @js($asset->redesign_preview_url), original: @js($asset->redesign), title: 'Create Master', gallery: @js($redesignGallery), currentIndex: @js($selectedRedesignIndex), action: @js($asset->hasCustomMockupOutput() ? null : 'sticker-redesign'), productSlug: 'sticker', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
                             class="block h-full w-full"
                         >
                             <img src="{{ $asset->redesign_preview_url }}" alt="Redesign image" class="h-full w-full object-contain">
                         </button>
                     @else
                         <div class="flex h-full w-full items-center justify-center px-4 text-center text-sm font-medium text-slate-400">
-                            {{ $asset->image_link ? 'Waiting for creation...' : 'Cho anh nguon' }}
+                            {{ $asset->image_link ? 'Vui lòng ấn tạo ảnh!' : 'Cho anh nguon' }}
                         </div>
                     @endif
                 </div>
@@ -120,7 +120,7 @@
                         @foreach ($redesignGallery as $index => $image)
                             <button
                                 type="button"
-                                wire:click="$dispatch('review-image', { src: @js($image['src']), original: @js($image['original']), title: @js($image['title']), gallery: @js($redesignGallery), currentIndex: {{ $index }}, action: 'sticker-redesign', productSlug: 'sticker', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
+                                wire:click="$dispatch('review-image', { src: @js($image['src']), original: @js($image['original']), title: @js($image['title']), gallery: @js($redesignGallery), currentIndex: {{ $index }}, action: @js($asset->hasCustomMockupOutput() ? null : 'sticker-redesign'), productSlug: 'sticker', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
                                 class="h-16 w-16 shrink-0 overflow-hidden rounded-md border {{ ($image['original'] ?? null) === $asset->redesign ? 'border-blue-500 ring-2 ring-blue-100' : 'border-slate-200' }} bg-slate-50"
                             >
                                 <img src="{{ $image['src'] }}" alt="{{ $image['title'] }}" class="h-full w-full object-cover">
@@ -200,7 +200,7 @@
                         </div>
                     @else
                         <div class="flex min-h-0 flex-1 items-center justify-center px-4 py-6 text-center text-sm font-medium text-slate-400">
-                            {{ $asset->redesign ? 'Bam Generate PSD de tao mockup' : 'Cho anh master' }}
+                            {{ $asset->redesign ? 'Bam Generate PSD de tao mockup' : 'Phải có ảnh số 2!' }}
                         </div>
                     @endif
                 </div>

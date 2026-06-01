@@ -1,0 +1,471 @@
+FULL SETUP XLAP / OFFOREST - LOCAL XLAP2 VA VPS
+===============================================
+
+File nay gom lai cac buoc da trao doi:
+- Setup xlap2 tu source xlap tren Windows.
+- Setup VPS tu git.
+- Sua loi permission khi tao .env.
+- Cai PHP FFI cho Composer/tach nen.
+- Cloudflare Turnstile bao mat dang nhap.
+- Mockup PSD tu chon bi "signal 9" do thieu RAM.
+
+
+PHAN 1 - SETUP XLAP2 TREN WINDOWS TU XLAP
+=========================================
+
+Thu muc goc dang chay:
+
+I:\XLAP\Web\VPS\xlap
+
+Thu muc clone moi:
+
+I:\XLAP\Web\VPS\xlap2
+
+Lenh PowerShell:
+
+Set-Location -LiteralPath "I:\XLAP\Web\VPS\xlap2"
+
+Copy-Item -LiteralPath "I:\XLAP\Web\VPS\xlap\.env" -Destination "I:\XLAP\Web\VPS\xlap2\.env" -Force
+
+if (Test-Path -LiteralPath "I:\XLAP\Web\VPS\xlap\.transformers-cache") {
+    Copy-Item -LiteralPath "I:\XLAP\Web\VPS\xlap\.transformers-cache" -Destination "I:\XLAP\Web\VPS\xlap2" -Recurse -Force
+}
+
+if (Test-Path -LiteralPath "I:\XLAP\Web\VPS\xlap\storage\app\public") {
+    Copy-Item -LiteralPath "I:\XLAP\Web\VPS\xlap\storage\app\public" -Destination "I:\XLAP\Web\VPS\xlap2\storage\app" -Recurse -Force
+}
+
+if (Test-Path -LiteralPath "I:\XLAP\Web\VPS\xlap\storage\app\google-drive.json") {
+    Copy-Item -LiteralPath "I:\XLAP\Web\VPS\xlap\storage\app\google-drive.json" -Destination "I:\XLAP\Web\VPS\xlap2\storage\app\google-drive.json" -Force
+}
+
+php composer.phar install
+npm ci
+
+php artisan optimize:clear
+php artisan view:clear
+php artisan storage:link
+php artisan migrate
+
+node --check scripts/psd-renderer/render.js
+npm run build
+
+php artisan about
+php artisan route:list
+
+php artisan serve --host=127.0.0.1 --port=8002
+
+
+PHAN 2 - CAC BIEN .ENV QUAN TRONG
+=================================
+
+Mockup PSD tu chon:
+
+PSD_MOCKUP_RENDERER_COMMAND="node scripts/psd-renderer/render.js"
+OFFOREST_ENABLE_CUSTOM_EFFECTS=false
+OFFOREST_REMOVE_EDGE_WHITE=false
+OFFOREST_TRIM_MOCKUP_DESIGN=false
+OFFOREST_MOCKUP_DESIGN_SCALE=0.72
+
+Tach nen:
+
+OFFOREST_REMOVE_VERTEX_BACKGROUND=true
+OFFOREST_BACKGROUND_REMOVAL_ENGINE=magic_eraser
+OFFOREST_BACKGROUND_REMOVAL_MODEL=briaai/RMBG-1.4
+OFFOREST_BACKGROUND_REMOVAL_IMAGE_DRIVER=GD
+OFFOREST_BACKGROUND_REMOVAL_CLEAN_ALPHA=true
+OFFOREST_BACKGROUND_REMOVAL_ALPHA_MIN_OPACITY=45
+OFFOREST_BACKGROUND_REMOVAL_MIN_COMPONENT_AREA=180
+OFFOREST_BACKGROUND_REMOVAL_EDGE_MARGIN_RATIO=0.015
+OFFOREST_BACKGROUND_REMOVAL_FOREGROUND_GAP_RATIO=0.08
+OFFOREST_BACKGROUND_REMOVAL_EDGE_FLOOD_CLEAN=true
+OFFOREST_BACKGROUND_REMOVAL_EDGE_COLOR_TOLERANCE=58
+OFFOREST_BACKGROUND_REMOVAL_EDGE_FLOOD_MIN_OPACITY=12
+OFFOREST_BACKGROUND_REMOVAL_EDGE_COLOR_SAMPLES=3
+OFFOREST_BACKGROUND_REMOVAL_EDGE_COLOR_BUCKET_SIZE=24
+
+Google Drive OAuth:
+
+GOOGLE_DRIVE_CLIENT_ID=...
+GOOGLE_DRIVE_CLIENT_SECRET=...
+GOOGLE_DRIVE_FOLDER_ID=...
+GOOGLE_DRIVE_REDIRECT_URI=https://domain-cua-ban.com/offorest/admin/google-drive/callback
+GOOGLE_DRIVE_MAKE_PUBLIC=true
+GOOGLE_DRIVE_SCOPES=https://www.googleapis.com/auth/drive.file
+GOOGLE_DRIVE_SUPPORTS_ALL_DRIVES=true
+
+Google Drive service account fallback:
+
+GOOGLE_DRIVE_SERVICE_ACCOUNT_PATH=storage/app/google-drive.json
+GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON=
+
+Cloudflare Turnstile login:
+
+TURNSTILE_ENABLED=true
+TURNSTILE_SITE_KEY=site-key-tu-cloudflare
+TURNSTILE_SECRET_KEY=secret-key-tu-cloudflare
+
+Production:
+
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://domain-cua-ban.com
+SESSION_SECURE_COOKIE=true
+SESSION_HTTP_ONLY=true
+SESSION_SAME_SITE=lax
+
+
+PHAN 3 - SUA LOI TURNSTILE LOGIN
+================================
+
+Loi tren man hinh:
+- "Vui long hoan tat xac minh bao mat."
+- Cloudflare widget bao "Khong the ket noi voi trang web"
+
+Nguyen nhan:
+- Copy .env tu xlap sang xlap2 nhung Turnstile key chi cho domain cu.
+- Dang chay local bang 127.0.0.1:8002 / localhost / xlap2.test nhung domain chua add trong Cloudflare Turnstile.
+- Site key va secret key khong cung widget.
+
+Tat Turnstile de test local:
+
+Set-Location -LiteralPath "I:\XLAP\Web\VPS\xlap2"
+
+(Get-Content -LiteralPath ".env") `
+    -replace '^TURNSTILE_ENABLED=.*', 'TURNSTILE_ENABLED=false' |
+    Set-Content -LiteralPath ".env"
+
+php artisan optimize:clear
+php artisan config:clear
+
+Bat lai Turnstile dung domain:
+
+1. Vao Cloudflare Dashboard -> Turnstile.
+2. Tao/sua widget.
+3. Them domain dang dung: localhost, 127.0.0.1, xlap2.test, domain production.
+4. Copy Site Key va Secret Key vao .env.
+
+PowerShell:
+
+Set-Location -LiteralPath "I:\XLAP\Web\VPS\xlap2"
+
+(Get-Content -LiteralPath ".env") `
+    -replace '^TURNSTILE_ENABLED=.*', 'TURNSTILE_ENABLED=true' `
+    -replace '^TURNSTILE_SITE_KEY=.*', 'TURNSTILE_SITE_KEY=PASTE_SITE_KEY_HERE' `
+    -replace '^TURNSTILE_SECRET_KEY=.*', 'TURNSTILE_SECRET_KEY=PASTE_SECRET_KEY_HERE' |
+    Set-Content -LiteralPath ".env"
+
+php artisan optimize:clear
+php artisan config:clear
+
+
+PHAN 4 - SETUP VPS TU GIT
+=========================
+
+VPS cua ban dang dung path aaPanel:
+
+/www/wwwroot/xlap.tech
+
+Khong dung path vi du /var/www/xlap.tech neu server khong co thu muc do.
+
+SSH:
+
+ssh user@YOUR_VPS_IP
+
+Vao project:
+
+cd /www/wwwroot/xlap.tech
+
+Neu clone moi:
+
+cd /www/wwwroot
+git clone REPO_URL_HERE xlap.tech
+cd /www/wwwroot/xlap.tech
+
+Neu da co code:
+
+cd /www/wwwroot/xlap.tech
+git pull
+
+Tao .env:
+
+cp .env.example .env
+
+Neu bi permission denied:
+
+cd /www/wwwroot/xlap.tech
+ls -ld .
+whoami
+
+sudo chown -R nhxlap:nhxlap /www/wwwroot/xlap.tech
+cp .env.example .env
+
+Cai dependencies:
+
+composer install --no-dev --optimize-autoloader
+npm ci
+
+Laravel setup:
+
+php artisan key:generate
+php artisan storage:link
+php artisan migrate --force
+
+php artisan optimize:clear
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+node --check scripts/psd-renderer/render.js
+npm run build
+
+Permission Laravel:
+
+cd /www/wwwroot/xlap.tech
+mkdir -p storage/logs
+touch storage/logs/laravel.log
+sudo chown -R www:www storage bootstrap/cache
+sudo chmod -R ug+rwx storage bootstrap/cache
+
+
+PHAN 5 - CAI PHP FFI CHO COMPOSER/TACH NEN
+==========================================
+
+Loi composer:
+
+codewithkyrian/transformers requires ext-ffi
+jcupitt/vips requires ext-ffi
+
+Kiem tra:
+
+cd /www/wwwroot/xlap.tech
+php --ini
+php -m | grep -i ffi
+find /www/server/php/83 -name "ffi.so"
+
+Neu da them sai "extension=ffi" ma chua co ffi.so, xoa truoc:
+
+sudo sed -i '/^extension=ffi$/d' /www/server/php/83/etc/php-cli.ini
+sudo sed -i '/^ffi.enable=true$/d' /www/server/php/83/etc/php-cli.ini
+sudo sed -i '/^extension=ffi$/d' /www/server/php/83/etc/php.ini
+sudo sed -i '/^ffi.enable=true$/d' /www/server/php/83/etc/php.ini
+
+Tim source:
+
+find /www/server -type f -name phpize 2>/dev/null
+find /www/server -type f -name php-config 2>/dev/null
+find /www/server -type d -path "*ext/ffi" 2>/dev/null
+
+Neu co:
+
+/www/server/php/83/src/ext/ffi
+
+Thi build:
+
+cd /www/server/php/83/src/ext/ffi
+
+sudo apt update
+sudo apt install -y libffi-dev autoconf gcc g++ make
+
+sudo /www/server/php/83/bin/phpize
+sudo ./configure --with-php-config=/www/server/php/83/bin/php-config
+sudo make
+sudo make install
+
+Kiem tra ffi.so:
+
+find /www/server/php/83/lib/php/extensions -name "ffi.so"
+
+Bat extension:
+
+sudo sh -c 'echo "extension=ffi.so" >> /www/server/php/83/etc/php-cli.ini'
+sudo sh -c 'echo "ffi.enable=true" >> /www/server/php/83/etc/php-cli.ini'
+sudo sh -c 'echo "extension=ffi.so" >> /www/server/php/83/etc/php.ini'
+sudo sh -c 'echo "ffi.enable=true" >> /www/server/php/83/etc/php.ini'
+
+Restart PHP:
+
+sudo /etc/init.d/php-fpm-83 restart
+
+Neu khong co lenh tren:
+
+sudo systemctl restart php-fpm-83
+
+Kiem tra:
+
+php -m | grep -i ffi
+php --ri ffi
+
+Chay lai composer:
+
+cd /www/wwwroot/xlap.tech
+composer install --no-dev --optimize-autoloader
+
+
+PHAN 6 - MOCKUP TU CHON BI SIGNAL 9
+===================================
+
+Loi:
+
+The process has been signaled with signal "9".
+
+Nguyen nhan da xac nhan:
+
+sudo dmesg -T | grep -Ei "killed process|out of memory|oom|node" | tail -50
+
+Log co:
+
+Out of memory: Killed process ... (node)
+
+Nghia la VPS het RAM khi Node render PSD.
+
+Kiem tra RAM:
+
+free -h
+df -h
+ps aux | grep node
+
+VPS hien tai chi khoang:
+- RAM: 957Mi
+- Swap ban dau: 2G
+
+Tang swap len 6GB neu swap hien tai la partition 2G va chua co /swapfile:
+
+swapon --show
+
+sudo fallocate -l 6G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+
+grep -q '^/swapfile ' /etc/fstab || echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+
+free -h
+
+Sau do swap tong co the thanh 8G neu da co partition swap 2G.
+
+Gioi han Node renderer cho VPS RAM 1GB:
+
+cd /www/wwwroot/xlap.tech
+
+sed -i 's|^PSD_MOCKUP_RENDERER_COMMAND=.*|PSD_MOCKUP_RENDERER_COMMAND="node --max-old-space-size=1536 scripts/psd-renderer/render.js"|' .env
+
+php artisan optimize:clear
+php artisan config:cache
+
+Kiem tra renderer:
+
+node --check scripts/psd-renderer/render.js
+
+Neu node --check khong in gi la file JS khong loi cu phap.
+
+Tat VS Code Remote de giai phong RAM:
+
+ps aux | grep node
+
+Neu thay nhieu process:
+
+/home/nhxlap/.vscode-server/.../server/node
+
+Tat bang:
+
+pkill -f ".vscode-server"
+
+Luu y: lenh nay ngat ket noi VS Code Remote. Nen SSH lai bang terminal nhe.
+
+Hoac kill theo PID:
+
+kill PID1 PID2 PID3
+
+Neu chua tat:
+
+kill -9 PID1 PID2 PID3
+
+Kiem tra lai:
+
+free -h
+ps aux | grep node
+
+Khong chay npm run dev tren VPS production. Chi dung:
+
+npm run build
+
+Kiem tra PSD nao nang:
+
+cd /www/wwwroot/xlap.tech
+find storage/app/public/psd-mockups -name "*.psd" -exec du -h {} \; | sort -h
+
+Neu van signal 9:
+- Nang VPS len it nhat 2GB RAM.
+- Tot hon la 4GB RAM neu PSD nhieu layer.
+- Hoac giam PSD: giam canvas, bot layer, bot MOCKUP group, gop layer khong can.
+
+
+PHAN 7 - LENH UPDATE CODE SAU NAY TREN VPS
+==========================================
+
+cd /www/wwwroot/xlap.tech
+
+git pull
+composer install --no-dev --optimize-autoloader
+npm ci
+php artisan migrate --force
+php artisan optimize:clear
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+node --check scripts/psd-renderer/render.js
+npm run build
+sudo chown -R www:www storage bootstrap/cache
+sudo chmod -R ug+rwx storage bootstrap/cache
+
+Neu co supervisor queue:
+
+sudo supervisorctl restart all
+
+Reload PHP:
+
+sudo /etc/init.d/php-fpm-83 restart
+
+Neu khong co:
+
+sudo systemctl restart php-fpm-83
+
+
+PHAN 8 - GOOGLE DRIVE UPLOAD
+============================
+
+Command upload approved images:
+
+cd /www/wwwroot/xlap.tech
+php artisan offorest:upload-approved-images-to-drive
+
+Can than:
+- Chi upload item is_approved = true.
+- Chi upload image local bat dau bang /storage/.
+- Sau khi upload thanh cong, DB column duoc thay bang Google Drive URL.
+- File local da upload co the bi xoa de giam dung luong.
+
+Connect OAuth:
+
+https://domain-cua-ban.com/offorest/admin/google-drive/connect
+
+Callback:
+
+https://domain-cua-ban.com/offorest/admin/google-drive/callback
+
+
+PHAN 9 - GHI CHU QUAN TRONG
+===========================
+
+- Khong commit .env len git.
+- Neu copy .env tu xlap, xlap2 se dung chung database/R2/Drive/Turnstile neu khong sua lai.
+- Neu xlap2 dung chung DB voi xlap ma khong copy storage/app/public thi link /storage/... se bi mat file.
+- Turnstile key phai dung domain dang mo tren trinh duyet.
+- VPS 1GB RAM khong phu hop render PSD lon; swap chi la bien phap tam.
+- Production khong can npm run dev.
+- Sau moi lan sua .env, chay:
+
+php artisan optimize:clear
+php artisan config:cache
+

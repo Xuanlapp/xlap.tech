@@ -268,6 +268,7 @@ php artisan route:cache           # Cache routes
 - Khong clear cac mockup cu khi render PSD, tru khi user co yeu cau reset/replace rieng.
 - Sticker item chi duoc duyet khi co it nhat mot mockup. DB luu `is_approved` va `approved_at`.
 - Sticker item chi duoc edit source detail khi chua co `redesign`. Sau khi da tao anh `2. Create Master`, UI an nut `Edit item` va backend chan sua source detail.
+- Sticker item da co bat ky `mockup1..mockup11` nao thi khong duoc tao lai/chon lai `2. Create Master`. UI an nut `Create Master` va review Master khong hien action chon lai; backend chan `generateRedesign` va `selectRedesign`.
 - Sticker list co 3 filter: `all`, `unapproved` (gom ca chua co master va da co master nhung chua duyet), `approved`.
 - Sticker list co `StickerStatusPanel` rieng cho tung tab va pagination query DB rieng. Alpine chi an/hien panel, khong request parent khi click tab.
 - Moi Sticker panel dung Livewire lazy-load lan dau khi mo tab va giu mounted sau do. Vi vay card dang generate van tiep tuc chay khi user chuyen tab; quay lai tab cu khong mat spinner/state. Parent lay PSD active mot lan va truyen ten xuong cac card de tranh query lap khi render nhieu card.

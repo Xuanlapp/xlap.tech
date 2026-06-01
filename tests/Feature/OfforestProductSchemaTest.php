@@ -349,6 +349,36 @@ class OfforestProductSchemaTest extends TestCase
         $this->assertContains('/storage/generated/sticker/redesign/second.png', $asset->redesign_candidates);
     }
 
+    public function test_sticker_master_cannot_be_changed_after_custom_mockup_exists(): void
+    {
+        $user = User::factory()->create();
+        $product = Product::where('slug', 'sticker')->firstOrFail();
+
+        $asset = ProductDesignAsset::create([
+            'user_id' => $user->id,
+            'product_id' => $product->id,
+            'item_number' => 1,
+            'keyword' => 'locked master',
+            'image_link' => 'https://example.com/source.png',
+            'redesign' => '/storage/generated/sticker/redesign/master.png',
+            'mockup1' => '/storage/generated/sticker/mockups/1/mockup.png',
+        ]);
+
+        try {
+            app(StickerService::class)->generateRedesign($user, $asset->id);
+            $this->fail('Expected Create Master generation to be blocked.');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('Item da co Mockup Tu Chon nen khong the tao lai Create Master.', $exception->getMessage());
+        }
+
+        try {
+            app(StickerService::class)->selectRedesign($user, $asset->id, '/storage/generated/sticker/redesign/other.png');
+            $this->fail('Expected selecting another master image to be blocked.');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('Item da co Mockup Tu Chon nen khong the tao lai Create Master.', $exception->getMessage());
+        }
+    }
+
     public function test_creating_sticker_item_from_redesign_candidate_removes_it_from_source_candidates(): void
     {
         $user = User::factory()->create();

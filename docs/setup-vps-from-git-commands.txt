@@ -1,0 +1,393 @@
+SETUP XLAP / OFFOREST TREN VPS TU GIT
+=====================================
+
+Gia dinh:
+- VPS Ubuntu 22.04/24.04
+- Web server Nginx + PHP-FPM
+- PHP 8.3+
+- Node.js 20+
+- MySQL/MariaDB
+- Project path tren VPS: /var/www/xlap
+- Domain vi du: https://your-domain.com
+
+Hay thay cac gia tri nay truoc khi chay:
+- REPO_URL_HERE
+- your-domain.com
+- DB_NAME_HERE
+- DB_USER_HERE
+- DB_PASSWORD_HERE
+- TURNSTILE_SITE_KEY_HERE
+- TURNSTILE_SECRET_KEY_HERE
+- GOOGLE_DRIVE_* neu dung Drive
+
+
+1. SSH VAO VPS
+==============
+
+ssh root@YOUR_VPS_IP
+
+
+2. CAI GOI HE THONG
+===================
+
+apt update
+apt install -y software-properties-common ca-certificates curl unzip git supervisor nginx mysql-server
+
+add-apt-repository ppa:ondrej/php -y
+apt update
+
+apt install -y php8.3 php8.3-fpm php8.3-cli php8.3-common php8.3-mysql php8.3-mbstring php8.3-xml php8.3-curl php8.3-zip php8.3-bcmath php8.3-gd php8.3-intl php8.3-readline
+
+php -v
+
+
+3. CAI COMPOSER
+===============
+
+cd /tmp
+curl -sS https://getcomposer.org/installer -o composer-setup.php
+php composer-setup.php --install-dir=/usr/local/bin --filename=composer
+composer --version
+
+
+4. CAI NODE.JS 20
+=================
+
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+apt install -y nodejs
+node -v
+npm -v
+
+
+5. CLONE CODE TU GIT
+====================
+
+mkdir -p /var/www
+cd /var/www
+
+git clone REPO_URL_HERE xlap
+
+cd /var/www/xlap
+
+
+6. TAO DATABASE
+===============
+
+mysql
+
+Trong MySQL shell, chay:
+
+CREATE DATABASE DB_NAME_HERE CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'DB_USER_HERE'@'localhost' IDENTIFIED BY 'DB_PASSWORD_HERE';
+GRANT ALL PRIVILEGES ON DB_NAME_HERE.* TO 'DB_USER_HERE'@'localhost';
+FLUSH PRIVILEGES;
+EXIT;
+
+
+7. TAO FILE .ENV
+================
+
+cd /var/www/xlap
+cp .env.example .env
+
+nano .env
+
+Sua cac bien toi thieu:
+
+APP_NAME=Offorest
+APP_ENV=production
+APP_KEY=
+APP_DEBUG=false
+APP_URL=https://your-domain.com
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=DB_NAME_HERE
+DB_USERNAME=DB_USER_HERE
+DB_PASSWORD=DB_PASSWORD_HERE
+
+SESSION_DRIVER=database
+QUEUE_CONNECTION=database
+CACHE_STORE=database
+FILESYSTEM_DISK=local
+
+SESSION_SECURE_COOKIE=true
+SESSION_HTTP_ONLY=true
+SESSION_SAME_SITE=lax
+
+
+8. CAU HINH CLOUDFLARE TURNSTILE LOGIN
+======================================
+
+Neu chua co key hoac dang setup lan dau, tam tat:
+
+TURNSTILE_ENABLED=false
+TURNSTILE_SITE_KEY=
+TURNSTILE_SECRET_KEY=
+
+Khi domain da tro ve VPS va da tao widget trong Cloudflare Turnstile, bat lai:
+
+TURNSTILE_ENABLED=true
+TURNSTILE_SITE_KEY=TURNSTILE_SITE_KEY_HERE
+TURNSTILE_SECRET_KEY=TURNSTILE_SECRET_KEY_HERE
+
+Luu y tren Cloudflare Dashboard:
+- Vao Turnstile
+- Tao widget moi
+- Add domain: your-domain.com
+- Copy Site Key va Secret Key vao .env
+
+
+9. CAU HINH TACH NEN, MOCKUP PSD, GOOGLE DRIVE
+==============================================
+
+Them/sua trong .env:
+
+PSD_MOCKUP_RENDERER_COMMAND="node scripts/psd-renderer/render.js"
+OFFOREST_ENABLE_CUSTOM_EFFECTS=false
+OFFOREST_REMOVE_EDGE_WHITE=false
+OFFOREST_TRIM_MOCKUP_DESIGN=false
+OFFOREST_MOCKUP_DESIGN_SCALE=0.72
+
+OFFOREST_REMOVE_VERTEX_BACKGROUND=true
+OFFOREST_BACKGROUND_REMOVAL_ENGINE=magic_eraser
+OFFOREST_BACKGROUND_REMOVAL_MODEL=briaai/RMBG-1.4
+OFFOREST_BACKGROUND_REMOVAL_IMAGE_DRIVER=GD
+OFFOREST_BACKGROUND_REMOVAL_CLEAN_ALPHA=true
+OFFOREST_BACKGROUND_REMOVAL_ALPHA_MIN_OPACITY=45
+OFFOREST_BACKGROUND_REMOVAL_MIN_COMPONENT_AREA=180
+OFFOREST_BACKGROUND_REMOVAL_EDGE_MARGIN_RATIO=0.015
+OFFOREST_BACKGROUND_REMOVAL_FOREGROUND_GAP_RATIO=0.08
+OFFOREST_BACKGROUND_REMOVAL_EDGE_FLOOD_CLEAN=true
+OFFOREST_BACKGROUND_REMOVAL_EDGE_COLOR_TOLERANCE=58
+OFFOREST_BACKGROUND_REMOVAL_EDGE_FLOOD_MIN_OPACITY=12
+OFFOREST_BACKGROUND_REMOVAL_EDGE_COLOR_SAMPLES=3
+OFFOREST_BACKGROUND_REMOVAL_EDGE_COLOR_BUCKET_SIZE=24
+
+Neu dung Google Drive OAuth:
+
+GOOGLE_DRIVE_CLIENT_ID=...
+GOOGLE_DRIVE_CLIENT_SECRET=...
+GOOGLE_DRIVE_FOLDER_ID=...
+GOOGLE_DRIVE_REDIRECT_URI=https://your-domain.com/offorest/admin/google-drive/callback
+GOOGLE_DRIVE_MAKE_PUBLIC=true
+GOOGLE_DRIVE_SCOPES=https://www.googleapis.com/auth/drive.file
+GOOGLE_DRIVE_SUPPORTS_ALL_DRIVES=true
+
+Neu dung service account fallback:
+
+GOOGLE_DRIVE_SERVICE_ACCOUNT_PATH=storage/app/google-drive.json
+GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON=
+
+
+10. CAI DEPENDENCIES PROJECT
+============================
+
+cd /var/www/xlap
+
+composer install --no-dev --optimize-autoloader
+npm ci
+
+php artisan key:generate
+
+php artisan storage:link
+php artisan migrate --force
+
+php artisan optimize:clear
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+node --check scripts/psd-renderer/render.js
+npm run build
+
+
+11. SET PERMISSION
+==================
+
+chown -R www-data:www-data /var/www/xlap
+find /var/www/xlap -type f -exec chmod 644 {} \;
+find /var/www/xlap -type d -exec chmod 755 {} \;
+chmod -R ug+rwx /var/www/xlap/storage /var/www/xlap/bootstrap/cache
+
+
+12. CAU HINH NGINX
+==================
+
+nano /etc/nginx/sites-available/xlap
+
+Dan noi dung nay, nho sua your-domain.com:
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name your-domain.com www.your-domain.com;
+
+    root /var/www/xlap/public;
+    index index.php index.html;
+
+    client_max_body_size 100M;
+
+    add_header X-Frame-Options "SAMEORIGIN";
+    add_header X-Content-Type-Options "nosniff";
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location = /robots.txt  { access_log off; log_not_found off; }
+
+    error_page 404 /index.php;
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}
+
+Luu va chay:
+
+ln -s /etc/nginx/sites-available/xlap /etc/nginx/sites-enabled/xlap
+nginx -t
+systemctl reload nginx
+systemctl restart php8.3-fpm
+
+
+13. TRO DOMAIN VA BAT SSL
+=========================
+
+Tren Cloudflare DNS:
+- Tao A record your-domain.com -> YOUR_VPS_IP
+- Proxy mau cam: bat neu muon qua Cloudflare
+- SSL/TLS mode: Full strict neu VPS co SSL hop le
+
+Cai SSL Let's Encrypt tren VPS:
+
+apt install -y certbot python3-certbot-nginx
+certbot --nginx -d your-domain.com -d www.your-domain.com
+
+Sau SSL:
+
+nginx -t
+systemctl reload nginx
+
+
+14. SETUP QUEUE WORKER
+======================
+
+nano /etc/supervisor/conf.d/xlap-worker.conf
+
+Dan noi dung:
+
+[program:xlap-worker]
+process_name=%(program_name)s_%(process_num)02d
+command=php /var/www/xlap/artisan queue:work --sleep=3 --tries=3 --timeout=300
+autostart=true
+autorestart=true
+stopasgroup=true
+killasgroup=true
+user=www-data
+numprocs=1
+redirect_stderr=true
+stdout_logfile=/var/www/xlap/storage/logs/worker.log
+stopwaitsecs=3600
+
+Luu va chay:
+
+supervisorctl reread
+supervisorctl update
+supervisorctl start xlap-worker:*
+supervisorctl status
+
+
+15. SETUP SCHEDULE
+==================
+
+crontab -e
+
+Them dong:
+
+* * * * * cd /var/www/xlap && php artisan schedule:run >> /dev/null 2>&1
+
+Lenh upload Drive da duoc schedule trong routes/console.php neu code dang cau hinh:
+
+php artisan schedule:list
+
+
+16. CONNECT GOOGLE DRIVE OAUTH
+==============================
+
+Mo trinh duyet:
+
+https://your-domain.com/offorest/admin/google-drive/connect
+
+Neu callback loi:
+- Kiem tra GOOGLE_DRIVE_REDIRECT_URI trong .env
+- Kiem tra URI nay da add trong Google Cloud OAuth redirect URI
+- Chay lai:
+
+php artisan optimize:clear
+php artisan config:cache
+
+
+17. KIEM TRA SAU DEPLOY
+=======================
+
+cd /var/www/xlap
+
+php artisan about
+php artisan route:list
+php artisan schedule:list
+node --check scripts/psd-renderer/render.js
+npm run build
+
+Kiem tra log:
+
+tail -f storage/logs/laravel.log
+
+
+18. LENH UPDATE CODE SAU NAY
+============================
+
+cd /var/www/xlap
+
+git pull
+composer install --no-dev --optimize-autoloader
+npm ci
+php artisan migrate --force
+php artisan optimize:clear
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+node --check scripts/psd-renderer/render.js
+npm run build
+chown -R www-data:www-data /var/www/xlap
+chmod -R ug+rwx storage bootstrap/cache
+supervisorctl restart xlap-worker:*
+systemctl reload nginx
+
+
+19. LENH TEST TURNSTILE NEU LOGIN BI LOI
+========================================
+
+Tam tat Turnstile de vao admin/test:
+
+cd /var/www/xlap
+sed -i 's/^TURNSTILE_ENABLED=.*/TURNSTILE_ENABLED=false/' .env
+php artisan optimize:clear
+php artisan config:cache
+
+Bat lai sau khi da add domain vao Cloudflare Turnstile:
+
+sed -i 's/^TURNSTILE_ENABLED=.*/TURNSTILE_ENABLED=true/' .env
+php artisan optimize:clear
+php artisan config:cache
+

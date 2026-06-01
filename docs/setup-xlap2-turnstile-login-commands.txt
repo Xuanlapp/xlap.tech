@@ -1,0 +1,103 @@
+LENH SUA LOI CLOUDFLARE TURNSTILE LOGIN CHO XLAP2
+=================================================
+
+Loi trong anh:
+- "Vui long hoan tat xac minh bao mat."
+- Cloudflare widget bao "Khong the ket noi voi trang web"
+
+Nguyen nhan hay gap:
+- xlap2 copy .env tu xlap, nhung Turnstile key chi cho phep domain xlap cu.
+- Dang chay local bang 127.0.0.1:8002 / localhost / xlap2.test nhung domain nay chua add vao Cloudflare Turnstile.
+- Site key va secret key khong cung 1 widget.
+
+
+CACH NHANH NHAT DE TEST LOCAL: TAT TURNSTILE
+===========================================
+
+Set-Location -LiteralPath "I:\XLAP\Web\VPS\xlap2"
+
+(Get-Content -LiteralPath ".env") `
+    -replace '^TURNSTILE_ENABLED=.*', 'TURNSTILE_ENABLED=false' |
+    Set-Content -LiteralPath ".env"
+
+php artisan optimize:clear
+php artisan config:clear
+
+php artisan serve --host=127.0.0.1 --port=8002
+
+
+BAT LAI TURNSTILE DUNG DOMAIN XLAP2
+==================================
+
+Buoc 1: Vao Cloudflare Dashboard
+- Turnstile
+- Tao widget moi hoac sua widget cu
+- Them domain dang dung cho xlap2 vao allowed domains:
+  localhost
+  127.0.0.1
+  xlap2.test
+  domain-production-cua-xlap2.com
+- Copy Site Key va Secret Key cua widget do
+
+Buoc 2: Chay lenh sua .env
+
+Set-Location -LiteralPath "I:\XLAP\Web\VPS\xlap2"
+
+(Get-Content -LiteralPath ".env") `
+    -replace '^TURNSTILE_ENABLED=.*', 'TURNSTILE_ENABLED=true' `
+    -replace '^TURNSTILE_SITE_KEY=.*', 'TURNSTILE_SITE_KEY=PASTE_SITE_KEY_HERE' `
+    -replace '^TURNSTILE_SECRET_KEY=.*', 'TURNSTILE_SECRET_KEY=PASTE_SECRET_KEY_HERE' |
+    Set-Content -LiteralPath ".env"
+
+php artisan optimize:clear
+php artisan config:clear
+
+php artisan serve --host=127.0.0.1 --port=8002
+
+
+KIEM TRA LARAVEL DA DOC DUNG CAU HINH TURNSTILE CHUA
+====================================================
+
+Set-Location -LiteralPath "I:\XLAP\Web\VPS\xlap2"
+
+php artisan tinker
+
+Trong tinker, copy tung dong:
+
+config('services.turnstile.enabled');
+config('services.turnstile.site_key');
+filled(config('services.turnstile.secret_key'));
+exit
+
+Ket qua mong muon khi bat Turnstile:
+- enabled: true
+- site_key: co gia tri site key
+- secret_key filled: true
+
+Ket qua mong muon khi test local va da tat Turnstile:
+- enabled: false
+
+
+NEU VAN LOI
+==========
+
+1. Mo browser devtools, tab Network, kiem tra co load duoc URL nay khong:
+
+https://challenges.cloudflare.com/turnstile/v0/api.js
+
+2. Kiem tra domain dang mo tren browser co nam trong allowed domains cua widget Turnstile khong.
+
+3. Neu dang chay production qua Cloudflare, .env nen co:
+
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://domain-cua-ban.com
+SESSION_SECURE_COOKIE=true
+SESSION_HTTP_ONLY=true
+SESSION_SAME_SITE=lax
+
+Sau khi sua .env production:
+
+php artisan optimize:clear
+php artisan config:clear
+

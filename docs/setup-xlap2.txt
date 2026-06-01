@@ -1,0 +1,296 @@
+SETUP XLAP2 GIONG XLAP
+======================
+
+Muc tieu:
+- Thu muc goc dang chay on dinh: I:\XLAP\Web\VPS\xlap
+- Thu muc clone moi can setup: I:\XLAP\Web\VPS\xlap2
+- xlap2 hien thieu cac file/folder runtime: .env, vendor, node_modules
+
+Yeu cau truoc khi chay:
+- PHP phu hop composer.json: PHP 8.3 tro len
+- Node.js va npm da cai
+- MySQL dang chay neu dung DB_CONNECTION=mysql
+- Chay cac lenh trong PowerShell
+
+Lenh setup nhanh
+----------------
+
+1. Di vao project xlap2
+
+Set-Location -LiteralPath "I:\XLAP\Web\VPS\xlap2"
+
+Neu dung CMD thay vi PowerShell, co the dung:
+
+cd /d I:\XLAP\Web\VPS\xlap2
+
+2. Copy file .env tu xlap sang xlap2
+
+Copy-Item -LiteralPath "I:\XLAP\Web\VPS\xlap\.env" -Destination "I:\XLAP\Web\VPS\xlap2\.env" -Force
+
+Luu y:
+- Lenh tren giup xlap2 dung cau hinh giong xlap.
+- Neu muon xlap2 chay doc lap, mo I:\XLAP\Web\VPS\xlap2\.env va sua cac bien sau:
+  APP_URL=http://xlap2.test
+  DB_DATABASE=ten_database_rieng_cho_xlap2
+  GOOGLE_DRIVE_REDIRECT_URI=callback_url_cua_xlap2_neu_can
+- Neu muon xlap2 dung chung database voi xlap thi giu nguyen DB_DATABASE.
+
+3. Cai PHP dependencies
+
+php composer.phar install
+
+Neu may da cai Composer global, co the dung:
+
+composer install
+
+4. Cai Node dependencies
+
+npm ci
+
+Neu npm ci loi vi package-lock khong khop, dung:
+
+npm install
+
+5. Tao APP_KEY neu KHONG copy .env tu xlap
+
+php artisan key:generate
+
+Luu y:
+- Neu da copy .env tu xlap va muon xlap2 giong y chang xlap, co the bo qua buoc nay.
+- Neu tao APP_KEY moi cho app dang dung chung encrypted data/session voi xlap, du lieu encrypted cu co the khong doc duoc.
+
+6. Tao storage link
+
+php artisan storage:link
+
+Neu public\storage da ton tai va storage:link bao loi, kiem tra truoc:
+
+Get-Item -LiteralPath "I:\XLAP\Web\VPS\xlap2\public\storage" -Force
+
+Neu chac chan no la link sai/cu va muon tao lai, xoa link roi chay lai storage:link:
+
+Remove-Item -LiteralPath "I:\XLAP\Web\VPS\xlap2\public\storage" -Force
+php artisan storage:link
+
+7. Chay migrate database
+
+php artisan migrate
+
+Luu y:
+- Neu xlap2 dung chung DB voi xlap, lenh nay thuong se bao "Nothing to migrate".
+- Neu xlap2 dung DB rieng, tao database truoc, sau do chay migrate.
+
+8. Clear cache Laravel
+
+php artisan optimize:clear
+php artisan view:clear
+
+9. Build frontend assets
+
+npm run build
+
+10. Chay thu local
+
+php artisan serve --host=127.0.0.1 --port=8002
+
+Mo trinh duyet:
+
+http://127.0.0.1:8002
+
+Setup them cho cac chuc nang Offorest
+-------------------------------------
+
+Neu muon xlap2 giong xlap day du ca anh da generate, PSD da upload, tich hop Drive, tich hop tao anh/tach nen, thi can lam them cac phan ben duoi.
+
+1. Copy storage public de giu anh cu va PSD cu
+
+Can lam neu:
+- xlap2 dung chung database voi xlap, hoac
+- muon cac anh /storage/... cu, PSD mockup cu, generated sticker/ornament cu hien dung tren xlap2.
+
+Lenh:
+
+Copy-Item -LiteralPath "I:\XLAP\Web\VPS\xlap\storage\app\public" -Destination "I:\XLAP\Web\VPS\xlap2\storage\app" -Recurse -Force
+php artisan storage:link
+
+Thu muc quan trong nam trong storage/app/public:
+- psd-mockups/{userId}/sticker
+- psd-mockups/{userId}/ornament
+- generated/sticker/redesign
+- generated/sticker/mockups/{assetId}
+- generated/ornament/redesign
+- generated/ornament/final
+- generated/ornament/mockups/{assetId}
+
+Luu y:
+- Database chi luu link dang /storage/..., nen neu dung chung DB ma khong copy storage thi UI co the bi mat anh.
+- Upload Google Drive sau khi thanh cong co the xoa file local va thay DB bang Google Drive URL, nen chi copy duoc nhung file local con ton tai.
+
+2. Tinh nang tach nen
+
+Bien .env can co:
+
+OFFOREST_REMOVE_VERTEX_BACKGROUND=true
+OFFOREST_BACKGROUND_REMOVAL_ENGINE=magic_eraser
+OFFOREST_BACKGROUND_REMOVAL_MODEL=briaai/RMBG-1.4
+OFFOREST_BACKGROUND_REMOVAL_IMAGE_DRIVER=GD
+OFFOREST_BACKGROUND_REMOVAL_CLEAN_ALPHA=true
+OFFOREST_BACKGROUND_REMOVAL_ALPHA_MIN_OPACITY=45
+OFFOREST_BACKGROUND_REMOVAL_MIN_COMPONENT_AREA=180
+OFFOREST_BACKGROUND_REMOVAL_EDGE_MARGIN_RATIO=0.015
+OFFOREST_BACKGROUND_REMOVAL_FOREGROUND_GAP_RATIO=0.08
+OFFOREST_BACKGROUND_REMOVAL_EDGE_FLOOD_CLEAN=true
+OFFOREST_BACKGROUND_REMOVAL_EDGE_COLOR_TOLERANCE=58
+OFFOREST_BACKGROUND_REMOVAL_EDGE_FLOOD_MIN_OPACITY=12
+OFFOREST_BACKGROUND_REMOVAL_EDGE_COLOR_SAMPLES=3
+OFFOREST_BACKGROUND_REMOVAL_EDGE_COLOR_BUCKET_SIZE=24
+OFFOREST_REMOVE_EDGE_WHITE=false
+
+Sau khi sua .env:
+
+php artisan optimize:clear
+
+Neu may moi chua co model/cache, lan chay dau co the cham vi phai tai hoac khoi tao model. Neu muon copy cache tu xlap sang xlap2:
+
+Copy-Item -LiteralPath "I:\XLAP\Web\VPS\xlap\.transformers-cache" -Destination "I:\XLAP\Web\VPS\xlap2" -Recurse -Force
+
+Ghi chu:
+- Sticker/Ornament chi tach nen khi code goi VertexImageGenerator voi removeBackground=true va OFFOREST_REMOVE_VERTEX_BACKGROUND=true.
+- Neu server thieu extension xu ly anh, kiem tra GD/Imagick trong PHP. Cau hinh hien tai dang dung GD.
+
+3. Mockup PSD tu chon cho Sticker va Ornament
+
+Bien .env can co:
+
+PSD_MOCKUP_RENDERER_COMMAND="node scripts/psd-renderer/render.js"
+OFFOREST_ENABLE_CUSTOM_EFFECTS=false
+OFFOREST_REMOVE_EDGE_WHITE=false
+OFFOREST_TRIM_MOCKUP_DESIGN=false
+OFFOREST_MOCKUP_DESIGN_SCALE=0.72
+
+Lenh kiem tra renderer:
+
+node --check scripts/psd-renderer/render.js
+
+Neu sua .env:
+
+php artisan optimize:clear
+
+Yeu cau PSD:
+- Co layer ten Design hoac Desgin.
+- Co folder/group ten MOCKUP 1, MOCKUP 2, ...
+- Sticker dung function_key = sticker_custom_mockup.
+- Ornament dung function_key = ornament_custom_mockup.
+
+Dependencies cua renderer nam trong npm packages:
+- ag-psd
+- @napi-rs/canvas
+
+Vi vay phai chay:
+
+npm ci
+
+Neu @napi-rs/canvas loi install, kiem tra lai Node.js/npm va chay lai npm ci.
+
+4. Upload anh da approve len Google Drive
+
+Bien .env can co neu dung OAuth:
+
+GOOGLE_DRIVE_CLIENT_ID=...
+GOOGLE_DRIVE_CLIENT_SECRET=...
+GOOGLE_DRIVE_FOLDER_ID=...
+GOOGLE_DRIVE_REDIRECT_URI=...
+GOOGLE_DRIVE_MAKE_PUBLIC=true
+GOOGLE_DRIVE_SCOPES=https://www.googleapis.com/auth/drive.file
+GOOGLE_DRIVE_SUPPORTS_ALL_DRIVES=true
+
+Neu dung service account fallback:
+
+GOOGLE_DRIVE_SERVICE_ACCOUNT_PATH=storage/app/google-drive.json
+GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON=
+GOOGLE_DRIVE_FOLDER_ID=...
+GOOGLE_DRIVE_MAKE_PUBLIC=true
+GOOGLE_DRIVE_SUPPORTS_ALL_DRIVES=true
+
+Neu xlap dang co file service account local va xlap2 cung can dung fallback:
+
+Copy-Item -LiteralPath "I:\XLAP\Web\VPS\xlap\storage\app\google-drive.json" -Destination "I:\XLAP\Web\VPS\xlap2\storage\app\google-drive.json" -Force
+
+Sau khi sua .env:
+
+php artisan optimize:clear
+
+Connect OAuth tren web admin:
+
+/offorest/admin/google-drive/connect
+
+Callback mac dinh:
+
+/offorest/admin/google-drive/callback
+
+Lenh upload thu cong:
+
+php artisan offorest:upload-approved-images-to-drive
+
+Schedule da nam trong routes/console.php:
+
+php artisan schedule:run
+
+Ghi chu:
+- Command chi upload item is_approved = true.
+- Chi upload image column local bat dau bang /storage/.
+- Sau khi upload thanh cong, DB column duoc thay bang Google Drive URL, set drive_uploaded_at, va xoa file local tuong ung.
+- Neu xlap2 dung domain rieng, GOOGLE_DRIVE_REDIRECT_URI phai khop URL da khai bao trong Google Cloud OAuth.
+
+5. Vertex AI / Gemini tao anh
+
+Doc them:
+
+docs/vertex-ai-gemini.md
+
+Can dam bao .env co dung credential/API config dang duoc project su dung. Sau khi copy .env tu xlap thi cau hinh nay se giong xlap.
+
+Sau khi sua .env:
+
+php artisan optimize:clear
+
+Lenh dev neu muon Vite hot reload
+---------------------------------
+
+Mo terminal 1:
+
+Set-Location -LiteralPath "I:\XLAP\Web\VPS\xlap2"
+php artisan serve --host=127.0.0.1 --port=8002
+
+Mo terminal 2:
+
+Set-Location -LiteralPath "I:\XLAP\Web\VPS\xlap2"
+npm run dev
+
+Kiem tra sau setup
+------------------
+
+php artisan about
+php artisan route:list
+php artisan test
+
+Lenh cap nhat lai xlap2 sau khi git pull
+----------------------------------------
+
+Set-Location -LiteralPath "I:\XLAP\Web\VPS\xlap2"
+git pull
+php composer.phar install
+npm ci
+php artisan migrate
+php artisan optimize:clear
+php artisan view:clear
+npm run build
+
+Ghi chu quan trong
+------------------
+
+- Khong commit file .env len git.
+- Khong ghi secret vao file huong dan.
+- Neu copy .env tu xlap, xlap2 se dung chung nhieu cau hinh nhay cam nhu DB, R2, Google Drive, Turnstile.
+- Neu setup xlap2 cho production/domain rieng, phai sua APP_URL, database, OAuth callback, va cau hinh web server tro document root ve:
+  I:\XLAP\Web\VPS\xlap2\public

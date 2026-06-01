@@ -53,6 +53,11 @@ class ProductDesignAsset extends Model
             return true;
         }
 
+        return $this->hasCustomMockupOutput();
+    }
+
+    public function hasCustomMockupOutput(): bool
+    {
         for ($slot = 1; $slot <= 11; $slot++) {
             if (filled($this->getAttribute("mockup{$slot}"))) {
                 return true;

@@ -138,6 +138,7 @@ class StickerService
     {
         $asset = $this->assetForUser($user, $assetId);
         $this->ensureNotApproved($asset);
+        $this->ensureMasterEditable($asset);
 
         if (! $asset->image_link) {
             throw new RuntimeException('Dong nay chua co image_link.');
@@ -162,6 +163,7 @@ class StickerService
     {
         $asset = $this->assetForUser($user, $assetId);
         $this->ensureNotApproved($asset);
+        $this->ensureMasterEditable($asset);
 
         return $this->assets->selectRedesign($asset, $this->normalizeImageLink($redesign));
     }
@@ -263,6 +265,13 @@ class StickerService
 
         if ($asset->redesign) {
             throw new RuntimeException('Item da co Create Master nen khong the edit.');
+        }
+    }
+
+    private function ensureMasterEditable(ProductDesignAsset $asset): void
+    {
+        if ($asset->hasCustomMockupOutput()) {
+            throw new RuntimeException('Item da co Mockup Tu Chon nen khong the tao lai Create Master.');
         }
     }
 
