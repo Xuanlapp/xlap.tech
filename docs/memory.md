@@ -263,9 +263,9 @@ php artisan route:cache           # Cache routes
 - Renderer command mac dinh: `PSD_MOCKUP_RENDERER_COMMAND="node scripts/psd-renderer/render.js"`.
 - PSD can co layer `Design` hoac `Desgin` va cac folder `MOCKUP 1`, `MOCKUP 2`, ...
 - Dau vao render la anh master tu `redesign` cua o `2. Create Master`.
-- PNG render xong append vao slot trong dau tien tu `mockup1` den `mockup11`; anh nao tao truoc ghi truoc, anh tao sau ghi sau.
+- PNG render xong replace lai tu `mockup1` den `mockup11`; moi lan bam Generate + Update cho PSD se cap nhat DB bang output moi va clear slot mockup cu khong con trong output.
 - Sticker khong dung Lifestyle Image trong UI; PSD Mockup Tu Chon dung `mockup1` den `mockup11`.
-- Khong clear cac mockup cu khi render PSD, tru khi user co yeu cau reset/replace rieng.
+- Khi render PSD, clear mockup cu va ghi output moi theo thu tu tu `mockup1`.
 - Sticker item chi duoc duyet khi co it nhat mot mockup. DB luu `is_approved` va `approved_at`.
 - Sticker item chi duoc edit source detail khi chua co `redesign`. Sau khi da tao anh `2. Create Master`, UI an nut `Edit item` va backend chan sua source detail.
 - Sticker item da co bat ky `mockup1..mockup11` nao thi khong duoc tao lai/chon lai `2. Create Master`. UI an nut `Create Master` va review Master khong hien action chon lai; backend chan `generateRedesign` va `selectRedesign`.

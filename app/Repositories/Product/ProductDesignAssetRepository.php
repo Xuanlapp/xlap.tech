@@ -185,14 +185,9 @@ class ProductDesignAssetRepository
         return $asset->refresh();
     }
 
-    /**
-     * Append custom PSD mockup output slots to the next available mockup columns.
-     *
-     * @param array<int, string> $mockups
-     */
     public function updatePsdMockups(ProductDesignAsset $asset, array $mockups): ProductDesignAsset
     {
-        return $this->appendMockups($asset, $mockups);
+        return $this->replacePsdMockups($asset, $mockups);
     }
 
     /**

@@ -451,7 +451,7 @@ $psdMockups = collect(range(1, 11))
 
 Neu PSD chi render duoc 6 anh, UI hien `6 MOCKUP`, khong hien placeholder cho cac slot trong.
 
-Khi render PSD, repository append output vao slot trong dau tien tu `mockup1` den `mockup11`. Khong clear output cu neu user khong yeu cau reset/replace.
+Khi render PSD, repository replace output tu `mockup1` den `mockup11`. Moi lan bam `Generate + Update` se cap nhat DB bang output moi va clear cac slot mockup cu khong con trong output.
 
 Preview URL cho local `/storage/...` can co cache-bust theo `filemtime`, vi renderer co the ghi lai cung ten file PNG trong folder:
 

@@ -492,7 +492,8 @@ class OfforestProductSchemaTest extends TestCase
             'id' => $asset->id,
             'mockup1' => '/storage/generated/sticker/mockups/1/MOCKUP 1.png',
             'mockup2' => '/storage/generated/sticker/mockups/1/MOCKUP 2.png',
-            'mockup4' => '/storage/generated/sticker/mockups/1/old.png',
+            'mockup3' => null,
+            'mockup4' => null,
         ]);
     }
 

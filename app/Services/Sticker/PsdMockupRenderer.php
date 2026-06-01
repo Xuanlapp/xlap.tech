@@ -82,7 +82,7 @@ class PsdMockupRenderer
                 ->map(fn (mixed $path): string => (string) $path)
                 ->filter(fn (string $path): bool => str_starts_with(realpath($path) ?: '', realpath($outputDirectory) ?: ''))
                 ->map(fn (string $path): string => '/storage/generated/sticker/mockups/'.$assetId.'/'.basename($path))
-                ->take(10)
+                ->take(11)
                 ->values()
                 ->all();
         }
@@ -91,7 +91,7 @@ class PsdMockupRenderer
             ->filter(fn (\SplFileInfo $file): bool => strtolower($file->getExtension()) === 'png')
             ->sortBy(fn (\SplFileInfo $file): int => (int) preg_replace('/\D+/', '', $file->getFilename()))
             ->values()
-            ->take(10)
+            ->take(11)
             ->map(fn (\SplFileInfo $file): string => '/storage/generated/sticker/mockups/'.$assetId.'/'.$file->getFilename())
             ->all();
     }
