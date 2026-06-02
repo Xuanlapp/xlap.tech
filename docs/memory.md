@@ -266,6 +266,13 @@ php artisan route:cache           # Cache routes
 - Card thumbnails should use `loading="lazy"`, `decoding="async"`, and `fetchpriority="low"` so hidden/offscreen images do not block tab switching and page rendering.
 - Do not include frequently changing filter/search values in Livewire component `key` for image-heavy lists. Use reactive child props and stable keys per tab/status so existing image DOM can be preserved.
 - Google Drive public thumbnail URLs are not reliable enough by themselves. `image-preview` should fall back to authenticated Google Drive API download when Drive returns HTML/non-image/failed thumbnail responses.
+
+## Vertex Rate Limit Memory
+
+- Vertex image generation must be protected from burst clicks. `VertexImageGenerator` uses a per-credential cache lock so only one `generateContent` request runs per Vertex key at a time.
+- The default behavior should be queue-like for clicks: later Livewire requests wait on the per-credential lock instead of failing fast, so spinners can keep running and images generate sequentially.
+- When Vertex returns `429` or `RESOURCE_EXHAUSTED`, the credential enters cooldown using `VERTEX_COOLDOWN_SECONDS` (or `Retry-After` if Google sends it). New clicks should fail fast with a wait message instead of sending more API calls.
+- For high throughput, the next architectural step is queueing generation jobs and running a small fixed number of workers per credential/project; do not rely on unlimited parallel Livewire requests.
 - User co the luu nhieu PSD, nhung moi user/product/function chi co 1 PSD active.
 - Sticker custom PSD dung `function_key = sticker_custom_mockup`.
 - Renderer command mac dinh: `PSD_MOCKUP_RENDERER_COMMAND="node scripts/psd-renderer/render.js"`.

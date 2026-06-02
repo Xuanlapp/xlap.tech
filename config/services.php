@@ -43,6 +43,9 @@ return [
 
     'vertex' => [
         'model' => env('VERTEX_MODEL', 'gemini-2.5-flash-image'),
+        'lock_seconds' => env('VERTEX_LOCK_SECONDS', 600),
+        'lock_wait_seconds' => env('VERTEX_LOCK_WAIT_SECONDS', 600),
+        'cooldown_seconds' => env('VERTEX_COOLDOWN_SECONDS', 90),
     ],
 
     'background_removal' => [

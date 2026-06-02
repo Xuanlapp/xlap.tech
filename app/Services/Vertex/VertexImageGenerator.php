@@ -5,7 +5,11 @@ namespace App\Services\Vertex;
 use App\Models\User;
 use App\Models\VertexApiCredential;
 use App\Services\Image\BackgroundRemovalService;
+use Closure;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -50,30 +54,43 @@ class VertexImageGenerator
             throw new RuntimeException('Vertex API thiếu project_id.');
         }
 
-        $imagePart = $this->sourceImagePart($imageUri);
+        $response = $this->withCredentialLock(
+            $credential,
+            function () use ($credential, $credentials, $projectId, $location, $model, $prompt, $imageUri): Response {
+                $this->ensureCredentialIsNotCoolingDown($credential);
+                $imagePart = $this->sourceImagePart($imageUri);
 
-        $response = Http::withToken($this->accessToken($credentials))
-            ->timeout(120)
-            ->post(
-                "https://aiplatform.googleapis.com/v1/projects/{$projectId}/locations/{$location}/publishers/google/models/{$model}:generateContent",
-                [
-                    'contents' => [
+                return Http::withToken($this->accessToken($credentials))
+                    ->timeout(120)
+                    ->post(
+                        "https://aiplatform.googleapis.com/v1/projects/{$projectId}/locations/{$location}/publishers/google/models/{$model}:generateContent",
                         [
-                            'role' => 'user',
-                            'parts' => [
-                                ['text' => $prompt],
-                                $imagePart,
+                            'contents' => [
+                                [
+                                    'role' => 'user',
+                                    'parts' => [
+                                        ['text' => $prompt],
+                                        $imagePart,
+                                    ],
+                                ],
+                            ],
+                            'generationConfig' => [
+                                'responseModalities' => ['TEXT', 'IMAGE'],
                             ],
                         ],
-                    ],
-                    'generationConfig' => [
-                        'responseModalities' => ['TEXT', 'IMAGE'],
-                    ],
-                ],
-            );
+                    );
+            },
+        );
 
         if ($response->failed()) {
             $this->logExternalApiFailure('Vertex generateContent failed.', $response->status(), $response->body());
+
+            if ($this->isQuotaExceeded($response)) {
+                $this->cooldownCredential($credential, $response);
+                $seconds = $this->cooldownSeconds($response);
+
+                throw new RuntimeException("Vertex API dang het quota hoac bi gioi han toc do. Key nay se nghi {$seconds}s roi hay thu lai.");
+            }
 
             throw new RuntimeException('Vertex API loi. Hay kiem tra quota, credential hoac cau hinh model.');
         }
@@ -85,6 +102,77 @@ class VertexImageGenerator
         }
 
         return $this->storeGeneratedImage($imageBase64, $folder, $removeBackground);
+    }
+
+    /**
+     * Run one Vertex request per credential at a time to avoid burst 429 errors.
+     */
+    private function withCredentialLock(VertexApiCredential $credential, Closure $callback): Response
+    {
+        $lock = Cache::lock(
+            $this->credentialLockKey($credential),
+            (int) config('services.vertex.lock_seconds', 180),
+        );
+
+        try {
+            return $lock->block(
+                (int) config('services.vertex.lock_wait_seconds', 1),
+                $callback,
+            );
+        } catch (LockTimeoutException) {
+            throw new RuntimeException('Hang doi Vertex dang qua lau. Hay doi cac anh dang tao xong roi thu lai.');
+        }
+    }
+
+    private function ensureCredentialIsNotCoolingDown(VertexApiCredential $credential): void
+    {
+        $cooldownUntil = Cache::get($this->credentialCooldownKey($credential));
+
+        if (! is_numeric($cooldownUntil)) {
+            return;
+        }
+
+        $remainingSeconds = ((int) $cooldownUntil) - time();
+
+        if ($remainingSeconds > 0) {
+            throw new RuntimeException("Vertex key dang nghi do quota/rate limit. Hay thu lai sau {$remainingSeconds}s.");
+        }
+
+        Cache::forget($this->credentialCooldownKey($credential));
+    }
+
+    private function cooldownCredential(VertexApiCredential $credential, Response $response): void
+    {
+        $seconds = $this->cooldownSeconds($response);
+
+        Cache::put($this->credentialCooldownKey($credential), time() + $seconds, $seconds);
+    }
+
+    private function cooldownSeconds(Response $response): int
+    {
+        $retryAfter = $response->header('Retry-After');
+
+        if (is_numeric($retryAfter)) {
+            return max(1, (int) $retryAfter);
+        }
+
+        return max(1, (int) config('services.vertex.cooldown_seconds', 90));
+    }
+
+    private function isQuotaExceeded(Response $response): bool
+    {
+        return $response->status() === 429
+            || str_contains($response->body(), 'RESOURCE_EXHAUSTED');
+    }
+
+    private function credentialLockKey(VertexApiCredential $credential): string
+    {
+        return "vertex:credential:{$credential->id}:generate-lock";
+    }
+
+    private function credentialCooldownKey(VertexApiCredential $credential): string
+    {
+        return "vertex:credential:{$credential->id}:cooldown-until";
     }
 
     /**
