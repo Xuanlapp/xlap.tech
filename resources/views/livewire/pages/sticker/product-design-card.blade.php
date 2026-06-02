@@ -103,7 +103,7 @@
                             wire:click="$dispatch('review-image', { src: @js($asset->redesign_preview_url), original: @js($asset->redesign), title: 'Create Master', gallery: @js($redesignGallery), currentIndex: @js($selectedRedesignIndex), action: @js($asset->hasCustomMockupOutput() ? null : 'sticker-redesign'), productSlug: 'sticker', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
                             class="block h-full w-full"
                         >
-                            <img src="{{ $asset->redesign_preview_url }}" alt="Redesign image" class="h-full w-full object-contain">
+                            <img src="{{ $asset->redesign_preview_url }}" alt="Redesign image" loading="lazy" decoding="async" fetchpriority="low" class="h-full w-full object-contain">
                         </button>
                     @else
                         <div class="flex h-full w-full items-center justify-center px-4 text-center text-sm font-medium text-slate-400">
@@ -123,7 +123,7 @@
                                 wire:click="$dispatch('review-image', { src: @js($image['src']), original: @js($image['original']), title: @js($image['title']), gallery: @js($redesignGallery), currentIndex: {{ $index }}, action: @js($asset->hasCustomMockupOutput() ? null : 'sticker-redesign'), productSlug: 'sticker', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
                                 class="h-16 w-16 shrink-0 overflow-hidden rounded-md border {{ ($image['original'] ?? null) === $asset->redesign ? 'border-blue-500 ring-2 ring-blue-100' : 'border-slate-200' }} bg-slate-50"
                             >
-                                <img src="{{ $image['src'] }}" alt="{{ $image['title'] }}" class="h-full w-full object-cover">
+                                <img src="{{ $image['src'] }}" alt="{{ $image['title'] }}" loading="lazy" decoding="async" fetchpriority="low" class="h-full w-full object-cover">
                             </button>
                         @endforeach
                     </div>
@@ -193,7 +193,7 @@
                                         wire:click="$dispatch('review-image', { src: @js($mockup['src']), original: @js($mockup['original']), title: @js('MOCKUP '.$mockup['slot']), gallery: @js($psdMockupGallery), currentIndex: {{ $loop->index }} })"
                                         class="aspect-[4/3] overflow-hidden rounded-lg border border-slate-100 bg-slate-50 shadow-sm transition hover:border-orange-300 hover:ring-2 hover:ring-orange-100"
                                     >
-                                        <img src="{{ $mockup['src'] }}" alt="MOCKUP {{ $mockup['slot'] }}" class="h-full w-full object-cover">
+                                        <img src="{{ $mockup['src'] }}" alt="MOCKUP {{ $mockup['slot'] }}" loading="lazy" decoding="async" fetchpriority="low" class="h-full w-full object-cover">
                                     </button>
                                 @endforeach
                             </div>

@@ -21,6 +21,9 @@
                     x-on:error="failed = true"
                     src="{{ $src }}"
                     alt="{{ $alt }}"
+                    loading="lazy"
+                    decoding="async"
+                    fetchpriority="low"
                     class="h-full w-full object-cover"
                 >
             </button>
@@ -30,6 +33,9 @@
                 x-on:error="failed = true"
                 src="{{ $src }}"
                 alt="{{ $alt }}"
+                loading="lazy"
+                decoding="async"
+                fetchpriority="low"
                 class="h-full w-full object-cover"
             >
         @endif

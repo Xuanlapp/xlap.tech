@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Livewire\Modals\Sticker\AddProductDesign;
 use App\Livewire\Modals\Sticker\EditProductDetail;
+use App\Livewire\Pages\Admin\ListUser;
 use App\Models\ActivityLog;
 use App\Models\Product;
 use App\Models\ProductDesignAsset;
@@ -162,6 +163,79 @@ class OfforestProductSchemaTest extends TestCase
             ->assertOk()
             ->assertSee('Activity logs')
             ->assertSee('test.event');
+    }
+
+    public function test_admin_can_create_user_with_new_vertex_credential(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $product = Product::where('slug', 'sticker')->firstOrFail();
+
+        $this->actingAs($admin);
+
+        Livewire::test(ListUser::class)
+            ->set('name', 'Vertex User')
+            ->set('email', 'vertex-user@example.com')
+            ->set('password', 'Password12345')
+            ->set('selectedProducts', [$product->id])
+            ->set('vertexMode', 'new')
+            ->set('vertexLocation', 'us-central1')
+            ->set('vertexJson', json_encode([
+                'type' => 'service_account',
+                'project_id' => 'vertex-project',
+                'private_key' => "-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----\n",
+                'client_email' => 'vertex@example.iam.gserviceaccount.com',
+            ], JSON_THROW_ON_ERROR))
+            ->call('createUser')
+            ->assertHasNoErrors();
+
+        $user = User::where('email', 'vertex-user@example.com')->firstOrFail();
+        $credential = $user->vertexApiCredential()->firstOrFail();
+
+        $this->assertSame('vertex-project', $credential->project_id);
+        $this->assertSame('us-central1', $credential->location);
+        $this->assertSame('vertex@example.iam.gserviceaccount.com', $credential->client_email);
+        $this->assertSame("-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----\n", $credential->private_key);
+        $this->assertSame('vertex-project', $credential->credentials_json['project_id']);
+    }
+
+    public function test_admin_can_create_user_by_copying_vertex_credential_from_another_user(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $source = User::factory()->create();
+        $product = Product::where('slug', 'sticker')->firstOrFail();
+
+        $source->vertexApiCredential()->create([
+            'project_id' => 'copy-project',
+            'location' => 'global',
+            'client_email' => 'copy@example.iam.gserviceaccount.com',
+            'private_key' => "-----BEGIN PRIVATE KEY-----\ncopy\n-----END PRIVATE KEY-----\n",
+            'credentials_json' => [
+                'project_id' => 'copy-project',
+                'client_email' => 'copy@example.iam.gserviceaccount.com',
+                'private_key' => "-----BEGIN PRIVATE KEY-----\ncopy\n-----END PRIVATE KEY-----\n",
+            ],
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin);
+
+        Livewire::test(ListUser::class)
+            ->set('name', 'Copied Vertex User')
+            ->set('email', 'copied-vertex@example.com')
+            ->set('password', 'Password12345')
+            ->set('selectedProducts', [$product->id])
+            ->set('vertexMode', 'copy')
+            ->set('vertexCopyUserId', $source->id)
+            ->call('createUser')
+            ->assertHasNoErrors();
+
+        $user = User::where('email', 'copied-vertex@example.com')->firstOrFail();
+        $credential = $user->vertexApiCredential()->firstOrFail();
+
+        $this->assertSame('copy-project', $credential->project_id);
+        $this->assertSame('copy@example.iam.gserviceaccount.com', $credential->client_email);
+        $this->assertSame("-----BEGIN PRIVATE KEY-----\ncopy\n-----END PRIVATE KEY-----\n", $credential->private_key);
+        $this->assertSame('copy-project', $credential->credentials_json['project_id']);
     }
 
     public function test_non_admin_user_cannot_open_activity_logs_page(): void

@@ -258,6 +258,12 @@ php artisan route:cache           # Cache routes
 
 - Source of truth: [docs/sticker-psd-mockup.md](sticker-psd-mockup.md).
 - Chuc nang hien nam o Sticker card, cot `3. Mockup Tu Chon`.
+
+## Image Preview Performance Memory
+
+- Direct image URLs with browser-renderable extensions should render directly in the browser instead of going through Laravel `image-preview`, so large sticker/ornament lists do not make the app server proxy every thumbnail.
+- Google Drive UI previews use thumbnail URL size `w800`; Vertex/source-fetch logic can still use its own higher resolution path when needed for generation.
+- Card thumbnails should use `loading="lazy"`, `decoding="async"`, and `fetchpriority="low"` so hidden/offscreen images do not block tab switching and page rendering.
 - User co the luu nhieu PSD, nhung moi user/product/function chi co 1 PSD active.
 - Sticker custom PSD dung `function_key = sticker_custom_mockup`.
 - Renderer command mac dinh: `PSD_MOCKUP_RENDERER_COMMAND="node scripts/psd-renderer/render.js"`.
@@ -309,6 +315,12 @@ php artisan route:cache           # Cache routes
 - Log service: `App\Services\Logging\ActivityLogService`.
 - Log cac event user/admin/system quan trong, gom Drive export image-level va batch summary.
 - Drive export ghi `drive_export.image_uploaded` cho tung anh va `drive_export.completed` cho moi batch.
+
+## API Secret Security Memory
+
+- Vertex `private_key` va `credentials_json` dung encrypted cast. `credentials_json` phai la text/longText vi ciphertext khong phai JSON hop le.
+- Khong day raw external API response body ra toast/UI. Log server chi luu preview da redact token/key.
+- Admin tao user co the cau hinh Vertex ngay tren form: `none`, `new` paste service account JSON, hoac `copy` tu user khac co Vertex active. Khong can them Vertex key truc tiep bang DB tool.
 
 ---
 

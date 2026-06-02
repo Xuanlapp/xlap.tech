@@ -4,6 +4,7 @@ namespace App\Services\Google;
 
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use JsonException;
 use RuntimeException;
 
@@ -49,7 +50,7 @@ class GoogleDriveService
             ->post($this->uploadEndpoint());
 
         if ($response->failed()) {
-            $this->throwDriveUploadException($response->body());
+            $this->throwDriveUploadException($response->status(), $response->body());
         }
 
         $fileId = $response->json('id');
@@ -76,7 +77,9 @@ class GoogleDriveService
             ]);
 
         if ($response->failed()) {
-            throw new RuntimeException('Khong set duoc public permission cho Drive file: '.$response->body());
+            $this->logExternalApiFailure('Google Drive permission failed.', $response->status(), $response->body());
+
+            throw new RuntimeException('Khong set duoc public permission cho Drive file.');
         }
     }
 
@@ -128,7 +131,9 @@ class GoogleDriveService
             ]);
 
         if ($response->failed()) {
-            throw new RuntimeException('Khong lay duoc Google Drive access token: '.$response->body());
+            $this->logExternalApiFailure('Google Drive service account token failed.', $response->status(), $response->body());
+
+            throw new RuntimeException('Khong lay duoc Google Drive access token.');
         }
 
         $token = $response->json('access_token');
@@ -160,15 +165,17 @@ class GoogleDriveService
         return "https://www.googleapis.com/drive/v3/files/{$fileId}/permissions?{$query}";
     }
 
-    private function throwDriveUploadException(string $body): never
+    private function throwDriveUploadException(int $status, string $body): never
     {
+        $this->logExternalApiFailure('Google Drive upload failed.', $status, $body);
+
         if (str_contains($body, 'Service Accounts do not have storage quota')) {
             throw new RuntimeException(
                 'Google Drive tu choi upload vi service account khong co storage quota. Folder hien tai dang la My Drive ca nhan; hay doi folder sang Shared Drive, hoac dung OAuth cua tai khoan Gmail chu folder.'
             );
         }
 
-        throw new RuntimeException('Google Drive upload loi: '.$body);
+        throw new RuntimeException('Google Drive upload loi. Hay kiem tra folder, quyen Drive hoac cau hinh OAuth/service account.');
     }
 
     /**
@@ -227,5 +234,34 @@ class GoogleDriveService
     private function base64UrlEncode(string $value): string
     {
         return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
+    }
+
+    private function logExternalApiFailure(string $message, int $status, string $body): void
+    {
+        Log::warning($message, [
+            'status' => $status,
+            'body_preview' => mb_substr($this->redactedBody($body), 0, 1000),
+        ]);
+    }
+
+    private function redactedBody(string $body): string
+    {
+        return preg_replace(
+            [
+                '/"access_token"\s*:\s*"[^"]+"/i',
+                '/"refresh_token"\s*:\s*"[^"]+"/i',
+                '/"id_token"\s*:\s*"[^"]+"/i',
+                '/"private_key"\s*:\s*"[^"]+"/i',
+                '/"client_secret"\s*:\s*"[^"]+"/i',
+            ],
+            [
+                '"access_token":"[redacted]"',
+                '"refresh_token":"[redacted]"',
+                '"id_token":"[redacted]"',
+                '"private_key":"[redacted]"',
+                '"client_secret":"[redacted]"',
+            ],
+            $body,
+        ) ?? '[unavailable]';
     }
 }

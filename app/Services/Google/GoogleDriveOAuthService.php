@@ -6,6 +6,7 @@ use App\Models\GoogleDriveConnection;
 use App\Models\User;
 use App\Services\Logging\ActivityLogService;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -53,7 +54,9 @@ class GoogleDriveOAuthService
             ]);
 
         if ($response->failed()) {
-            throw new RuntimeException('Khong connect duoc Google Drive OAuth: '.$response->body());
+            $this->logExternalApiFailure('Google Drive OAuth connect failed.', $response->status(), $response->body());
+
+            throw new RuntimeException('Khong connect duoc Google Drive OAuth.');
         }
 
         $payload = $response->json();
@@ -136,7 +139,9 @@ class GoogleDriveOAuthService
             ]);
 
         if ($response->failed()) {
-            throw new RuntimeException('Khong refresh duoc Google Drive OAuth token: '.$response->body());
+            $this->logExternalApiFailure('Google Drive OAuth refresh failed.', $response->status(), $response->body());
+
+            throw new RuntimeException('Khong refresh duoc Google Drive OAuth token.');
         }
 
         $payload = $response->json();
@@ -190,5 +195,34 @@ class GoogleDriveOAuthService
         }
 
         return route('offorest.admin.google-drive.callback');
+    }
+
+    private function logExternalApiFailure(string $message, int $status, string $body): void
+    {
+        Log::warning($message, [
+            'status' => $status,
+            'body_preview' => mb_substr($this->redactedBody($body), 0, 1000),
+        ]);
+    }
+
+    private function redactedBody(string $body): string
+    {
+        return preg_replace(
+            [
+                '/"access_token"\s*:\s*"[^"]+"/i',
+                '/"refresh_token"\s*:\s*"[^"]+"/i',
+                '/"id_token"\s*:\s*"[^"]+"/i',
+                '/"private_key"\s*:\s*"[^"]+"/i',
+                '/"client_secret"\s*:\s*"[^"]+"/i',
+            ],
+            [
+                '"access_token":"[redacted]"',
+                '"refresh_token":"[redacted]"',
+                '"id_token":"[redacted]"',
+                '"private_key":"[redacted]"',
+                '"client_secret":"[redacted]"',
+            ],
+            $body,
+        ) ?? '[unavailable]';
     }
 }

@@ -8,6 +8,7 @@ use App\Services\Image\BackgroundRemovalService;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 
@@ -72,7 +73,9 @@ class VertexImageGenerator
             );
 
         if ($response->failed()) {
-            throw new RuntimeException('Vertex API lỗi: '.$response->body());
+            $this->logExternalApiFailure('Vertex generateContent failed.', $response->status(), $response->body());
+
+            throw new RuntimeException('Vertex API loi. Hay kiem tra quota, credential hoac cau hinh model.');
         }
 
         $imageBase64 = $this->extractImageData($response->json());
@@ -356,7 +359,9 @@ class VertexImageGenerator
             ]);
 
         if ($tokenResponse->failed()) {
-            throw new RuntimeException('Không lấy được Google access token: '.$tokenResponse->body());
+            $this->logExternalApiFailure('Google service account token failed.', $tokenResponse->status(), $tokenResponse->body());
+
+            throw new RuntimeException('Khong lay duoc Google access token cho Vertex API.');
         }
 
         return $tokenResponse->json('access_token');
@@ -547,5 +552,34 @@ class VertexImageGenerator
             .$type
             .$data
             .pack('N', crc32($type.$data));
+    }
+
+    private function logExternalApiFailure(string $message, int $status, string $body): void
+    {
+        Log::warning($message, [
+            'status' => $status,
+            'body_preview' => mb_substr($this->redactedBody($body), 0, 1000),
+        ]);
+    }
+
+    private function redactedBody(string $body): string
+    {
+        return preg_replace(
+            [
+                '/"access_token"\s*:\s*"[^"]+"/i',
+                '/"refresh_token"\s*:\s*"[^"]+"/i',
+                '/"id_token"\s*:\s*"[^"]+"/i',
+                '/"private_key"\s*:\s*"[^"]+"/i',
+                '/"client_secret"\s*:\s*"[^"]+"/i',
+            ],
+            [
+                '"access_token":"[redacted]"',
+                '"refresh_token":"[redacted]"',
+                '"id_token":"[redacted]"',
+                '"private_key":"[redacted]"',
+                '"client_secret":"[redacted]"',
+            ],
+            $body,
+        ) ?? '[unavailable]';
     }
 }

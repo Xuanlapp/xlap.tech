@@ -13,7 +13,10 @@ class UserRepository
     public function allWithActiveProductsOrderedByName(): Collection
     {
         return User::query()
-            ->with(['products' => fn ($query) => $query->where('is_active', true)])
+            ->with([
+                'vertexApiCredential',
+                'products' => fn ($query) => $query->where('is_active', true),
+            ])
             ->orderBy('name')
             ->get();
     }

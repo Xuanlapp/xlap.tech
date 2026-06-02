@@ -133,7 +133,7 @@
                                     wire:click="$dispatch('review-image', { src: @js($image['src']), original: @js($image['original']), title: @js($image['label']) })"
                                     class="overflow-hidden rounded-lg border border-slate-100 bg-slate-50 shadow-sm transition hover:border-emerald-300 hover:ring-2 hover:ring-emerald-100"
                                 >
-                                    <img src="{{ $image['src'] }}" alt="{{ $image['label'] }}" class="h-full w-full object-cover">
+                                    <img src="{{ $image['src'] }}" alt="{{ $image['label'] }}" loading="lazy" decoding="async" fetchpriority="low" class="h-full w-full object-cover">
                                 </button>
                             @endforeach
                         </div>
@@ -202,7 +202,7 @@
                                         wire:click="$dispatch('review-image', { src: @js($mockup['src']), original: @js($mockup['original']), title: @js('MOCKUP '.$mockup['slot']) })"
                                         class="aspect-[4/3] overflow-hidden rounded-lg border border-slate-100 bg-slate-50 shadow-sm transition hover:border-orange-300 hover:ring-2 hover:ring-orange-100"
                                     >
-                                        <img src="{{ $mockup['src'] }}" alt="MOCKUP {{ $mockup['slot'] }}" class="h-full w-full object-cover">
+                                        <img src="{{ $mockup['src'] }}" alt="MOCKUP {{ $mockup['slot'] }}" loading="lazy" decoding="async" fetchpriority="low" class="h-full w-full object-cover">
                                     </button>
                                 @endforeach
                             </div>

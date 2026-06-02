@@ -43,6 +43,10 @@ class ImageLinkPreviewService
             $previewUrl = $this->dropboxPreviewUrl($url);
         }
 
+        if ($previewUrl === $url && $this->hasImageExtension($path)) {
+            return $url;
+        }
+
         return URL::temporarySignedRoute(
             'image-preview.show',
             now()->addHours(12),
@@ -71,7 +75,7 @@ class ImageLinkPreviewService
             return true;
         }
 
-        return preg_match('/\.(avif|gif|jpe?g|png|svg|webp)$/i', $path) === 1;
+        return $this->hasImageExtension($path);
     }
 
     private function googleDrivePreviewUrl(string $url): ?string
@@ -94,7 +98,7 @@ class ImageLinkPreviewService
 
     private function googleDriveThumbnailUrl(string $fileId): string
     {
-        return 'https://drive.google.com/thumbnail?id='.rawurlencode($fileId).'&sz=w1200';
+        return 'https://drive.google.com/thumbnail?id='.rawurlencode($fileId).'&sz=w800';
     }
 
     private function dropboxPreviewUrl(string $url): string
@@ -123,5 +127,13 @@ class ImageLinkPreviewService
         }
 
         return $path.'?v='.File::lastModified($publicPath);
+    }
+
+    /**
+     * Check whether a URL path points to a browser-renderable image file.
+     */
+    private function hasImageExtension(string $path): bool
+    {
+        return preg_match('/\.(avif|gif|jpe?g|png|svg|webp)$/i', $path) === 1;
     }
 }

@@ -13,7 +13,7 @@ class ImageLinkPreviewServiceTest extends TestCase
 
         $url = 'https://i.etsystatic.com/example/listing.jpg';
 
-        $this->assertSame($url, $this->targetUrl($service->previewUrl($url)));
+        $this->assertSame($url, $service->previewUrl($url));
     }
 
     public function test_it_converts_google_drive_file_urls_to_thumbnail_urls(): void
@@ -21,7 +21,7 @@ class ImageLinkPreviewServiceTest extends TestCase
         $service = new ImageLinkPreviewService;
 
         $this->assertSame(
-            'https://drive.google.com/thumbnail?id=abc123&sz=w1200',
+            'https://drive.google.com/thumbnail?id=abc123&sz=w800',
             $this->targetUrl($service->previewUrl('https://drive.google.com/file/d/abc123/view?usp=sharing'))
         );
     }
@@ -31,7 +31,7 @@ class ImageLinkPreviewServiceTest extends TestCase
         $service = new ImageLinkPreviewService;
 
         $this->assertSame(
-            'https://drive.google.com/thumbnail?id=abc123&sz=w1200',
+            'https://drive.google.com/thumbnail?id=abc123&sz=w800',
             $this->targetUrl($service->previewUrl('https://drive.google.com/open?id=abc123'))
         );
     }

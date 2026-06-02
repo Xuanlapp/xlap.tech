@@ -121,6 +121,62 @@
                         @error('selectedProducts.*') <p class="mt-1 text-sm text-red-300">{{ $message }}</p> @enderror
                     </div>
 
+                    <div class="mt-5 rounded-lg border border-white/10 bg-black/10 p-4">
+                        <p class="text-sm font-semibold text-white/80">Vertex API</p>
+                        <p class="mt-1 text-xs text-white/45">Luu qua Laravel de private_key/credentials_json duoc encrypt.</p>
+
+                        <div class="mt-3 grid gap-2">
+                            <label class="flex items-center gap-2 rounded-md bg-white/[0.06] px-3 py-2 text-sm">
+                                <input wire:model.live="vertexMode" type="radio" value="none" class="border-white/20 text-cyan-500">
+                                <span>Khong them Vertex luc tao user</span>
+                            </label>
+                            <label class="flex items-center gap-2 rounded-md bg-white/[0.06] px-3 py-2 text-sm">
+                                <input wire:model.live="vertexMode" type="radio" value="new" class="border-white/20 text-cyan-500">
+                                <span>Add new Vertex API key</span>
+                            </label>
+                            <label class="flex items-center gap-2 rounded-md bg-white/[0.06] px-3 py-2 text-sm">
+                                <input wire:model.live="vertexMode" type="radio" value="copy" class="border-white/20 text-cyan-500">
+                                <span>Copy Vertex API tu user khac</span>
+                            </label>
+                        </div>
+
+                        @if ($vertexMode === 'new')
+                            <div class="mt-4 space-y-3">
+                                <div>
+                                    <label for="vertexLocation" class="text-sm text-white/70">Location</label>
+                                    <input id="vertexLocation" wire:model="vertexLocation" type="text" class="mt-1 w-full rounded-md border-white/10 bg-white text-gray-950" placeholder="global hoac us-central1">
+                                    @error('vertexLocation') <p class="mt-1 text-sm text-red-300">{{ $message }}</p> @enderror
+                                </div>
+
+                                <div>
+                                    <label for="vertexJson" class="text-sm text-white/70">Service account JSON</label>
+                                    <textarea
+                                        id="vertexJson"
+                                        wire:model="vertexJson"
+                                        rows="8"
+                                        class="mt-1 w-full rounded-md border-white/10 bg-white font-mono text-xs text-gray-950"
+                                        placeholder='{"type":"service_account","project_id":"...","private_key":"-----BEGIN PRIVATE KEY-----\n...","client_email":"..."}'
+                                    ></textarea>
+                                    <p class="mt-1 text-xs text-white/45">Sau khi save, UI khong hien lai private key.</p>
+                                    @error('vertexJson') <p class="mt-1 text-sm text-red-300">{{ $message }}</p> @enderror
+                                </div>
+                            </div>
+                        @endif
+
+                        @if ($vertexMode === 'copy')
+                            <div class="mt-4">
+                                <label for="vertexCopyUserId" class="text-sm text-white/70">Copy tu user</label>
+                                <select id="vertexCopyUserId" wire:model="vertexCopyUserId" class="mt-1 w-full rounded-md border-white/10 bg-white text-gray-950">
+                                    <option value="">Chon user co Vertex API</option>
+                                    @foreach ($vertexCredentialUsers as $credentialUser)
+                                        <option value="{{ $credentialUser->id }}">{{ $credentialUser->name }} - {{ $credentialUser->email }}</option>
+                                    @endforeach
+                                </select>
+                                @error('vertexCopyUserId') <p class="mt-1 text-sm text-red-300">{{ $message }}</p> @enderror
+                            </div>
+                        @endif
+                    </div>
+
                     <x-ui.button color="cyan" full type="submit" class="mt-6 shadow-lg shadow-cyan-500/20">
                         Tao user
                     </x-ui.button>
@@ -139,6 +195,7 @@
                                 <tr class="text-left text-white/55">
                                     <th class="py-3 pr-4 font-medium">User</th>
                                     <th class="px-3 py-3 text-center font-medium">Admin</th>
+                                    <th class="px-3 py-3 text-center font-medium">Vertex</th>
                                     @foreach ($products as $product)
                                         <th class="px-3 py-3 text-center font-medium">{{ $product->name }}</th>
                                     @endforeach
@@ -154,6 +211,11 @@
                                         <td class="px-3 py-4 text-center">
                                             <span class="inline-flex rounded-full px-3 py-1 text-xs font-medium {{ $user->is_admin ? 'bg-cyan-400/20 text-cyan-200' : 'bg-white/10 text-white/45' }}">
                                                 {{ $user->is_admin ? 'Yes' : 'No' }}
+                                            </span>
+                                        </td>
+                                        <td class="px-3 py-4 text-center">
+                                            <span class="inline-flex rounded-full px-3 py-1 text-xs font-medium {{ $user->vertexApiCredential ? 'bg-emerald-400/20 text-emerald-200' : 'bg-white/10 text-white/45' }}">
+                                                {{ $user->vertexApiCredential ? 'Ready' : 'None' }}
                                             </span>
                                         </td>
                                         @foreach ($products as $product)
