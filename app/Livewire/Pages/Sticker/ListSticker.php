@@ -16,6 +16,9 @@ class ListSticker extends Component
     #[Session(key: 'sticker.per-page')]
     public int $perPage = 5;
 
+    #[Session(key: 'sticker.search')]
+    public string $search = '';
+
     #[On('product-design-created')]
     #[On('sticker-product-design-updated')]
     public function productDesignCreated(): void
@@ -52,13 +55,18 @@ class ListSticker extends Component
 
     }
 
+    public function updatedSearch(string $search): void
+    {
+        $this->search = trim($search);
+    }
+
     public function render(): View
     {
         $service = app(StickerService::class);
         $perPage = in_array($this->perPage, self::PER_PAGE_OPTIONS, true) ? $this->perPage : 5;
 
         return view('livewire.pages.sticker.list-sticker', [
-            'statusCounts' => $service->statusCountsForUser(auth()->user()),
+            'statusCounts' => $service->statusCountsForUser(auth()->user(), $this->search),
             'activePsdTemplateName' => app(PsdMockupTemplateService::class)->activeStickerTemplateForUser(auth()->user())?->name,
             'perPageOptions' => self::PER_PAGE_OPTIONS,
             'product' => $service->product(),

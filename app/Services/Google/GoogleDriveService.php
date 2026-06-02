@@ -10,6 +10,8 @@ use RuntimeException;
 
 class GoogleDriveService
 {
+    private const MAX_DOWNLOAD_IMAGE_BYTES = 52_428_800;
+
     /**
      * Upload one local file to the configured Google Drive folder.
      */
@@ -65,6 +67,42 @@ class GoogleDriveService
 
         return $response->json('webViewLink')
             ?: 'https://drive.google.com/file/d/'.$fileId.'/view';
+    }
+
+    /**
+     * Download an image file through the authenticated Google Drive API.
+     *
+     * @return array{body: string, content_type: string}
+     */
+    public function downloadImageFile(string $fileId): array
+    {
+        $response = Http::withToken($this->accessToken())
+            ->timeout(60)
+            ->retry(1, 300)
+            ->get($this->fileMediaEndpoint($fileId));
+
+        if ($response->failed()) {
+            $this->logExternalApiFailure('Google Drive authenticated image download failed.', $response->status(), $response->body());
+
+            throw new RuntimeException('Khong tai duoc anh Drive bang API. Hay kiem tra OAuth/service account co quyen doc file nay.');
+        }
+
+        $contentType = strtolower($response->header('Content-Type', ''));
+
+        if (! str_starts_with($contentType, 'image/')) {
+            throw new RuntimeException('File Drive khong phai la anh hop le.');
+        }
+
+        $body = $response->body();
+
+        if (strlen($body) > self::MAX_DOWNLOAD_IMAGE_BYTES) {
+            throw new RuntimeException('Anh Drive qua lon de preview truc tiep.');
+        }
+
+        return [
+            'body' => $body,
+            'content_type' => $contentType,
+        ];
     }
 
     private function makePublic(string $fileId): void
@@ -163,6 +201,16 @@ class GoogleDriveService
         ]);
 
         return "https://www.googleapis.com/drive/v3/files/{$fileId}/permissions?{$query}";
+    }
+
+    private function fileMediaEndpoint(string $fileId): string
+    {
+        $query = http_build_query([
+            'alt' => 'media',
+            'supportsAllDrives' => (bool) config('services.google_drive.supports_all_drives', true) ? 'true' : 'false',
+        ]);
+
+        return 'https://www.googleapis.com/drive/v3/files/'.rawurlencode($fileId)."?{$query}";
     }
 
     private function throwDriveUploadException(int $status, string $body): never

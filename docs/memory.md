@@ -264,6 +264,8 @@ php artisan route:cache           # Cache routes
 - Direct image URLs with browser-renderable extensions should render directly in the browser instead of going through Laravel `image-preview`, so large sticker/ornament lists do not make the app server proxy every thumbnail.
 - Google Drive UI previews use thumbnail URL size `w800`; Vertex/source-fetch logic can still use its own higher resolution path when needed for generation.
 - Card thumbnails should use `loading="lazy"`, `decoding="async"`, and `fetchpriority="low"` so hidden/offscreen images do not block tab switching and page rendering.
+- Do not include frequently changing filter/search values in Livewire component `key` for image-heavy lists. Use reactive child props and stable keys per tab/status so existing image DOM can be preserved.
+- Google Drive public thumbnail URLs are not reliable enough by themselves. `image-preview` should fall back to authenticated Google Drive API download when Drive returns HTML/non-image/failed thumbnail responses.
 - User co the luu nhieu PSD, nhung moi user/product/function chi co 1 PSD active.
 - Sticker custom PSD dung `function_key = sticker_custom_mockup`.
 - Renderer command mac dinh: `PSD_MOCKUP_RENDERER_COMMAND="node scripts/psd-renderer/render.js"`.

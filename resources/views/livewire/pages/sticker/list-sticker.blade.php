@@ -55,6 +55,20 @@
                 </div>
 
                 <div class="flex flex-wrap items-center gap-2">
+                    <label class="relative block h-9 w-full sm:w-64">
+                        <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35m1.1-5.15a6.25 6.25 0 1 1-12.5 0 6.25 6.25 0 0 1 12.5 0Z" />
+                            </svg>
+                        </span>
+                        <input
+                            type="search"
+                            wire:model.live.debounce.600ms="search"
+                            placeholder="Tim ten, ID hoac STT"
+                            class="h-9 w-full rounded-md border border-slate-200 bg-white py-0 pl-9 pr-3 text-xs font-semibold text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-cyan-300 focus:ring-4 focus:ring-cyan-100"
+                        >
+                    </label>
+
                     <label class="inline-flex h-9 items-center gap-2 rounded-md border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-500">
                         <span>Hien thi</span>
                         <select
@@ -102,9 +116,10 @@
                     <livewire:pages.sticker.sticker-status-panel
                         :status="$status"
                         :per-page="$perPage"
+                        :search="$search"
                         :active-psd-template-name="$activePsdTemplateName"
                         :status-counts="$statusCounts"
-                        :key="'sticker-status-panel-'.$status.'-'.$perPage"
+                        :key="'sticker-status-panel-'.$status"
                         lazy
                     />
                 </div>

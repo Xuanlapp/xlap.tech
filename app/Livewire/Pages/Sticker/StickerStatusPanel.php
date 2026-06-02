@@ -6,6 +6,7 @@ use App\Services\Sticker\StickerService;
 use App\Services\Sticker\PsdMockupTemplateService;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Reactive;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -17,24 +18,42 @@ class StickerStatusPanel extends Component
 
     public string $status;
 
+    #[Reactive]
     public int $perPage;
 
+    #[Reactive]
+    public string $search = '';
+
+    #[Reactive]
     public ?string $activePsdTemplateName = null;
 
     /**
      * @var array{all?: int, unapproved?: int, approved?: int}
      */
+    #[Reactive]
     public array $statusCounts = [];
 
     /**
      * @param array{all?: int, unapproved?: int, approved?: int} $statusCounts
      */
-    public function mount(string $status, int $perPage, ?string $activePsdTemplateName = null, array $statusCounts = []): void
+    public function mount(string $status, int $perPage, string $search = '', ?string $activePsdTemplateName = null, array $statusCounts = []): void
     {
         $this->status = in_array($status, self::STATUS_OPTIONS, true) ? $status : 'all';
         $this->perPage = $perPage;
+        $this->search = trim($search);
         $this->activePsdTemplateName = $activePsdTemplateName;
         $this->statusCounts = $statusCounts;
+    }
+
+    public function updatedPerPage(): void
+    {
+        $this->resetPage($this->pageName());
+    }
+
+    public function updatedSearch(): void
+    {
+        $this->search = trim($this->search);
+        $this->resetPage($this->pageName());
     }
 
     #[On('product-design-created')]
@@ -44,7 +63,7 @@ class StickerStatusPanel extends Component
     #[On('sticker-counts-updated')]
     public function refreshAssets(): void
     {
-        $this->statusCounts = app(StickerService::class)->statusCountsForUser(auth()->user());
+        $this->statusCounts = app(StickerService::class)->statusCountsForUser(auth()->user(), $this->search);
     }
 
     #[On('psd-mockup-template-updated')]
@@ -61,7 +80,7 @@ class StickerStatusPanel extends Component
 
     public function render(): View
     {
-        $this->statusCounts = app(StickerService::class)->statusCountsForUser(auth()->user());
+        $this->statusCounts = app(StickerService::class)->statusCountsForUser(auth()->user(), $this->search);
 
         return view('livewire.pages.sticker.sticker-status-panel', [
             'assets' => app(StickerService::class)->paginatedAssetsForUser(
@@ -69,6 +88,7 @@ class StickerStatusPanel extends Component
                 $this->perPage,
                 $this->status,
                 $this->pageName(),
+                $this->search,
             ),
             'pageName' => $this->pageName(),
         ]);

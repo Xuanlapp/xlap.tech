@@ -52,17 +52,25 @@ class StickerService
         int $perPage,
         string $status = 'all',
         string $pageName = 'page',
+        ?string $search = null,
     ): LengthAwarePaginator
     {
-        return $this->assets->paginateForUserAndProduct($user->id, $this->product()->id, $perPage, $status, $pageName);
+        return $this->assets->paginateForUserAndProduct(
+            $user->id,
+            $this->product()->id,
+            $perPage,
+            $status,
+            $pageName,
+            $search,
+        );
     }
 
     /**
      * @return array{all: int, unapproved: int, approved: int}
      */
-    public function statusCountsForUser(User $user): array
+    public function statusCountsForUser(User $user, ?string $search = null): array
     {
-        return $this->assets->statusCountsForUserAndProduct($user->id, $this->product()->id);
+        return $this->assets->statusCountsForUserAndProduct($user->id, $this->product()->id, $search);
     }
 
     public function createDraftAsset(User $user, string $keyword): ProductDesignAsset

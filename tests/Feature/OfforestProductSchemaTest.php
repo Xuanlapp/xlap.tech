@@ -21,7 +21,9 @@ use App\Services\Vertex\VertexImageGenerator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Livewire\Livewire;
 use Mockery\MockInterface;
 use Tests\TestCase;
@@ -699,6 +701,39 @@ class OfforestProductSchemaTest extends TestCase
         ], $service->statusCountsForUser($user));
     }
 
+    public function test_sticker_assets_can_be_searched_by_keyword_id_and_stt(): void
+    {
+        $user = User::factory()->create();
+        $product = Product::where('slug', 'sticker')->firstOrFail();
+
+        $first = ProductDesignAsset::create([
+            'user_id' => $user->id,
+            'product_id' => $product->id,
+            'item_number' => 7,
+            'keyword' => 'Halloween ghost',
+        ]);
+
+        $second = ProductDesignAsset::create([
+            'user_id' => $user->id,
+            'product_id' => $product->id,
+            'item_number' => 12,
+            'keyword' => 'Christmas cat',
+            'is_approved' => true,
+            'approved_at' => now(),
+        ]);
+
+        $service = app(StickerService::class);
+
+        $this->assertSame([$first->id], $service->paginatedAssetsForUser($user, 10, 'all', 'page', 'ghost')->pluck('id')->all());
+        $this->assertSame([$second->id], $service->paginatedAssetsForUser($user, 10, 'all', 'page', (string) $second->id)->pluck('id')->all());
+        $this->assertSame([$first->id], $service->paginatedAssetsForUser($user, 10, 'all', 'page', '7')->pluck('id')->all());
+        $this->assertSame([
+            'all' => 1,
+            'unapproved' => 0,
+            'approved' => 1,
+        ], $service->statusCountsForUser($user, 'cat'));
+    }
+
     public function test_approved_local_images_are_uploaded_to_drive_and_removed_locally(): void
     {
         $user = User::factory()->create();
@@ -760,5 +795,39 @@ class OfforestProductSchemaTest extends TestCase
         $this->assertDatabaseHas('activity_logs', [
             'event' => 'drive_export.completed',
         ]);
+    }
+
+    public function test_drive_preview_falls_back_to_authenticated_download_when_thumbnail_is_not_an_image(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user);
+
+        Http::fake([
+            'drive.google.com/*' => Http::response('<html>not an image</html>', 200, [
+                'Content-Type' => 'text/html',
+            ]),
+        ]);
+
+        $this->mock(GoogleDriveService::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('downloadImageFile')
+                ->once()
+                ->with('abc123')
+                ->andReturn([
+                    'body' => 'image-bytes',
+                    'content_type' => 'image/png',
+                ]);
+        });
+
+        $previewUrl = URL::temporarySignedRoute(
+            'image-preview.show',
+            now()->addMinutes(5),
+            ['url' => 'https://drive.google.com/thumbnail?id=abc123&sz=w800'],
+        );
+
+        $this->get($previewUrl)
+            ->assertOk()
+            ->assertHeader('Content-Type', 'image/png')
+            ->assertContent('image-bytes');
     }
 }

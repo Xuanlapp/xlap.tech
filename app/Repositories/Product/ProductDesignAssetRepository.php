@@ -3,6 +3,7 @@
 namespace App\Repositories\Product;
 
 use App\Models\ProductDesignAsset;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -30,6 +31,7 @@ class ProductDesignAssetRepository
         int $perPage,
         string $status = 'all',
         string $pageName = 'page',
+        ?string $search = null,
     ): LengthAwarePaginator
     {
         return ProductDesignAsset::query()
@@ -37,6 +39,7 @@ class ProductDesignAssetRepository
             ->where('product_id', $productId)
             ->when($status === 'unapproved', fn ($query) => $query->where('is_approved', false))
             ->when($status === 'approved', fn ($query) => $query->where('is_approved', true))
+            ->when($this->normalizedSearch($search) !== null, fn (Builder $query) => $this->applySearch($query, $this->normalizedSearch($search)))
             ->orderBy('item_number')
             ->paginate($perPage, ['*'], $pageName);
     }
@@ -44,11 +47,12 @@ class ProductDesignAssetRepository
     /**
      * @return array{all: int, unapproved: int, approved: int}
      */
-    public function statusCountsForUserAndProduct(int $userId, int $productId): array
+    public function statusCountsForUserAndProduct(int $userId, int $productId, ?string $search = null): array
     {
         $counts = ProductDesignAsset::query()
             ->where('user_id', $userId)
             ->where('product_id', $productId)
+            ->when($this->normalizedSearch($search) !== null, fn (Builder $query) => $this->applySearch($query, $this->normalizedSearch($search)))
             ->selectRaw('COUNT(*) as all_count')
             ->selectRaw('SUM(CASE WHEN is_approved = 0 THEN 1 ELSE 0 END) as unapproved_count')
             ->selectRaw('SUM(CASE WHEN is_approved = 1 THEN 1 ELSE 0 END) as approved_count')
@@ -258,5 +262,35 @@ class ProductDesignAssetRepository
         $asset->update($updates);
 
         return $asset->refresh();
+    }
+
+    /**
+     * Apply keyword, database id, and STT/item_number search.
+     */
+    private function applySearch(Builder $query, string $search): Builder
+    {
+        return $query->where(function (Builder $query) use ($search): void {
+            $query->where('keyword', 'like', '%'.$this->escapeLike($search).'%');
+
+            if (ctype_digit($search)) {
+                $number = (int) $search;
+
+                $query
+                    ->orWhere('id', $number)
+                    ->orWhere('item_number', $number);
+            }
+        });
+    }
+
+    private function normalizedSearch(?string $search): ?string
+    {
+        $search = trim((string) $search);
+
+        return $search === '' ? null : $search;
+    }
+
+    private function escapeLike(string $value): string
+    {
+        return addcslashes($value, '\%_');
     }
 }
