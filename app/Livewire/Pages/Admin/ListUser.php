@@ -31,6 +31,12 @@ class ListUser extends Component
     #[Session(key: 'admin.users.is-admin')]
     public bool $is_admin = false;
 
+    #[Session(key: 'admin.users.amazon-listing')]
+    public bool $can_generate_amazon_listing = false;
+
+    #[Session(key: 'admin.users.etsy-listing')]
+    public bool $can_generate_etsy_listing = false;
+
     /** @var array<int, int|string> */
     #[Session(key: 'admin.users.selected-products')]
     public array $selectedProducts = [];
@@ -43,6 +49,10 @@ class ListUser extends Component
 
     public ?int $vertexCopyUserId = null;
 
+    public string $marketplaceVertexJson = '';
+
+    public string $marketplaceVertexLocation = 'global';
+
     public ?string $driveUploadStatus = null;
 
     public ?string $driveUploadError = null;
@@ -54,6 +64,8 @@ class ListUser extends Component
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', Password::min(12)->mixedCase()->numbers()],
             'is_admin' => ['boolean'],
+            'can_generate_amazon_listing' => ['boolean'],
+            'can_generate_etsy_listing' => ['boolean'],
             'selectedProducts' => ['array'],
             'selectedProducts.*' => ['integer', 'exists:products,id'],
             'vertexMode' => ['required', Rule::in(['none', 'new', 'copy'])],
@@ -61,6 +73,16 @@ class ListUser extends Component
             'vertexLocation' => ['nullable', 'string', 'max:100'],
             'vertexCopyUserId' => ['nullable', 'integer', 'exists:users,id', 'required_if:vertexMode,copy'],
         ]);
+
+        if (
+            (bool) ($validated['can_generate_amazon_listing'] ?? false)
+            && (bool) ($validated['can_generate_etsy_listing'] ?? false)
+        ) {
+            throw ValidationException::withMessages([
+                'can_generate_amazon_listing' => 'Moi user chi duoc chon Amazon hoac Etsy, khong duoc chon ca hai.',
+                'can_generate_etsy_listing' => 'Moi user chi duoc chon Amazon hoac Etsy, khong duoc chon ca hai.',
+            ]);
+        }
 
         $vertexCredentialPayload = $this->validatedVertexCredentialPayload();
 
@@ -80,6 +102,8 @@ class ListUser extends Component
             properties: [
                 'email' => $validated['email'],
                 'is_admin' => (bool) ($validated['is_admin'] ?? false),
+                'can_generate_amazon_listing' => (bool) ($validated['can_generate_amazon_listing'] ?? false),
+                'can_generate_etsy_listing' => (bool) ($validated['can_generate_etsy_listing'] ?? false),
                 'selected_products' => $validated['selectedProducts'] ?? [],
                 'vertex_mode' => $validated['vertexMode'],
                 'vertex_configured' => $vertexCredentialPayload !== null,
@@ -93,6 +117,8 @@ class ListUser extends Component
             'email',
             'password',
             'is_admin',
+            'can_generate_amazon_listing',
+            'can_generate_etsy_listing',
             'selectedProducts',
             'vertexMode',
             'vertexJson',
@@ -106,7 +132,18 @@ class ListUser extends Component
 
     public function toggleProduct(int $userId, int $productId): void
     {
-        $enabled = app(UserAccessService::class)->toggleProduct($userId, $productId);
+        try {
+            $enabled = app(UserAccessService::class)->toggleProduct($userId, $productId);
+        } catch (ValidationException $exception) {
+            $this->dispatch(
+                'toast',
+                type: 'error',
+                title: 'Action failed!',
+                message: collect($exception->errors())->flatten()->first() ?? 'Khong the bat quyen san pham.',
+            );
+
+            return;
+        }
 
         app(ActivityLogService::class)->record(
             event: 'admin.product_access_toggled',
@@ -119,6 +156,82 @@ class ListUser extends Component
             actor: auth()->user(),
             actorType: 'admin',
         );
+    }
+
+    public function toggleAmazonListing(int $userId): void
+    {
+        $enabled = app(UserAccessService::class)->toggleAmazonListing($userId);
+
+        app(ActivityLogService::class)->record(
+            event: 'admin.marketplace_listing_access_toggled',
+            description: $enabled ? 'Admin granted Amazon listing generation.' : 'Admin revoked Amazon listing generation.',
+            properties: [
+                'target_user_id' => $userId,
+                'marketplace' => 'amazon',
+                'enabled' => $enabled,
+            ],
+            actor: auth()->user(),
+            actorType: 'admin',
+        );
+    }
+
+    public function toggleEtsyListing(int $userId): void
+    {
+        $enabled = app(UserAccessService::class)->toggleEtsyListing($userId);
+
+        app(ActivityLogService::class)->record(
+            event: 'admin.marketplace_listing_access_toggled',
+            description: $enabled ? 'Admin granted Etsy listing generation.' : 'Admin revoked Etsy listing generation.',
+            properties: [
+                'target_user_id' => $userId,
+                'marketplace' => 'etsy',
+                'enabled' => $enabled,
+            ],
+            actor: auth()->user(),
+            actorType: 'admin',
+        );
+    }
+
+    public function saveMarketplaceVertexCredential(): void
+    {
+        $validated = $this->validate([
+            'marketplaceVertexJson' => ['required', 'string', 'max:30000'],
+            'marketplaceVertexLocation' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        $payload = $this->vertexCredentialPayloadFromJson(
+            json: $validated['marketplaceVertexJson'],
+            location: $this->normalizedLocation($validated['marketplaceVertexLocation'] ?? 'global'),
+        );
+
+        VertexApiCredential::query()
+            ->where('function_key', 'marketplace_listing')
+            ->update(['is_active' => false]);
+
+        VertexApiCredential::query()->create(
+            [
+                ...$payload,
+                'user_id' => null,
+                'function_key' => 'marketplace_listing',
+                'is_active' => true,
+            ],
+        );
+
+        app(ActivityLogService::class)->record(
+            event: 'admin.marketplace_vertex_configured',
+            description: 'Admin configured the Marketplace listing Vertex credential.',
+            properties: [
+                'project_id' => $payload['project_id'],
+                'location' => $payload['location'],
+                'client_email' => $payload['client_email'],
+            ],
+            actor: auth()->user(),
+            actorType: 'admin',
+        );
+
+        $this->reset('marketplaceVertexJson');
+        $this->marketplaceVertexLocation = 'global';
+        $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da luu Vertex API cho title/listing.');
     }
 
     public function uploadApprovedImagesToDrive(): void
@@ -155,6 +268,11 @@ class ListUser extends Component
                 ->whereHas('vertexApiCredential')
                 ->orderBy('name')
                 ->get(['id', 'name', 'email']),
+            'marketplaceVertexCredential' => VertexApiCredential::query()
+                ->whereNull('user_id')
+                ->where('function_key', 'marketplace_listing')
+                ->where('is_active', true)
+                ->first(),
             'googleDriveConnection' => app(GoogleDriveOAuthService::class)->activeConnection(),
         ])->layout('layouts.app');
     }
@@ -172,40 +290,9 @@ class ListUser extends Component
             return $this->copiedVertexCredentialPayload();
         }
 
-        try {
-            $credentials = json_decode($this->vertexJson, true, flags: JSON_THROW_ON_ERROR);
-        } catch (JsonException) {
-            throw ValidationException::withMessages([
-                'vertexJson' => 'Vertex service account JSON khong hop le.',
-            ]);
-        }
-
-        if (array_is_list($credentials) && isset($credentials[0]) && is_array($credentials[0])) {
-            $credentials = $credentials[0];
-        }
-
-        if (! is_array($credentials)) {
-            throw ValidationException::withMessages([
-                'vertexJson' => 'Vertex service account JSON khong hop le.',
-            ]);
-        }
-
-        $clientEmail = $credentials['client_email'] ?? null;
-        $privateKey = $credentials['private_key'] ?? null;
-        $projectId = $credentials['project_id'] ?? null;
-
-        if (! is_string($clientEmail) || $clientEmail === '' || ! is_string($privateKey) || $privateKey === '') {
-            throw ValidationException::withMessages([
-                'vertexJson' => 'JSON phai co client_email va private_key.',
-            ]);
-        }
-
         return [
-            'project_id' => is_string($projectId) && $projectId !== '' ? $projectId : null,
-            'location' => $this->normalizedVertexLocation(),
-            'client_email' => $clientEmail,
-            'private_key' => str_replace('\\n', "\n", $privateKey),
-            'credentials_json' => $credentials,
+            'function_key' => 'image_generation',
+            ...$this->vertexCredentialPayloadFromJson($this->vertexJson, $this->normalizedVertexLocation()),
             'is_active' => true,
         ];
     }
@@ -217,6 +304,7 @@ class ListUser extends Component
     {
         $source = VertexApiCredential::query()
             ->where('user_id', $this->vertexCopyUserId)
+            ->where('function_key', 'image_generation')
             ->where('is_active', true)
             ->first();
 
@@ -227,6 +315,7 @@ class ListUser extends Component
         }
 
         return [
+            'function_key' => 'image_generation',
             'project_id' => $source->project_id,
             'location' => $source->location ?: $this->normalizedVertexLocation(),
             'client_email' => $source->client_email,
@@ -238,8 +327,58 @@ class ListUser extends Component
 
     private function normalizedVertexLocation(): string
     {
-        $location = trim($this->vertexLocation);
+        return $this->normalizedLocation($this->vertexLocation);
+    }
+
+    private function normalizedLocation(string $location): string
+    {
+        $location = trim($location);
 
         return $location !== '' ? $location : 'global';
+    }
+
+    /**
+     * @return array{project_id: string|null, location: string, client_email: string, private_key: string, credentials_json: array<string, mixed>}
+     */
+    private function vertexCredentialPayloadFromJson(string $json, string $location): array
+    {
+        try {
+            $credentials = json_decode($json, true, flags: JSON_THROW_ON_ERROR);
+        } catch (JsonException) {
+            throw ValidationException::withMessages([
+                'vertexJson' => 'Vertex service account JSON khong hop le.',
+                'marketplaceVertexJson' => 'Vertex service account JSON khong hop le.',
+            ]);
+        }
+
+        if (array_is_list($credentials) && isset($credentials[0]) && is_array($credentials[0])) {
+            $credentials = $credentials[0];
+        }
+
+        if (! is_array($credentials)) {
+            throw ValidationException::withMessages([
+                'vertexJson' => 'Vertex service account JSON khong hop le.',
+                'marketplaceVertexJson' => 'Vertex service account JSON khong hop le.',
+            ]);
+        }
+
+        $clientEmail = $credentials['client_email'] ?? null;
+        $privateKey = $credentials['private_key'] ?? null;
+        $projectId = $credentials['project_id'] ?? null;
+
+        if (! is_string($clientEmail) || $clientEmail === '' || ! is_string($privateKey) || $privateKey === '') {
+            throw ValidationException::withMessages([
+                'vertexJson' => 'JSON phai co client_email va private_key.',
+                'marketplaceVertexJson' => 'JSON phai co client_email va private_key.',
+            ]);
+        }
+
+        return [
+            'project_id' => is_string($projectId) && $projectId !== '' ? $projectId : null,
+            'location' => $location,
+            'client_email' => $clientEmail,
+            'private_key' => str_replace('\\n', "\n", $privateKey),
+            'credentials_json' => $credentials,
+        ];
     }
 }

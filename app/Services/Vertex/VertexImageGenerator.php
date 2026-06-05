@@ -35,6 +35,8 @@ class VertexImageGenerator
         string $prompt,
         string $folder = 'generated',
         bool $removeBackground = false,
+        ?int $lockWaitSeconds = null,
+        bool $priority = false,
     ): string
     {
         $credential = $user->vertexApiCredential()
@@ -80,6 +82,8 @@ class VertexImageGenerator
                         ],
                     );
             },
+            $lockWaitSeconds,
+            $priority,
         );
 
         if ($response->failed()) {
@@ -105,22 +109,125 @@ class VertexImageGenerator
     }
 
     /**
+     * Generate plain text from the dedicated marketplace listing Vertex credential.
+     */
+    public function generateText(User $user, string $prompt): string
+    {
+        $credential = VertexApiCredential::query()
+            ->where('function_key', 'marketplace_listing')
+            ->where('is_active', true)
+            ->first();
+
+        if (! $credential) {
+            throw new RuntimeException('Chua cau hinh Vertex API rieng cho title/listing.');
+        }
+
+        $credentials = $this->credentialsFor($credential);
+        $projectId = $credential->project_id ?: ($credentials['project_id'] ?? null);
+        $location = $credential->location ?: 'global';
+        $model = config('services.vertex.text_model', config('services.vertex.model', 'gemini-2.5-flash-image'));
+
+        if (! $projectId) {
+            throw new RuntimeException('Vertex API thieu project_id.');
+        }
+
+        $response = $this->withCredentialLock(
+            $credential,
+            function () use ($credential, $credentials, $projectId, $location, $model, $prompt): Response {
+                $this->ensureCredentialIsNotCoolingDown($credential);
+
+                return Http::withToken($this->accessToken($credentials))
+                    ->timeout(120)
+                    ->post(
+                        "https://aiplatform.googleapis.com/v1/projects/{$projectId}/locations/{$location}/publishers/google/models/{$model}:generateContent",
+                        [
+                            'contents' => [
+                                [
+                                    'role' => 'user',
+                                    'parts' => [
+                                        ['text' => $prompt],
+                                    ],
+                                ],
+                            ],
+                            'generationConfig' => [
+                                'responseMimeType' => 'application/json',
+                            ],
+                        ],
+                    );
+            },
+        );
+
+        if ($response->failed()) {
+            $this->logExternalApiFailure('Vertex generateContent text failed.', $response->status(), $response->body());
+
+            if ($this->isQuotaExceeded($response)) {
+                $this->cooldownCredential($credential, $response);
+                $seconds = $this->cooldownSeconds($response);
+
+                throw new RuntimeException("Vertex API dang het quota hoac bi gioi han toc do. Key nay se nghi {$seconds}s roi hay thu lai.");
+            }
+
+            throw new RuntimeException('Vertex API loi khi tao listing metadata.');
+        }
+
+        $text = $this->extractText($response->json());
+
+        if ($text === '') {
+            throw new RuntimeException('Vertex API khong tra ve noi dung listing metadata.');
+        }
+
+        return $text;
+    }
+
+    /**
      * Run one Vertex request per credential at a time to avoid burst 429 errors.
      */
-    private function withCredentialLock(VertexApiCredential $credential, Closure $callback): Response
+    private function withCredentialLock(
+        VertexApiCredential $credential,
+        Closure $callback,
+        ?int $lockWaitSeconds = null,
+        bool $priority = false,
+    ): Response
     {
         $lock = Cache::lock(
             $this->credentialLockKey($credential),
             (int) config('services.vertex.lock_seconds', 180),
         );
 
+        if ($priority) {
+            Cache::increment($this->credentialPriorityPendingKey($credential));
+        } else {
+            $this->waitForPriorityRequestsToFinish($credential, $lockWaitSeconds ?? (int) config('services.vertex.lock_wait_seconds', 1));
+        }
+
         try {
             return $lock->block(
-                (int) config('services.vertex.lock_wait_seconds', 1),
+                $lockWaitSeconds ?? (int) config('services.vertex.lock_wait_seconds', 1),
                 $callback,
             );
         } catch (LockTimeoutException) {
             throw new RuntimeException('Hang doi Vertex dang qua lau. Hay doi cac anh dang tao xong roi thu lai.');
+        } finally {
+            if ($priority) {
+                $pending = (int) Cache::decrement($this->credentialPriorityPendingKey($credential));
+
+                if ($pending <= 0) {
+                    Cache::forget($this->credentialPriorityPendingKey($credential));
+                }
+            }
+        }
+    }
+
+    private function waitForPriorityRequestsToFinish(VertexApiCredential $credential, int $waitSeconds): void
+    {
+        $deadline = time() + max(0, $waitSeconds);
+
+        while ((int) Cache::get($this->credentialPriorityPendingKey($credential), 0) > 0) {
+            if (time() >= $deadline) {
+                throw new RuntimeException('Dang co yeu cau custom uu tien dang cho Vertex. Hay doi yeu cau do chay xong roi thu lai.');
+            }
+
+            usleep(250_000);
         }
     }
 
@@ -173,6 +280,11 @@ class VertexImageGenerator
     private function credentialCooldownKey(VertexApiCredential $credential): string
     {
         return "vertex:credential:{$credential->id}:cooldown-until";
+    }
+
+    private function credentialPriorityPendingKey(VertexApiCredential $credential): string
+    {
+        return "vertex:credential:{$credential->id}:priority-pending";
     }
 
     /**
@@ -497,6 +609,26 @@ class VertexImageGenerator
         }
 
         return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $response
+     */
+    private function extractText(array $response): string
+    {
+        $parts = [];
+
+        foreach ($response['candidates'] ?? [] as $candidate) {
+            foreach ($candidate['content']['parts'] ?? [] as $part) {
+                $text = $part['text'] ?? null;
+
+                if (is_string($text) && trim($text) !== '') {
+                    $parts[] = trim($text);
+                }
+            }
+        }
+
+        return trim(implode("\n", $parts));
     }
 
     private function storeGeneratedImage(string $imageBase64, string $folder, bool $removeBackground): string

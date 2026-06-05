@@ -9,6 +9,7 @@ class VertexApiCredential extends Model
 {
     protected $fillable = [
         'user_id',
+        'function_key',
         'project_id',
         'location',
         'client_email',

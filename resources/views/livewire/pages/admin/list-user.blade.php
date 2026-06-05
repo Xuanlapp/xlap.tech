@@ -78,6 +78,51 @@
                 <div x-show="error" x-cloak class="rounded-md border border-red-400/30 bg-red-400/10 px-3 py-2 text-sm text-red-200" x-text="error"></div>
             </div>
 
+            <form wire:submit.prevent="saveMarketplaceVertexCredential" class="mt-8 rounded-lg border border-cyan-400/20 bg-cyan-400/[0.06] p-6">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                        <h2 class="text-lg font-semibold">Vertex API cho title/listing</h2>
+                        <p class="mt-1 text-sm text-white/55">Key nay chi dung de tao Amazon/Etsy title metadata. User khong dung key nay de tao anh.</p>
+                    </div>
+
+                    <span class="inline-flex w-fit rounded-full px-3 py-1 text-xs font-semibold {{ $marketplaceVertexCredential ? 'bg-emerald-400/20 text-emerald-200' : 'bg-amber-400/20 text-amber-200' }}">
+                        {{ $marketplaceVertexCredential ? 'Configured' : 'Not configured' }}
+                    </span>
+                </div>
+
+                @if ($marketplaceVertexCredential)
+                    <p class="mt-3 break-all text-xs text-white/45">
+                        Active credential: {{ $marketplaceVertexCredential->client_email }} | {{ $marketplaceVertexCredential->project_id ?: 'no project_id' }} | {{ $marketplaceVertexCredential->location ?: 'global' }}
+                    </p>
+                @endif
+
+                <div class="mt-4 grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
+                    <div>
+                        <label for="marketplaceVertexLocation" class="text-sm text-white/70">Location</label>
+                        <input id="marketplaceVertexLocation" wire:model="marketplaceVertexLocation" type="text" class="mt-1 w-full rounded-md border-white/10 bg-white text-gray-950" placeholder="global hoac us-central1">
+                        @error('marketplaceVertexLocation') <p class="mt-1 text-sm text-red-300">{{ $message }}</p> @enderror
+                    </div>
+
+                    <div>
+                        <label for="marketplaceVertexJson" class="text-sm text-white/70">Service account JSON rieng cho title/listing</label>
+                        <textarea
+                            id="marketplaceVertexJson"
+                            wire:model="marketplaceVertexJson"
+                            rows="5"
+                            class="mt-1 w-full rounded-md border-white/10 bg-white font-mono text-xs text-gray-950"
+                            placeholder='{"type":"service_account","project_id":"...","private_key":"-----BEGIN PRIVATE KEY-----\n...","client_email":"..."}'
+                        ></textarea>
+                        <p class="mt-1 text-xs text-white/45">Paste JSON moi de thay the key title/listing hien tai. Private key se duoc encrypt.</p>
+                        @error('marketplaceVertexJson') <p class="mt-1 text-sm text-red-300">{{ $message }}</p> @enderror
+                    </div>
+                </div>
+
+                <x-ui.button color="cyan" type="submit" class="mt-4 shadow-lg shadow-cyan-500/20" wire:loading.attr="disabled" wire:target="saveMarketplaceVertexCredential">
+                    <span wire:loading.remove wire:target="saveMarketplaceVertexCredential">Luu Vertex title/listing</span>
+                    <span wire:loading wire:target="saveMarketplaceVertexCredential">Saving...</span>
+                </x-ui.button>
+            </form>
+
             <div class="mt-8 grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
                 <form wire:submit="createUser" class="rounded-lg border border-white/10 bg-white/[0.04] p-6">
                     <h2 class="text-lg font-semibold">Tao user</h2>
@@ -108,8 +153,27 @@
                         </label>
                     </div>
 
+                    <div class="mt-5 rounded-lg border border-white/10 bg-black/10 p-4">
+                        <p class="text-sm font-semibold text-white/80">Marketplace listing</p>
+                        <p class="mt-1 text-xs text-white/45">Moi user chi duoc chon Amazon hoac Etsy. Khi item duoc duyet, he thong se tao listing metadata theo quyen da chon.</p>
+
+                        <div class="mt-3 grid gap-2">
+                            <label class="flex items-center gap-2 rounded-md bg-white/[0.06] px-3 py-2 text-sm">
+                                <input wire:model="can_generate_amazon_listing" type="checkbox" class="rounded border-white/20 text-cyan-500">
+                                <span>Amazon: title, description, 5 bullet points, generic keyword</span>
+                            </label>
+                            <label class="flex items-center gap-2 rounded-md bg-white/[0.06] px-3 py-2 text-sm">
+                                <input wire:model="can_generate_etsy_listing" type="checkbox" class="rounded border-white/20 text-cyan-500">
+                                <span>Etsy: title, description, tags</span>
+                            </label>
+                        </div>
+                        @error('can_generate_amazon_listing') <p class="mt-2 text-sm text-red-300">{{ $message }}</p> @enderror
+                        @error('can_generate_etsy_listing') <p class="mt-2 text-sm text-red-300">{{ $message }}</p> @enderror
+                    </div>
+
                     <div class="mt-5">
                         <p class="text-sm text-white/70">Quyen san pham</p>
+                        <p class="mt-1 text-xs text-white/45">Ten user phai chua slug cua trang duoc chon. Vi du: chon Sticker thi ten can co tu "sticker", chon Ornament thi can co tu "ornament".</p>
                         <div class="mt-3 grid gap-2 sm:grid-cols-2">
                             @foreach ($products as $product)
                                 <label class="flex items-center gap-2 rounded-md bg-white/[0.06] px-3 py-2 text-sm">
@@ -118,6 +182,7 @@
                                 </label>
                             @endforeach
                         </div>
+                        @error('selectedProducts') <p class="mt-1 text-sm text-red-300">{{ $message }}</p> @enderror
                         @error('selectedProducts.*') <p class="mt-1 text-sm text-red-300">{{ $message }}</p> @enderror
                     </div>
 
@@ -196,6 +261,7 @@
                                     <th class="py-3 pr-4 font-medium">User</th>
                                     <th class="px-3 py-3 text-center font-medium">Admin</th>
                                     <th class="px-3 py-3 text-center font-medium">Vertex</th>
+                                    <th class="px-3 py-3 text-center font-medium">Listing</th>
                                     @foreach ($products as $product)
                                         <th class="px-3 py-3 text-center font-medium">{{ $product->name }}</th>
                                     @endforeach
@@ -217,6 +283,24 @@
                                             <span class="inline-flex rounded-full px-3 py-1 text-xs font-medium {{ $user->vertexApiCredential ? 'bg-emerald-400/20 text-emerald-200' : 'bg-white/10 text-white/45' }}">
                                                 {{ $user->vertexApiCredential ? 'Ready' : 'None' }}
                                             </span>
+                                        </td>
+                                        <td class="px-3 py-4 text-center">
+                                            <div class="flex flex-col items-center gap-1">
+                                                <button
+                                                    type="button"
+                                                    wire:click="toggleAmazonListing({{ $user->id }})"
+                                                    class="inline-flex min-w-20 justify-center rounded-full px-2 py-1 text-xs font-medium transition {{ $user->can_generate_amazon_listing ? 'bg-orange-400/20 text-orange-200' : 'bg-white/10 text-white/45 hover:bg-white/15' }}"
+                                                >
+                                                    Amazon
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    wire:click="toggleEtsyListing({{ $user->id }})"
+                                                    class="inline-flex min-w-20 justify-center rounded-full px-2 py-1 text-xs font-medium transition {{ $user->can_generate_etsy_listing ? 'bg-purple-400/20 text-purple-200' : 'bg-white/10 text-white/45 hover:bg-white/15' }}"
+                                                >
+                                                    Etsy
+                                                </button>
+                                            </div>
                                         </td>
                                         @foreach ($products as $product)
                                             @php

@@ -3,7 +3,6 @@
 namespace App\Livewire\Pages\Sticker;
 
 use App\Services\Sticker\StickerService;
-use App\Services\Sticker\PsdMockupTemplateService;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Reactive;
@@ -63,14 +62,13 @@ class StickerStatusPanel extends Component
     #[On('sticker-counts-updated')]
     public function refreshAssets(): void
     {
-        $this->statusCounts = app(StickerService::class)->statusCountsForUser(auth()->user(), $this->search);
+        //
     }
 
     #[On('psd-mockup-template-updated')]
     public function refreshPsdTemplate(): void
     {
-        $this->activePsdTemplateName = app(PsdMockupTemplateService::class)
-            ->activeStickerTemplateForUser(auth()->user())?->name;
+        //
     }
 
     public function placeholder(): View
@@ -80,8 +78,6 @@ class StickerStatusPanel extends Component
 
     public function render(): View
     {
-        $this->statusCounts = app(StickerService::class)->statusCountsForUser(auth()->user(), $this->search);
-
         return view('livewire.pages.sticker.sticker-status-panel', [
             'assets' => app(StickerService::class)->paginatedAssetsForUser(
                 auth()->user(),

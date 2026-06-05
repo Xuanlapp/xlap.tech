@@ -239,6 +239,67 @@ class ProductDesignAssetRepository
     }
 
     /**
+     * Update generated marketplace listing metadata for one product design asset.
+     *
+     * @param  array<string, string|null>  $fields
+     */
+    public function updateListingMetadata(ProductDesignAsset $asset, array $fields): ProductDesignAsset
+    {
+        $allowedFields = [
+            'title',
+            'description',
+            'bullet_point_1',
+            'bullet_point_2',
+            'bullet_point_3',
+            'bullet_point_4',
+            'bullet_point_5',
+            'generic_keyword',
+            'tags',
+        ];
+
+        $asset->update(collect($fields)->only($allowedFields)->all());
+
+        return $asset->refresh();
+    }
+
+    public function markListingProcessing(ProductDesignAsset $asset, string $marketplace): ProductDesignAsset
+    {
+        $asset->update([
+            'marketplace_listing_status' => 'processing',
+            'marketplace_listing_marketplace' => $marketplace,
+            'marketplace_listing_attempts' => ((int) $asset->marketplace_listing_attempts) + 1,
+            'marketplace_listing_started_at' => now(),
+            'marketplace_listing_completed_at' => null,
+            'marketplace_listing_error' => null,
+        ]);
+
+        return $asset->refresh();
+    }
+
+    public function markListingCompleted(ProductDesignAsset $asset, string $marketplace): ProductDesignAsset
+    {
+        $asset->update([
+            'marketplace_listing_status' => 'completed',
+            'marketplace_listing_marketplace' => $marketplace,
+            'marketplace_listing_completed_at' => now(),
+            'marketplace_listing_error' => null,
+        ]);
+
+        return $asset->refresh();
+    }
+
+    public function markListingFailed(ProductDesignAsset $asset, string $message): ProductDesignAsset
+    {
+        $asset->update([
+            'marketplace_listing_status' => 'failed',
+            'marketplace_listing_completed_at' => now(),
+            'marketplace_listing_error' => mb_substr($message, 0, 2000),
+        ]);
+
+        return $asset->refresh();
+    }
+
+    /**
      * Replace custom PSD mockups from mockup1 onward.
      *
      * @param array<int, string> $mockups

@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'avatar_path', 'status', 'is_admin'])]
+#[Fillable(['name', 'email', 'password', 'avatar_path', 'status', 'is_admin', 'can_generate_amazon_listing', 'can_generate_etsy_listing'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -32,6 +32,8 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_admin' => 'boolean',
+            'can_generate_amazon_listing' => 'boolean',
+            'can_generate_etsy_listing' => 'boolean',
         ];
     }
 
@@ -59,7 +61,7 @@ class User extends Authenticatable
      */
     public function vertexApiCredential(): HasOne
     {
-        return $this->hasOne(VertexApiCredential::class);
+        return $this->hasOne(VertexApiCredential::class)->where('function_key', 'image_generation');
     }
 
     /**

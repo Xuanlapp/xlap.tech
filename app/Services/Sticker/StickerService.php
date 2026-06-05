@@ -20,6 +20,8 @@ class StickerService
 
     private const MAX_IMAGE_LINK_LENGTH = 1000;
 
+    private const MAX_CUSTOM_PROMPT_LENGTH = 4000;
+
     private ?Product $stickerProduct = null;
 
     public function __construct(
@@ -177,6 +179,29 @@ class StickerService
     }
 
     /**
+     * Generate a new Sticker master image from the reviewed master image and a custom prompt.
+     */
+    public function customizeRedesign(User $user, int $assetId, string $imageLink, string $prompt): ProductDesignAsset
+    {
+        $asset = $this->assetForUser($user, $assetId);
+        $this->ensureNotApproved($asset);
+        $this->ensureMasterEditable($asset);
+
+        return $this->assets->updateRedesign(
+            $asset,
+            $this->generator->generate(
+                user: $user,
+                imageUri: $this->normalizeImageLink($imageLink),
+                prompt: $this->normalizeCustomPrompt($prompt),
+                folder: 'generated/sticker/redesign',
+                removeBackground: (bool) config('services.background_removal.enabled', false),
+                lockWaitSeconds: (int) config('services.vertex.priority_lock_wait_seconds', 600),
+                priority: true,
+            ),
+        );
+    }
+
+    /**
      * Remove a generated master image from the candidate list after it becomes a new item.
      */
     public function removeRedesignCandidate(User $user, int $assetId, string $redesign): ProductDesignAsset
@@ -315,6 +340,21 @@ class StickerService
         }
 
         return $imageLink;
+    }
+
+    private function normalizeCustomPrompt(string $prompt): string
+    {
+        $prompt = trim($prompt);
+
+        if ($prompt === '') {
+            throw new InvalidArgumentException('Noi dung custom khong duoc de trong.');
+        }
+
+        if (mb_strlen($prompt) > self::MAX_CUSTOM_PROMPT_LENGTH) {
+            throw new InvalidArgumentException('Noi dung custom khong duoc qua '.self::MAX_CUSTOM_PROMPT_LENGTH.' ky tu.');
+        }
+
+        return $prompt;
     }
 
     private function promptContent(User $user, int $promptNumber): string

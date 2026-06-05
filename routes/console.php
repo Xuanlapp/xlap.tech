@@ -11,3 +11,7 @@ Artisan::command('inspire', function () {
 Schedule::command('offorest:upload-approved-images-to-drive')
     ->dailyAt('22:00')
     ->withoutOverlapping();
+
+Schedule::command('offorest:generate-listing-metadata')
+    ->everyFiveMinutes()
+    ->withoutOverlapping();

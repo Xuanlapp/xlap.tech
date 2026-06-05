@@ -43,8 +43,10 @@ return [
 
     'vertex' => [
         'model' => env('VERTEX_MODEL', 'gemini-2.5-flash-image'),
+        'text_model' => env('VERTEX_TEXT_MODEL', 'gemini-2.5-flash'),
         'lock_seconds' => env('VERTEX_LOCK_SECONDS', 600),
         'lock_wait_seconds' => env('VERTEX_LOCK_WAIT_SECONDS', 600),
+        'priority_lock_wait_seconds' => env('VERTEX_PRIORITY_LOCK_WAIT_SECONDS', 600),
         'cooldown_seconds' => env('VERTEX_COOLDOWN_SECONDS', 90),
     ],
 
@@ -79,6 +81,12 @@ return [
         'client_secret' => env('GOOGLE_DRIVE_CLIENT_SECRET'),
         'redirect_uri' => env('GOOGLE_DRIVE_REDIRECT_URI'),
         'scopes' => env('GOOGLE_DRIVE_SCOPES', 'https://www.googleapis.com/auth/drive.file'),
+    ],
+
+    'marketplace_listing' => [
+        'batch_size' => env('MARKETPLACE_LISTING_BATCH_SIZE', 0),
+        'delay_seconds' => env('MARKETPLACE_LISTING_DELAY_SECONDS', 30),
+        'lock_seconds' => env('MARKETPLACE_LISTING_LOCK_SECONDS', 21600),
     ],
 
 ];

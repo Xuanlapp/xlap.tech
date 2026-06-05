@@ -4,8 +4,11 @@ namespace App\Livewire\Modals\Image;
 
 use App\Livewire\Pages\Sticker\ListSticker;
 use App\Livewire\Pages\Sticker\StickerStatusPanel;
+use App\Services\Image\ImageLinkPreviewService;
+use App\Services\Logging\ActivityLogService;
 use App\Services\Sticker\StickerService;
 use Illuminate\Contracts\View\View;
+use InvalidArgumentException;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use RuntimeException;
@@ -33,6 +36,8 @@ class ReviewImage extends Component
 
     public ?string $keyword = null;
 
+    public string $customPrompt = '';
+
     #[On('review-image')]
     public function open(
         string $src,
@@ -56,6 +61,7 @@ class ReviewImage extends Component
         $this->productSlug = $productSlug;
         $this->assetId = $assetId;
         $this->keyword = $keyword;
+        $this->customPrompt = '';
         $this->setCurrentFromGallery();
         $this->isOpen = true;
     }
@@ -117,9 +123,50 @@ class ReviewImage extends Component
         $this->close();
     }
 
+    public function customizeStickerRedesign(): void
+    {
+        if ($this->action !== 'sticker-redesign' || ! $this->assetId || ! $this->original) {
+            return;
+        }
+
+        try {
+            $asset = app(StickerService::class)->customizeRedesign(
+                auth()->user(),
+                $this->assetId,
+                $this->original,
+                $this->customPrompt,
+            );
+            app(ActivityLogService::class)->record(
+                event: 'sticker.master_customized',
+                description: 'User customized Sticker master image from preview.',
+                subject: $asset,
+                properties: ['item_number' => $asset->item_number, 'redesign' => $asset->redesign],
+            );
+        } catch (InvalidArgumentException|RuntimeException $exception) {
+            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
+
+            return;
+        }
+
+        $previewUrl = app(ImageLinkPreviewService::class)->previewUrl($asset->redesign);
+        $nextTitleNumber = count($this->gallery) + 1;
+        $this->gallery[] = [
+            'src' => $previewUrl,
+            'original' => $asset->redesign,
+            'title' => 'Create Master '.$nextTitleNumber,
+        ];
+        $this->currentIndex = count($this->gallery) - 1;
+        $this->customPrompt = '';
+        $this->setCurrentFromGallery();
+
+        $this->dispatch('sticker-product-design-workflow-updated')->to(ListSticker::class);
+        $this->dispatch('sticker-product-design-workflow-updated')->to(StickerStatusPanel::class);
+        $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da custom anh so 2.');
+    }
+
     public function close(): void
     {
-        $this->reset(['isOpen', 'src', 'original', 'gallery', 'currentIndex', 'action', 'productSlug', 'assetId', 'keyword']);
+        $this->reset(['isOpen', 'src', 'original', 'gallery', 'currentIndex', 'action', 'productSlug', 'assetId', 'keyword', 'customPrompt']);
         $this->title = 'Review image';
     }
 
