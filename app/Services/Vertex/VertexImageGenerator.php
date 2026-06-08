@@ -8,6 +8,7 @@ use App\Services\Image\BackgroundRemovalService;
 use Closure;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
@@ -19,7 +20,10 @@ use RuntimeException;
 class VertexImageGenerator
 {
     private const MAX_INPUT_IMAGE_BYTES = 20_971_520;
+    private const MAX_OUTPUT_IMAGE_BYTES = 41_943_040;
+    private const MAX_PRINT_METADATA_IMAGE_BYTES = 12_582_912;
     private const OUTPUT_PPI = 300;
+    private const JPEG_QUALITY = 88;
     private const PNG_SIGNATURE = "\x89PNG\r\n\x1a\n";
 
     public function __construct(
@@ -55,36 +59,50 @@ class VertexImageGenerator
         if (! $projectId) {
             throw new RuntimeException('Vertex API thiếu project_id.');
         }
+        try {
+            $response = $this->withCredentialLock(
+                $credential,
+                function () use ($credential, $credentials, $projectId, $location, $model, $prompt, $imageUri): Response {
+                    $this->ensureCredentialIsNotCoolingDown($credential);
+                    $imagePart = $this->sourceImagePart($imageUri);
 
-        $response = $this->withCredentialLock(
-            $credential,
-            function () use ($credential, $credentials, $projectId, $location, $model, $prompt, $imageUri): Response {
-                $this->ensureCredentialIsNotCoolingDown($credential);
-                $imagePart = $this->sourceImagePart($imageUri);
-
-                return Http::withToken($this->accessToken($credentials))
-                    ->timeout(120)
-                    ->post(
-                        "https://aiplatform.googleapis.com/v1/projects/{$projectId}/locations/{$location}/publishers/google/models/{$model}:generateContent",
-                        [
-                            'contents' => [
-                                [
-                                    'role' => 'user',
-                                    'parts' => [
-                                        ['text' => $prompt],
-                                        $imagePart,
-                                    ],
+                    $endpoint = $this->generateContentEndpoint($projectId, $location, $model);
+                    $payload = [
+                        'contents' => [
+                            [
+                                'role' => 'user',
+                                'parts' => [
+                                    ['text' => $prompt],
+                                    $imagePart,
                                 ],
                             ],
-                            'generationConfig' => [
-                                'responseModalities' => ['TEXT', 'IMAGE'],
-                            ],
                         ],
-                    );
-            },
-            $lockWaitSeconds,
-            $priority,
-        );
+                        'generationConfig' => [
+                            'responseModalities' => ['TEXT', 'IMAGE'],
+                        ],
+                    ];
+                    $this->dumpVertexPayloadIfEnabled($endpoint, $payload);
+
+                    return Http::withToken($this->accessToken($credentials))
+                        ->withHeaders([
+                            'Expect' => '',
+                            'User-Agent' => 'google-genai-php-offorest/1.0',
+                        ])
+                        ->withOptions($this->vertexHttpOptions())
+                        ->timeout(120)
+                        ->post($endpoint, $payload);
+                },
+                $lockWaitSeconds,
+                $priority,
+            );
+
+        } catch (ConnectionException $exception) {
+            Log::warning('Vertex generateContent connection failed.', [
+                'message' => $this->redactedBody($exception->getMessage()),
+            ]);
+
+            throw new RuntimeException('Khong ket noi duoc Vertex API. Mang/proxy hoac Google dang ngat ket noi, hay thu lai sau it phut.');
+        }
 
         if ($response->failed()) {
             $this->logExternalApiFailure('Vertex generateContent failed.', $response->status(), $response->body());
@@ -96,7 +114,10 @@ class VertexImageGenerator
                 throw new RuntimeException("Vertex API dang het quota hoac bi gioi han toc do. Key nay se nghi {$seconds}s roi hay thu lai.");
             }
 
-            throw new RuntimeException('Vertex API loi. Hay kiem tra quota, credential hoac cau hinh model.');
+            throw new RuntimeException($this->externalApiErrorMessage(
+                'Vertex API loi khi tao anh',
+                $response,
+            ));
         }
 
         $imageBase64 = $this->extractImageData($response->json());
@@ -131,31 +152,46 @@ class VertexImageGenerator
             throw new RuntimeException('Vertex API thieu project_id.');
         }
 
-        $response = $this->withCredentialLock(
-            $credential,
-            function () use ($credential, $credentials, $projectId, $location, $model, $prompt): Response {
-                $this->ensureCredentialIsNotCoolingDown($credential);
+        try {
+            $response = $this->withCredentialLock(
+                $credential,
+                function () use ($credential, $credentials, $projectId, $location, $model, $prompt): Response {
+                    $this->ensureCredentialIsNotCoolingDown($credential);
 
-                return Http::withToken($this->accessToken($credentials))
-                    ->timeout(120)
-                    ->post(
-                        "https://aiplatform.googleapis.com/v1/projects/{$projectId}/locations/{$location}/publishers/google/models/{$model}:generateContent",
-                        [
-                            'contents' => [
-                                [
-                                    'role' => 'user',
-                                    'parts' => [
-                                        ['text' => $prompt],
-                                    ],
+                    $endpoint = $this->generateContentEndpoint($projectId, $location, $model);
+                    $payload = [
+                        'contents' => [
+                            [
+                                'role' => 'user',
+                                'parts' => [
+                                    ['text' => $prompt],
                                 ],
                             ],
-                            'generationConfig' => [
-                                'responseMimeType' => 'application/json',
-                            ],
                         ],
-                    );
-            },
-        );
+                        'generationConfig' => [
+                            'responseMimeType' => 'application/json',
+                        ],
+                    ];
+
+                    $this->dumpVertexPayloadIfEnabled($endpoint, $payload);
+
+                    return Http::withToken($this->accessToken($credentials))
+                        ->withHeaders([
+                            'Expect' => '',
+                            'User-Agent' => 'google-genai-php-offorest/1.0',
+                        ])
+                        ->withOptions($this->vertexHttpOptions())
+                        ->timeout(120)
+                        ->post($endpoint, $payload);
+                },
+            );
+        } catch (ConnectionException $exception) {
+            Log::warning('Vertex generateContent text connection failed.', [
+                'message' => $this->redactedBody($exception->getMessage()),
+            ]);
+
+            throw new RuntimeException('Khong ket noi duoc Vertex API. Mang/proxy hoac Google dang ngat ket noi, hay thu lai sau it phut.');
+        }
 
         if ($response->failed()) {
             $this->logExternalApiFailure('Vertex generateContent text failed.', $response->status(), $response->body());
@@ -167,7 +203,10 @@ class VertexImageGenerator
                 throw new RuntimeException("Vertex API dang het quota hoac bi gioi han toc do. Key nay se nghi {$seconds}s roi hay thu lai.");
             }
 
-            throw new RuntimeException('Vertex API loi khi tao listing metadata.');
+            throw new RuntimeException($this->externalApiErrorMessage(
+                'Vertex API loi khi tao listing metadata',
+                $response,
+            ));
         }
 
         $text = $this->extractText($response->json());
@@ -288,6 +327,115 @@ class VertexImageGenerator
     }
 
     /**
+     * Shared HTTP options for Google Vertex calls.
+     *
+     * @return array<string, mixed>
+     */
+    private function vertexHttpOptions(): array
+    {
+        $options = [
+            'expect' => false,
+            'curl' => [
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            ],
+        ];
+
+        $proxy = config('services.vertex.http_proxy');
+
+        if (is_string($proxy) && trim($proxy) !== '') {
+            $options['proxy'] = trim($proxy);
+        }
+
+        return $options;
+    }
+
+    private function generateContentEndpoint(string $projectId, string $location, string $model): string
+    {
+        $host = strtolower($location) === 'global'
+            ? 'aiplatform.googleapis.com'
+            : strtolower($location).'-aiplatform.googleapis.com';
+
+        return "https://{$host}/v1/projects/{$projectId}/locations/{$location}/publishers/google/models/{$model}:generateContent";
+    }
+
+    /**
+     * Dump a safe, shortened Vertex payload for local debugging.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function dumpVertexPayloadIfEnabled(string $endpoint, array $payload): void
+    {
+        if (! (bool) config('services.vertex.debug_payload', false)) {
+            return;
+        }
+
+        dd([
+            'endpoint' => $endpoint,
+            'proxy_enabled' => filled(config('services.vertex.http_proxy')),
+            'call_path' => $this->debugCallPath(),
+            'payload' => $this->redactedPayloadForDebug($payload),
+        ]);
+    }
+
+    /**
+     * Show the app-level image generation path without dumping vendor internals.
+     *
+     * @return array<int, string>
+     */
+    private function debugCallPath(): array
+    {
+        return collect(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS))
+            ->map(function (array $frame): ?string {
+                $class = $frame['class'] ?? null;
+                $function = $frame['function'] ?? null;
+
+                if (! is_string($function) || $function === '') {
+                    return null;
+                }
+
+                if (! is_string($class) || ! str_starts_with($class, 'App\\')) {
+                    return null;
+                }
+
+                return $class.'::'.$function;
+            })
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function redactedPayloadForDebug(array $payload): array
+    {
+        $redacted = $payload;
+
+        foreach ($redacted['contents'] ?? [] as $contentIndex => $content) {
+            foreach ($content['parts'] ?? [] as $partIndex => $part) {
+                if (isset($part['text']) && is_string($part['text'])) {
+                    $redacted['contents'][$contentIndex]['parts'][$partIndex]['text_preview'] = mb_substr($part['text'], 0, 1000);
+                    $redacted['contents'][$contentIndex]['parts'][$partIndex]['text_length'] = mb_strlen($part['text']);
+                    unset($redacted['contents'][$contentIndex]['parts'][$partIndex]['text']);
+                }
+
+                $inlineData = $part['inlineData'] ?? null;
+
+                if (is_array($inlineData) && isset($inlineData['data']) && is_string($inlineData['data'])) {
+                    $redacted['contents'][$contentIndex]['parts'][$partIndex]['inlineData']['data_preview'] = substr($inlineData['data'], 0, 120).'...';
+                    $redacted['contents'][$contentIndex]['parts'][$partIndex]['inlineData']['base64_length'] = strlen($inlineData['data']);
+                    $redacted['contents'][$contentIndex]['parts'][$partIndex]['inlineData']['estimated_bytes'] = (int) floor(strlen($inlineData['data']) * 3 / 4);
+                    unset($redacted['contents'][$contentIndex]['parts'][$partIndex]['inlineData']['data']);
+                }
+            }
+        }
+
+        return $redacted;
+    }
+
+    /**
      * Build an inline image payload so Vertex does not need to crawl the source URL.
      *
      * @return array{inlineData: array{mimeType: string, data: string}}
@@ -367,12 +515,109 @@ class VertexImageGenerator
      */
     private function inlineImagePart(string $bytes, string $mimeType): array
     {
+        [$bytes, $mimeType] = $this->optimizedInputImage($bytes, $mimeType);
+
         return [
             'inlineData' => [
                 'mimeType' => $mimeType,
                 'data' => base64_encode($bytes),
             ],
         ];
+    }
+
+    /**
+     * Keep Vertex request bodies small enough for Google/proxy upload paths.
+     *
+     * @return array{0: string, 1: string}
+     */
+    private function optimizedInputImage(string $bytes, string $mimeType): array
+    {
+        if (! $this->shouldOptimizeInputImage($bytes)) {
+            return [$bytes, $mimeType];
+        }
+
+        $image = @imagecreatefromstring($bytes);
+
+        if ($image === false) {
+            return [$bytes, $mimeType];
+        }
+
+        $width = imagesx($image);
+        $height = imagesy($image);
+        $maxDimension = max(1, (int) config('services.vertex.max_input_dimension', 1400));
+        $scale = min(1, $maxDimension / max($width, $height));
+        $targetWidth = max(1, (int) floor($width * $scale));
+        $targetHeight = max(1, (int) floor($height * $scale));
+
+        if ($targetWidth === $width && $targetHeight === $height && strlen($bytes) <= $this->maxInlineImageBytes()) {
+            imagedestroy($image);
+
+            return [$bytes, $mimeType];
+        }
+
+        $resized = imagecreatetruecolor($targetWidth, $targetHeight);
+
+        if ($this->inputMayHaveAlpha($mimeType)) {
+            imagealphablending($resized, false);
+            imagesavealpha($resized, true);
+            imagefill($resized, 0, 0, imagecolorallocatealpha($resized, 0, 0, 0, 127));
+            $optimizedMimeType = 'image/png';
+        } else {
+            imagefill($resized, 0, 0, imagecolorallocate($resized, 255, 255, 255));
+            $optimizedMimeType = 'image/jpeg';
+        }
+
+        imagecopyresampled($resized, $image, 0, 0, 0, 0, $targetWidth, $targetHeight, $width, $height);
+        imagedestroy($image);
+
+        ob_start();
+        $encoded = $optimizedMimeType === 'image/png'
+            ? imagepng($resized, null, 6)
+            : imagejpeg($resized, null, self::JPEG_QUALITY);
+        $optimizedBytes = ob_get_clean();
+        imagedestroy($resized);
+
+        if (! $encoded || ! is_string($optimizedBytes) || $optimizedBytes === '') {
+            return [$bytes, $mimeType];
+        }
+
+        return [$optimizedBytes, $optimizedMimeType];
+    }
+
+    /**
+     * Determine whether the input image should be resized or re-encoded before sending to Vertex.
+     */
+    private function shouldOptimizeInputImage(string $bytes): bool
+    {
+        if (strlen($bytes) > $this->maxInlineImageBytes()) {
+            return true;
+        }
+
+        $size = @getimagesizefromstring($bytes);
+
+        if (! is_array($size)) {
+            return false;
+        }
+
+        $maxDimension = max(1, (int) config('services.vertex.max_input_dimension', 1400));
+
+        return max((int) $size[0], (int) $size[1]) > $maxDimension;
+    }
+
+    /**
+     * Maximum raw image bytes to inline into the Vertex request payload.
+     */
+    private function maxInlineImageBytes(): int
+    {
+        return max(1, (int) config('services.vertex.max_inline_image_bytes', 4_194_304));
+    }
+
+    /**
+     * Determine whether the source format may need alpha preservation when resizing.
+     */
+    private function inputMayHaveAlpha(string $mimeType): bool
+    {
+        return in_array(strtolower($mimeType), ['image/png', 'image/webp', 'image/gif'], true);
     }
 
     private function assertInputImageSize(string $bytes): void
@@ -423,7 +668,9 @@ class VertexImageGenerator
 
     private function googleDriveThumbnailUrl(string $fileId): string
     {
-        return 'https://drive.google.com/thumbnail?id='.rawurlencode($fileId).'&sz=w2000';
+        $size = max(400, (int) config('services.vertex.google_drive_thumbnail_size', 1200));
+
+        return 'https://drive.google.com/thumbnail?id='.rawurlencode($fileId).'&sz=w'.$size;
     }
 
     private function dropboxRawUrl(string $url): string
@@ -552,6 +799,7 @@ class VertexImageGenerator
         }
 
         $tokenResponse = Http::asForm()
+            ->withOptions($this->vertexHttpOptions())
             ->timeout(30)
             ->post('https://oauth2.googleapis.com/token', [
                 'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
@@ -634,6 +882,11 @@ class VertexImageGenerator
     private function storeGeneratedImage(string $imageBase64, string $folder, bool $removeBackground): string
     {
         $path = trim($folder, '/').'/'.uniqid('vertex_', true).'.png';
+        $estimatedBytes = (int) floor(strlen($imageBase64) * 3 / 4);
+
+        if ($estimatedBytes > self::MAX_OUTPUT_IMAGE_BYTES) {
+            throw new RuntimeException('Anh Vertex tra ve qua lon de xu ly tren server. Hay thu prompt don gian hon hoac dung anh input nho hon.');
+        }
 
         $imageBytes = base64_decode($imageBase64, true);
 
@@ -643,6 +896,10 @@ class VertexImageGenerator
 
         if ($removeBackground) {
             $imageBytes = $this->backgroundRemoval()->remove($imageBytes);
+        }
+
+        if (strlen($imageBytes) > self::MAX_OUTPUT_IMAGE_BYTES) {
+            throw new RuntimeException('Anh Vertex tra ve qua lon de xu ly tren server. Hay thu prompt don gian hon hoac dung anh input nho hon.');
         }
 
         Storage::disk('public')->put($path, $this->withPrintResolution($imageBytes, self::OUTPUT_PPI));
@@ -660,6 +917,10 @@ class VertexImageGenerator
      */
     private function withPrintResolution(string $imageBytes, int $ppi): string
     {
+        if (strlen($imageBytes) > self::MAX_PRINT_METADATA_IMAGE_BYTES) {
+            return $imageBytes;
+        }
+
         if (! str_starts_with($imageBytes, self::PNG_SIGNATURE)) {
             $imageBytes = $this->encodePng($imageBytes);
         }
@@ -780,6 +1041,30 @@ class VertexImageGenerator
             'status' => $status,
             'body_preview' => mb_substr($this->redactedBody($body), 0, 1000),
         ]);
+    }
+
+    private function externalApiErrorMessage(string $prefix, Response $response): string
+    {
+        $message = $this->googleErrorMessage($response) ?? 'Hay kiem tra quota, credential hoac cau hinh model.';
+
+        return "{$prefix}. HTTP {$response->status()}: {$message}";
+    }
+
+    private function googleErrorMessage(Response $response): ?string
+    {
+        $message = $response->json('error.message');
+
+        if (is_string($message) && trim($message) !== '') {
+            return mb_substr(trim($message), 0, 500);
+        }
+
+        $body = trim($this->redactedBody($response->body()));
+
+        if ($response->status() === 417 || str_contains($body, 'automated queries')) {
+            return 'Google dang tu choi request tu may chu/mang hien tai. Hay thu lai sau it phut hoac doi network/IP/proxy.';
+        }
+
+        return $body !== '' ? mb_substr($body, 0, 500) : null;
     }
 
     private function redactedBody(string $body): string

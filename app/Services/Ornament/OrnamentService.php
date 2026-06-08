@@ -11,6 +11,7 @@ use App\Repositories\Prompt\PromptRepository;
 use App\Services\Vertex\VertexImageGenerator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 use RuntimeException;
 
@@ -255,6 +256,10 @@ class OrnamentService
 
         if (mb_strlen($keyword) > self::MAX_KEYWORD_LENGTH) {
             throw new InvalidArgumentException('Keyword khong duoc qua '.self::MAX_KEYWORD_LENGTH.' ky tu.');
+        }
+
+        if (! Str::contains(Str::lower($keyword), Str::lower($this->product()->slug))) {
+            throw new InvalidArgumentException("Keyword phai chua tu '{$this->product()->slug}' cho trang {$this->product()->name}.");
         }
 
         return $keyword;

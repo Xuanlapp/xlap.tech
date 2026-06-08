@@ -48,6 +48,11 @@ return [
         'lock_wait_seconds' => env('VERTEX_LOCK_WAIT_SECONDS', 600),
         'priority_lock_wait_seconds' => env('VERTEX_PRIORITY_LOCK_WAIT_SECONDS', 600),
         'cooldown_seconds' => env('VERTEX_COOLDOWN_SECONDS', 90),
+        'http_proxy' => env('VERTEX_HTTP_PROXY'),
+        'max_input_dimension' => env('VERTEX_MAX_INPUT_DIMENSION', 1400),
+        'max_inline_image_bytes' => env('VERTEX_MAX_INLINE_IMAGE_BYTES', 4_194_304),
+        'google_drive_thumbnail_size' => env('VERTEX_GOOGLE_DRIVE_THUMBNAIL_SIZE', 1200),
+        'debug_payload' => env('VERTEX_DEBUG_PAYLOAD', false),
     ],
 
     'background_removal' => [

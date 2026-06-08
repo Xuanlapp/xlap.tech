@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\GoogleDriveOAuthController;
 use App\Http\Controllers\ImagePreviewController;
 use App\Livewire\Pages\Admin\ActivityLogs;
 use App\Livewire\Pages\Admin\ListUser;
+use App\Livewire\Pages\Drive\DriveUploads;
 use App\Livewire\Pages\Marketplace\ListingMetadataStatus;
 use App\Support\ProductRegistry;
 use Illuminate\Support\Facades\Route;
@@ -54,6 +55,9 @@ Route::middleware(['auth', 'verified'])->prefix('offorest')->group(function (): 
 
     Route::get('listing-metadata', ListingMetadataStatus::class)
         ->name('offorest.listing-metadata');
+
+    Route::get('drive-uploads', DriveUploads::class)
+        ->name('offorest.drive-uploads');
 
     Route::get('admin/google-drive/connect', [GoogleDriveOAuthController::class, 'connect'])
         ->middleware('admin')

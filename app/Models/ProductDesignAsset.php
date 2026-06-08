@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ProductDesignAsset extends Model
 {
@@ -99,5 +100,10 @@ class ProductDesignAsset extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function driveUpload(): HasOne
+    {
+        return $this->hasOne(ProductDriveUpload::class);
     }
 }

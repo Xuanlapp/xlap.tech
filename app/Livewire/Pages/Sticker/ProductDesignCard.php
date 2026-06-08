@@ -9,9 +9,11 @@ use App\Services\Logging\ActivityLogService;
 use App\Services\Sticker\PsdMockupTemplateService;
 use App\Services\Sticker\StickerService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use RuntimeException;
+use Throwable;
 
 class ProductDesignCard extends Component
 {
@@ -49,6 +51,13 @@ class ProductDesignCard extends Component
             $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da tao anh master.');
         } catch (RuntimeException $exception) {
             $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
+        } catch (Throwable $exception) {
+            Log::error('Sticker master generation failed unexpectedly.', [
+                'asset_id' => $this->assetId,
+                'message' => $exception->getMessage(),
+            ]);
+
+            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: 'Loi he thong khi tao anh master. Hay xem log de biet chi tiet.');
         } finally {
             $this->dispatch('sticker-generation-finished');
         }
@@ -68,6 +77,13 @@ class ProductDesignCard extends Component
             $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da render PSD mockup.');
         } catch (RuntimeException $exception) {
             $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
+        } catch (Throwable $exception) {
+            Log::error('Sticker PSD mockup generation failed unexpectedly.', [
+                'asset_id' => $this->assetId,
+                'message' => $exception->getMessage(),
+            ]);
+
+            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: 'Loi he thong khi render PSD mockup. Hay xem log de biet chi tiet.');
         } finally {
             $this->dispatch('sticker-generation-finished');
         }

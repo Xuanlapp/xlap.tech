@@ -184,14 +184,14 @@ class GoogleDriveOAuthService
 
     private function redirectUri(): string
     {
-        if (! app()->runningInConsole()) {
-            return request()->getSchemeAndHttpHost().route('offorest.admin.google-drive.callback', [], false);
-        }
-
         $redirectUri = config('services.google_drive.redirect_uri');
 
         if (is_string($redirectUri) && filter_var(trim($redirectUri), FILTER_VALIDATE_URL)) {
             return trim($redirectUri);
+        }
+
+        if (! app()->runningInConsole()) {
+            return request()->getSchemeAndHttpHost().route('offorest.admin.google-drive.callback', [], false);
         }
 
         return route('offorest.admin.google-drive.callback');

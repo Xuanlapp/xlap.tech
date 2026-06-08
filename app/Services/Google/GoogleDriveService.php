@@ -15,13 +15,13 @@ class GoogleDriveService
     /**
      * Upload one local file to the configured Google Drive folder.
      */
-    public function uploadLocalFile(string $absolutePath, string $filename, ?string $mimeType = null): string
+    public function uploadLocalFile(string $absolutePath, string $filename, ?string $mimeType = null, ?string $folderId = null): string
     {
         if (! File::exists($absolutePath)) {
             throw new RuntimeException('Khong tim thay file local de upload Drive.');
         }
 
-        $folderId = config('services.google_drive.folder_id');
+        $folderId ??= config('services.google_drive.folder_id');
 
         if (! is_string($folderId) || trim($folderId) === '') {
             throw new RuntimeException('Chua cau hinh GOOGLE_DRIVE_FOLDER_ID.');
@@ -67,6 +67,36 @@ class GoogleDriveService
 
         return $response->json('webViewLink')
             ?: 'https://drive.google.com/file/d/'.$fileId.'/view';
+    }
+
+    /**
+     * Create or reuse nested Google Drive folders under the configured root.
+     *
+     * @param  array<int, string>  $folderNames
+     * @return array{id: string, link: string}
+     */
+    public function findOrCreateFolderPath(array $folderNames): array
+    {
+        $parentId = config('services.google_drive.folder_id');
+
+        if (! is_string($parentId) || trim($parentId) === '') {
+            throw new RuntimeException('Chua cau hinh GOOGLE_DRIVE_FOLDER_ID.');
+        }
+
+        foreach ($folderNames as $folderName) {
+            $folderName = trim($folderName);
+
+            if ($folderName === '') {
+                continue;
+            }
+
+            $parentId = $this->findOrCreateFolder($folderName, $parentId);
+        }
+
+        return [
+            'id' => $parentId,
+            'link' => 'https://drive.google.com/drive/folders/'.$parentId,
+        ];
     }
 
     /**
@@ -121,9 +151,77 @@ class GoogleDriveService
         }
     }
 
+    private function findOrCreateFolder(string $name, string $parentId): string
+    {
+        $existingId = $this->findFolder($name, $parentId);
+
+        if ($existingId) {
+            return $existingId;
+        }
+
+        $response = Http::withToken($this->accessToken())
+            ->timeout(30)
+            ->post($this->createFolderEndpoint(), [
+                'name' => $name,
+                'mimeType' => 'application/vnd.google-apps.folder',
+                'parents' => [$parentId],
+            ]);
+
+        if ($response->failed()) {
+            $this->logExternalApiFailure('Google Drive folder create failed.', $response->status(), $response->body());
+
+            throw new RuntimeException('Khong tao duoc folder Google Drive.');
+        }
+
+        $folderId = $response->json('id');
+
+        if (! is_string($folderId) || $folderId === '') {
+            throw new RuntimeException('Google Drive khong tra ve folder id.');
+        }
+
+        return $folderId;
+    }
+
+    private function findFolder(string $name, string $parentId): ?string
+    {
+        $query = sprintf(
+            "name = '%s' and '%s' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false",
+            $this->escapeDriveQueryValue($name),
+            $this->escapeDriveQueryValue($parentId),
+        );
+
+        $response = Http::withToken($this->accessToken())
+            ->timeout(30)
+            ->get($this->filesEndpoint(), [
+                'q' => $query,
+                'fields' => 'files(id,name)',
+                'pageSize' => 1,
+                'supportsAllDrives' => (bool) config('services.google_drive.supports_all_drives', true) ? 'true' : 'false',
+                'includeItemsFromAllDrives' => (bool) config('services.google_drive.supports_all_drives', true) ? 'true' : 'false',
+            ]);
+
+        if ($response->failed()) {
+            $this->logExternalApiFailure('Google Drive folder lookup failed.', $response->status(), $response->body());
+
+            throw new RuntimeException('Khong tim duoc folder Google Drive.');
+        }
+
+        $folderId = $response->json('files.0.id');
+
+        return is_string($folderId) && $folderId !== '' ? $folderId : null;
+    }
+
     private function accessToken(): string
     {
-        $oauthToken = app(GoogleDriveOAuthService::class)->accessToken();
+        try {
+            $oauthToken = app(GoogleDriveOAuthService::class)->accessToken();
+        } catch (\Throwable $exception) {
+            Log::warning('Google Drive OAuth token unavailable; falling back to service account.', [
+                'message' => $this->redactedBody($exception->getMessage()),
+            ]);
+
+            $oauthToken = null;
+        }
 
         if (is_string($oauthToken) && $oauthToken !== '') {
             return $oauthToken;
@@ -192,6 +290,21 @@ class GoogleDriveService
         ]);
 
         return "https://www.googleapis.com/upload/drive/v3/files?{$query}";
+    }
+
+    private function createFolderEndpoint(): string
+    {
+        $query = http_build_query([
+            'fields' => 'id,webViewLink',
+            'supportsAllDrives' => (bool) config('services.google_drive.supports_all_drives', true) ? 'true' : 'false',
+        ]);
+
+        return "https://www.googleapis.com/drive/v3/files?{$query}";
+    }
+
+    private function filesEndpoint(): string
+    {
+        return 'https://www.googleapis.com/drive/v3/files';
     }
 
     private function permissionEndpoint(string $fileId): string
@@ -282,6 +395,11 @@ class GoogleDriveService
     private function base64UrlEncode(string $value): string
     {
         return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
+    }
+
+    private function escapeDriveQueryValue(string $value): string
+    {
+        return str_replace(["\\", "'"], ["\\\\", "\\'"], $value);
     }
 
     private function logExternalApiFailure(string $message, int $status, string $body): void

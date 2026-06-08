@@ -103,6 +103,61 @@ class VertexImageGeneratorTest extends TestCase
         ], $physicalPixelDensity);
     }
 
+    public function test_it_applies_configured_vertex_http_proxy(): void
+    {
+        config(['services.vertex.http_proxy' => 'http://127.0.0.1:8888']);
+
+        $service = new VertexImageGenerator;
+        $method = new ReflectionMethod($service, 'vertexHttpOptions');
+        $options = $method->invoke($service);
+
+        $this->assertSame('http://127.0.0.1:8888', $options['proxy'] ?? null);
+        $this->assertFalse($options['expect']);
+    }
+
+    public function test_it_optimizes_large_input_images_before_inlining(): void
+    {
+        config([
+            'services.vertex.max_input_dimension' => 100,
+            'services.vertex.max_inline_image_bytes' => 1024,
+        ]);
+
+        $image = imagecreatetruecolor(400, 200);
+        imagefill($image, 0, 0, imagecolorallocate($image, 255, 255, 255));
+
+        ob_start();
+        imagepng($image);
+        $bytes = ob_get_clean();
+        imagedestroy($image);
+
+        $this->assertIsString($bytes);
+
+        $service = new VertexImageGenerator;
+        $method = new ReflectionMethod($service, 'optimizedInputImage');
+        [$optimizedBytes, $mimeType] = $method->invoke($service, $bytes, 'image/jpeg');
+        $size = getimagesizefromstring($optimizedBytes);
+
+        $this->assertSame('image/jpeg', $mimeType);
+        $this->assertIsArray($size);
+        $this->assertLessThanOrEqual(100, max($size[0], $size[1]));
+    }
+
+    public function test_it_uses_global_or_regional_vertex_endpoint_from_location(): void
+    {
+        $service = new VertexImageGenerator;
+        $method = new ReflectionMethod($service, 'generateContentEndpoint');
+
+        $this->assertSame(
+            'https://aiplatform.googleapis.com/v1/projects/project-id/locations/global/publishers/google/models/gemini-2.5-flash-image:generateContent',
+            $method->invoke($service, 'project-id', 'global', 'gemini-2.5-flash-image'),
+        );
+
+        $this->assertSame(
+            'https://us-central1-aiplatform.googleapis.com/v1/projects/project-id/locations/us-central1/publishers/google/models/gemini-2.5-flash-image:generateContent',
+            $method->invoke($service, 'project-id', 'us-central1', 'gemini-2.5-flash-image'),
+        );
+    }
+
     /**
      * @return array{x: int, y: int, unit: int}|null
      */

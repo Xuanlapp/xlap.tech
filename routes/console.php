@@ -9,7 +9,7 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('offorest:upload-approved-images-to-drive')
-    ->dailyAt('22:00')
+    ->everyFiveMinutes()
     ->withoutOverlapping();
 
 Schedule::command('offorest:generate-listing-metadata')

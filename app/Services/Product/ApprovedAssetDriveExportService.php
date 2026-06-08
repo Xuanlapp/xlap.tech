@@ -3,6 +3,7 @@
 namespace App\Services\Product;
 
 use App\Models\ProductDesignAsset;
+use App\Models\ProductDriveUpload;
 use App\Models\User;
 use App\Services\Google\GoogleDriveService;
 use App\Services\Logging\ActivityLogService;
@@ -43,7 +44,7 @@ class ApprovedAssetDriveExportService
     public function exportApprovedImages(?User $actor = null, string $trigger = 'scheduled'): array
     {
         $assets = ProductDesignAsset::query()
-            ->with('product')
+            ->with(['product', 'user'])
             ->where('is_approved', true)
             ->where(function ($query): void {
                 foreach (self::IMAGE_FIELDS as $field) {
@@ -59,7 +60,17 @@ class ApprovedAssetDriveExportService
         $imageCount = 0;
 
         foreach ($assets as $asset) {
-            $result = $this->exportAsset($asset, $actor, $trigger);
+            try {
+                $result = $this->exportAsset($asset, $actor, $trigger);
+            } catch (\Throwable $exception) {
+                $this->uploadRecord($asset)->update([
+                    'status' => 'failed',
+                    'error' => mb_substr($exception->getMessage(), 0, 2000),
+                    'completed_at' => now(),
+                ]);
+
+                throw $exception;
+            }
 
             if ($result > 0) {
                 $assetCount++;
@@ -82,9 +93,24 @@ class ApprovedAssetDriveExportService
 
     private function exportAsset(ProductDesignAsset $asset, ?User $actor, string $trigger): int
     {
+        $upload = $this->uploadRecord($asset);
         $updates = [];
         $deletePaths = [];
         $uploaded = [];
+        $fileInfo = [];
+        $imageNumber = 1;
+
+        $upload->update([
+            'status' => 'processing',
+            'error' => null,
+            'started_at' => now(),
+            'completed_at' => null,
+        ]);
+
+        $driveFolder = $this->drive->findOrCreateFolderPath([
+            $this->folderNameForUser($asset),
+            (string) $asset->id,
+        ]);
 
         foreach (self::IMAGE_FIELDS as $field) {
             $url = $asset->getAttribute($field);
@@ -99,20 +125,34 @@ class ApprovedAssetDriveExportService
                 continue;
             }
 
+            $filename = $this->driveFilename($asset, $imageNumber, $absolutePath);
+            $mimeType = File::mimeType($absolutePath) ?: null;
             $driveUrl = $this->drive->uploadLocalFile(
                 $absolutePath,
-                $this->driveFilename($asset, $field, $absolutePath),
-                File::mimeType($absolutePath) ?: null,
+                $filename,
+                $mimeType,
+                $driveFolder['id'],
             );
 
             $updates[$field] = $driveUrl;
             $deletePaths[] = $absolutePath;
+            $fileInfo[] = [
+                'item' => 'item'.$imageNumber,
+                'field' => $field,
+                'local_url' => $url,
+                'filename' => $filename,
+                'mime_type' => $mimeType,
+                'bytes' => File::size($absolutePath),
+            ];
             $uploaded[] = [
+                'item' => 'item'.$imageNumber,
                 'field' => $field,
                 'local_url' => $url,
                 'drive_url' => $driveUrl,
-                'filename' => $this->driveFilename($asset, $field, $absolutePath),
+                'preview_url' => $this->drivePreviewUrl($driveUrl),
+                'filename' => $filename,
             ];
+            $imageNumber++;
         }
 
         $candidateCleanup = $this->cleanupRedesignCandidates($asset, $actor, $trigger);
@@ -122,6 +162,15 @@ class ApprovedAssetDriveExportService
         }
 
         if ($updates === []) {
+            $upload->update([
+                'status' => 'waiting',
+                'file_info' => $fileInfo,
+                'drive_files' => $uploaded,
+                'drive_folder_id' => $driveFolder['id'],
+                'drive_folder_link' => $driveFolder['link'],
+                'completed_at' => now(),
+            ]);
+
             return 0;
         }
 
@@ -150,6 +199,16 @@ class ApprovedAssetDriveExportService
                 actorType: $trigger === 'manual' ? 'admin' : 'system',
             );
         }
+
+        $upload->update([
+            'status' => 'completed',
+            'file_info' => $fileInfo,
+            'drive_files' => $uploaded,
+            'drive_folder_id' => $driveFolder['id'],
+            'drive_folder_link' => $driveFolder['link'],
+            'error' => null,
+            'completed_at' => now(),
+        ]);
 
         return count($uploaded);
     }
@@ -213,12 +272,49 @@ class ApprovedAssetDriveExportService
         return public_path(ltrim($path, '/'));
     }
 
-    private function driveFilename(ProductDesignAsset $asset, string $field, string $absolutePath): string
+    private function uploadRecord(ProductDesignAsset $asset): ProductDriveUpload
     {
-        $product = $asset->product?->slug ?: 'product';
-        $keyword = Str::slug((string) $asset->keyword) ?: 'asset';
+        return ProductDriveUpload::query()->firstOrCreate(
+            ['product_design_asset_id' => $asset->id],
+            [
+                'user_id' => $asset->user_id,
+                'product_id' => $asset->product_id,
+                'status' => 'waiting',
+            ],
+        );
+    }
+
+    private function folderNameForUser(ProductDesignAsset $asset): string
+    {
+        $user = $asset->user;
+        $name = preg_replace('/[^a-z0-9]+/', '', Str::lower(Str::ascii((string) $user?->name))) ?? '';
+
+        return $name !== '' ? $name : 'user-'.$asset->user_id;
+    }
+
+    private function driveFilename(ProductDesignAsset $asset, int $imageNumber, string $absolutePath): string
+    {
+        $userName = $this->folderNameForUser($asset);
         $extension = pathinfo($absolutePath, PATHINFO_EXTENSION) ?: 'png';
 
-        return "{$product}-{$asset->item_number}-{$keyword}-{$field}.{$extension}";
+        return "{$asset->id}_item{$imageNumber}_{$userName}.{$extension}";
+    }
+
+    private function drivePreviewUrl(string $driveUrl): string
+    {
+        $path = parse_url($driveUrl, PHP_URL_PATH) ?: '';
+        $query = parse_url($driveUrl, PHP_URL_QUERY) ?: '';
+
+        if (preg_match('#/file/d/([^/]+)#', $path, $matches) === 1) {
+            return 'https://drive.google.com/thumbnail?id='.rawurlencode($matches[1]).'&sz=w300';
+        }
+
+        parse_str($query, $params);
+
+        if (! empty($params['id']) && is_string($params['id'])) {
+            return 'https://drive.google.com/thumbnail?id='.rawurlencode($params['id']).'&sz=w300';
+        }
+
+        return $driveUrl;
     }
 }

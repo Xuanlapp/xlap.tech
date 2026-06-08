@@ -8,10 +8,12 @@ use App\Services\Image\ImageLinkPreviewService;
 use App\Services\Logging\ActivityLogService;
 use App\Services\Sticker\StickerService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use RuntimeException;
+use Throwable;
 
 class ReviewImage extends Component
 {
@@ -144,6 +146,15 @@ class ReviewImage extends Component
             );
         } catch (InvalidArgumentException|RuntimeException $exception) {
             $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
+
+            return;
+        } catch (Throwable $exception) {
+            Log::error('Sticker master customization failed unexpectedly.', [
+                'asset_id' => $this->assetId,
+                'message' => $exception->getMessage(),
+            ]);
+
+            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: 'Loi he thong khi custom anh master. Hay xem log de biet chi tiet.');
 
             return;
         }

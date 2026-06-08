@@ -9,8 +9,6 @@ use App\Models\User;
 use App\Repositories\Product\ProductRepository;
 use App\Repositories\User\UserRepository;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 
 class UserAccessService
 {
@@ -42,11 +40,6 @@ class UserAccessService
      */
     public function createUser(array $data): User
     {
-        $this->ensureUserNameMatchesSelectedProducts(
-            name: $data['name'],
-            productIds: $data['selectedProducts'] ?? [],
-        );
-
         return ($this->createUserWithProductAccess)($data);
     }
 
@@ -54,10 +47,6 @@ class UserAccessService
     {
         $targetUser = $this->users->find($userId);
         $product = Product::findOrFail($productId);
-
-        if (! $targetUser->products()->whereKey($product->id)->exists()) {
-            $this->ensureUserNameMatchesProduct($targetUser->name, $product);
-        }
 
         return ($this->toggleUserProductAccess)(
             targetUser: $targetUser,
@@ -91,46 +80,4 @@ class UserAccessService
         return $enabled;
     }
 
-    /**
-     * A user name must include every product slug that is granted.
-     *
-     * @param  array<int, int|string>  $productIds
-     */
-    private function ensureUserNameMatchesSelectedProducts(string $name, array $productIds): void
-    {
-        $products = Product::query()
-            ->whereIn('id', collect($productIds)->map(fn ($id): int => (int) $id)->unique()->all())
-            ->get();
-
-        $missingSlugs = $products
-            ->filter(fn (Product $product): bool => ! $this->userNameContainsProductSlug($name, $product))
-            ->pluck('slug')
-            ->values()
-            ->all();
-
-        if ($missingSlugs === []) {
-            return;
-        }
-
-        throw ValidationException::withMessages([
-            'name' => 'Ten user phai chua tu khoa cua moi trang duoc chon: '.implode(', ', $missingSlugs).'.',
-            'selectedProducts' => 'Ten user dang thieu tu khoa: '.implode(', ', $missingSlugs).'.',
-        ]);
-    }
-
-    private function ensureUserNameMatchesProduct(string $name, Product $product): void
-    {
-        if ($this->userNameContainsProductSlug($name, $product)) {
-            return;
-        }
-
-        throw ValidationException::withMessages([
-            'selectedProducts' => "Ten user phai co tu '{$product->slug}' truoc khi bat quyen {$product->name}.",
-        ]);
-    }
-
-    private function userNameContainsProductSlug(string $name, Product $product): bool
-    {
-        return Str::contains(Str::lower($name), Str::lower($product->slug));
-    }
 }

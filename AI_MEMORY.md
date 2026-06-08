@@ -1,0 +1,290 @@
+# AI MEMORY
+
+File này dùng để lưu lại quá trình AI đã làm trong project.
+Trước khi làm tiếp, AI phải đọc file này trước.
+
+---
+
+## Quy tắc làm việc
+
+- Luôn đọc file này trước khi sửa code.
+- Sau khi sửa xong phải cập nhật lại file này.
+- Ghi ngắn gọn, rõ ý, có tên file và logic đã thay đổi.
+- Không xóa lịch sử cũ, chỉ thêm mục mới lên trên cùng hoặc cuối file.
+
+---
+
+## Nhật ký làm việc
+
+### 2026-06-06
+
+**Muc tieu:**  
+Kiem tra vi sao user noi da doi proxy nhung Vertex van loi.
+
+**File da sua/tao:**  
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Khong sua code.
+- Kiem tra `.env`, Laravel config va IP outbound.
+
+**Loi da gap va cach xu ly:**  
+- `config('services.vertex.http_proxy')` dang `EMPTY`.
+- IP outbound van la `171.227.40.92`.
+- Trong `.env` chi co dong `# VERTEX_HTTP_PROXY=...` bi comment nen app khong dung proxy.
+
+**Logic can nho:**  
+- Dong `.env` bat dau bang `#` la comment, Laravel khong doc.
+- Can them dong `VERTEX_HTTP_PROXY=...` khong co dau `#`, sau do `php artisan optimize:clear` va restart server.
+
+**Viec can lam tiep:**  
+- User can dien proxy moi vao `.env` bang bien `VERTEX_HTTP_PROXY`.
+
+### 2026-06-06
+
+**Muc tieu:**  
+Fix tinh trang bam Create Master khong bao loi, quay mai.
+
+**File da sua/tao:**  
+- `app/Services/Vertex/VertexImageGenerator.php`
+- `app/Livewire/Pages/Sticker/ProductDesignCard.php`
+- `app/Livewire/Pages/Ornament/ProductDesignCard.php`
+- `app/Livewire/Modals/Image/ReviewImage.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Xoa `dd($response)` con sot trong `VertexImageGenerator::generate()`; day la nguyen nhan lam Livewire dung request va UI quay mai.
+- Xoa comment `// dd($payload)`.
+- Them `catch (Throwable)` cho Sticker/Ornament generation va modal custom image de log loi bat ngo va hien toast thay vi treo UI.
+- Chay `php artisan optimize:clear` va `php artisan cache:clear` de xoa Vertex cache lock con sot tu lan `dd`.
+
+**Loi da gap va cach xu ly:**  
+- `dd($response)` nam sau khi goi Vertex trong lock, lam request dung truoc khi Livewire dispatch finished event.
+- Lock Vertex co the bi giu den TTL sau khi `dd`; da clear cache.
+- Diagnostic that voi anh PNG 1x1 tra loi trong 1.44s: `HTTP 417`, khong treo.
+
+**Logic can nho:**  
+- Hien tai UI khong con quay vo han do code; neu Vertex fail thi toast se hien loi.
+- Neu van `HTTP 417` thi la Google chan IP/proxy, khong phai spinner/code.
+
+**Viec can lam tiep:**  
+- Doi proxy/IP sach hoac dung moi truong VPS dang tao anh duoc.
+- Sau khi doi `.env`, chay `php artisan optimize:clear` va restart web server.
+
+### 2026-06-06
+
+**Muc tieu:**  
+Them duong di function vao man hinh `dd` Vertex de biet tao anh dang chay qua function nao.
+
+**File da sua/tao:**  
+- `app/Services/Vertex/VertexImageGenerator.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Khi `VERTEX_DEBUG_PAYLOAD=true`, `dd()` them `call_path`.
+- `call_path` loc cac frame `App\...::function`, bo vendor internals de de doc.
+
+**Loi da gap va cach xu ly:**  
+- Khong co. `php -l app/Services/Vertex/VertexImageGenerator.php` pass.
+
+**Logic can nho:**  
+- `dd()` se dung o lan goi Vertex dau tien; xem `call_path` de biet luong Create Master/custom/final dang di qua service nao.
+
+**Viec can lam tiep:**  
+- Sau khi debug xong tat `VERTEX_DEBUG_PAYLOAD=false`.
+
+### 2026-06-06
+
+**Muc tieu:**  
+Them cach `dd` du lieu payload gui len Vertex ra man hinh de debug.
+
+**File da sua/tao:**  
+- `app/Services/Vertex/VertexImageGenerator.php`
+- `config/services.php`
+- `.env.example`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Them config `VERTEX_DEBUG_PAYLOAD=false`.
+- Neu bat `VERTEX_DEBUG_PAYLOAD=true`, truoc khi post Vertex se `dd()` endpoint, proxy enabled, generationConfig, prompt preview/length, inline image mime type/base64 length/estimated bytes/data preview ngan.
+- Khong dump full access token, private key, hoac full base64 anh.
+
+**Loi da gap va cach xu ly:**  
+- Khong co.
+
+**Logic can nho:**  
+- Bat debug payload chi dung local; sau khi xem xong phai tat lai `VERTEX_DEBUG_PAYLOAD=false`.
+- Sau khi doi `.env` can `php artisan optimize:clear` va restart web server neu dang chay.
+
+**Viec can lam tiep:**  
+- User bat `VERTEX_DEBUG_PAYLOAD=true`, bam Create Master, chup/kiem tra man hinh dd.
+
+### 2026-06-06
+
+**Muc tieu:**  
+Kiem tra toan bo va fix tiep loi `Khong ket noi duoc Vertex API...` khi tao anh.
+
+**File da sua/tao:**  
+- `app/Services/Vertex/VertexImageGenerator.php`
+- `config/services.php`
+- `.env.example`
+- `tests/Unit/VertexImageGeneratorTest.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Them resize/re-encode input image truoc khi inline vao Vertex de tranh request qua lon lam proxy reset.
+- Them config `VERTEX_MAX_INPUT_DIMENSION`, `VERTEX_MAX_INLINE_IMAGE_BYTES`, `VERTEX_GOOGLE_DRIVE_THUMBNAIL_SIZE`.
+- Giam Google Drive thumbnail mac dinh tu `w2000` xuong config mac dinh `w1200`.
+- Gioi han output image qua lon va bo qua gan PPI neu file qua lon.
+- Them endpoint builder: `global` dung `aiplatform.googleapis.com`, region khac dung `{region}-aiplatform.googleapis.com`.
+- Them test cho proxy, optimize input image, va endpoint.
+
+**Loi da gap va cach xu ly:**  
+- Diagnostic text nho qua proxy va direct deu tra `HTTP 417 automated queries`, nen khong phai do anh input qua lon.
+- Log co `cURL error 56 / unexpected eof` khi proxy ngat ket noi; code da giam payload anh de loai bo nguyen nhan request qua lon.
+- Full test pass: `78 tests`, `77 passed`, `1 skipped`.
+
+**Logic can nho:**  
+- Code da toi uu het phan co the trong app: proxy, HTTP/1.1, no Expect, error detail, image downsize, endpoint dung theo region.
+- Neu request text nho van `HTTP 417` thi day la IP/proxy/network bi Google chan, code khong the tu vuot qua.
+- De tao anh that can proxy/IP sach hoac credential/project chay duoc tu moi truong hien tai.
+
+**Viec can lam tiep:**  
+- Doi proxy/IP khac hoac bo proxy neu network sach.
+- Neu het 417 ma gap 403 thi cap IAM/model access hoac copy credential Vertex dang chay duoc tren VPS.
+- Sau khi doi `.env` phai `php artisan optimize:clear` va restart web server.
+
+### 2026-06-06
+
+**Muc tieu:**  
+Fix loi UI bao `Vertex API loi. Hay kiem tra quota, credential hoac cau hinh model` khi VPS tao anh duoc nhung may local fail.
+
+**File da sua/tao:**  
+- `app/Services/Vertex/VertexImageGenerator.php`
+- `config/services.php`
+- `.env.example`
+- `tests/Unit/VertexImageGeneratorTest.php`
+- `tests/Feature/OfforestProductSchemaTest.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Khoi phuc ho tro `VERTEX_HTTP_PROXY` cho token Google va Vertex `generateContent`.
+- Them header `Expect: ''`, user-agent va HTTP/1.1 options de giam loi upload/proxy.
+- Bat `ConnectionException` va tra loi ro rang hon.
+- Doi loi generic thanh message co HTTP status va `error.message` cua Google.
+- Them test proxy config.
+- Sua 2 test admin Vertex de ten user co slug `Sticker`, dung rule product access hien tai.
+
+**Loi da gap va cach xu ly:**  
+- Diagnostic that qua proxy Cloudzone tra `HTTP 417 automated queries` cho ca credential image va marketplace: proxy IP `103.67.196.83` bi Google chan/flag.
+- Log khi khong qua proxy co `HTTP 403 IAM_PERMISSION_DENIED` voi project `velvety-carving-494308-q6`: service account local thieu quyen `aiplatform.endpoints.predict` hoac model/project khong co access.
+- Full test ban dau fail do fixture ten user; da sua.
+
+**Logic can nho:**  
+- Code da doc proxy tu `services.vertex.http_proxy`.
+- Neu UI bao `HTTP 417` thi doi proxy/IP sach hon; code khong the vuot Google block.
+- Neu UI bao `HTTP 403 Permission 'aiplatform.endpoints.predict' denied` thi can cap IAM `Vertex AI User`/model access cho service account, hoac copy dung credential dang chay duoc tren VPS.
+- VPS chay duoc khong chung minh local credential/IP chay duoc; local dang dung DB credential rieng.
+
+**Viec can lam tiep:**  
+- De tao anh that tren local: dung proxy/IP khac khong bi Google chan va dung Vertex credential co quyen giong VPS.
+- Sau khi doi proxy/credential, chay `php artisan optimize:clear` va restart server web.
+
+### 2026-06-06
+
+**Muc tieu:**  
+Quay lai code push moi nhat tren remote, xoa cac thay doi code local da lam.
+
+**File da sua/tao:**  
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Chay `git fetch origin`.
+- Chay `git reset --hard origin/main`.
+- Tracked code da quay ve commit `c0552df upadte generate-listing-metadata`.
+
+**Loi da gap va cach xu ly:**  
+- PowerShell khong ho tro `&&`; da chay `git fetch origin` va `git reset --hard origin/main` thanh 2 lenh rieng.
+
+**Logic can nho:**  
+- Sau reset, `git status` chi con `AI_MEMORY.md` untracked.
+- Khong xoa `AI_MEMORY.md` vi day la file memory project user yeu cau giu.
+
+**Viec can lam tiep:**  
+- Neu user muon repo sach tuyet doi nhu remote, can xoa hoac add/commit `AI_MEMORY.md`.
+
+### 2026-06-06 13:51:45 +07:00
+
+**Muc tieu:**  
+Kiem tra proxy Cloudzone co lam doi IP cho request Vertex/Laravel khong sau khi van gap HTTP 417.
+
+**File da sua/tao:**  
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Khong sua code.
+- Xac minh `.env` co `VERTEX_HTTP_PROXY`.
+- Kiem tra `curl -x` qua proxy tra IP `103.67.196.83`.
+- Kiem tra Laravel HTTP client voi `config('services.vertex.http_proxy')` cung tra IP `103.67.196.83`.
+
+**Loi da gap va cach xu ly:**  
+- Van gap `Vertex API loi khi tao anh. HTTP 417: Google dang tu choi request...`
+- Ket luan proxy da duoc app doc va da doi IP; neu con 417 thi IP proxy Cloudzone nay cung bi Google chan/flag, hoac web process cu can restart.
+
+**Logic can nho:**  
+- `VERTEX_HTTP_PROXY` dang hoat dong trong Laravel runtime.
+- `aiplatform.googleapis.com` ket noi duoc qua proxy, nhung Vertex POST co the van bi Google chan theo IP/reputation.
+
+**Viec can lam tiep:**  
+- Restart tien trinh web/PHP dang chay roi test lai.
+- Neu van 417, doi sang proxy khac, uu tien residential/ISP hoac IP sach hon; datacenter/shared proxy co kha nang bi Google chan.
+
+### 2026-06-06 13:32:54 +07:00
+
+**Muc tieu:**  
+Kiem tra vi sao Create Master va custom anh khong tao duoc, xac minh co lien quan 300 PPI hay khong.
+
+**File da sua/tao:**  
+- `tests/Feature/OfforestProductSchemaTest.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Doi ten user trong 2 test admin Vertex thanh co chu `Sticker` de dung rule ten user phai chua product slug.
+- Chay `php artisan optimize:clear` de clear config/cache/view.
+
+**Loi da gap va cach xu ly:**  
+- Log Laravel co loi cu `Call to undefined method VertexImageGenerator::sourceImagePartAttempts()`; code hien tai da co method nay.
+- Log Laravel co loi Vertex `HTTP 417 automated queries` va `cURL error 55/56`; day la loi Google/network/IP/proxy khi goi Vertex, khong phai do 300 PPI.
+- Full feature test ban dau fail do test fixture khong dung rule user/product; da sua test name.
+
+**Logic can nho:**  
+- Create Master va custom variation deu di qua `App\Services\Vertex\VertexImageGenerator`.
+- PSD custom mockup chi render sau khi asset da co `redesign`; neu Master fail thi custom PSD cung khong co dau vao.
+- `OUTPUT_PPI = 300` chi gan metadata pHYs khi luu PNG; khong phai nguyen nhan chinh khien Vertex khong tra anh.
+- Neu gap `HTTP 417 automated queries` thi can doi network/IP/proxy hoac set `VERTEX_HTTP_PROXY`; code da co config `services.vertex.http_proxy`.
+
+**Viec can lam tiep:**  
+- Neu tren may that van fail, xem toast/log de phan biet `HTTP 417`, quota `429`, hay connection reset.
+- Muon test tao anh that can dung credential/network Vertex hoat dong; test tu dong hien tai fake HTTP nen khong ton quota.
+
+### 2026-06-06
+
+**Mục tiêu:**  
+Tạo hệ thống memory để AI nhớ quá trình đã làm.
+
+**File đã sửa/tạo:**  
+- `AI_MEMORY.md`
+
+**Thay đổi chính:**  
+- Tạo file memory ở thư mục gốc project.
+- Thêm quy tắc bắt buộc đọc memory trước khi sửa code và cập nhật sau khi hoàn thành.
+
+**Lỗi đã gặp và cách xử lý:**  
+- Không có.
+
+**Logic cần nhớ:**  
+- Mỗi lần AI làm xong phải ghi lại quá trình.
+- Lần sau AI đọc file này trước để không hỏi lại những phần đã rõ.
+
+**Việc cần làm tiếp:**  
+- Áp dụng file này cho từng lần làm việc tiếp theo trong project/code.

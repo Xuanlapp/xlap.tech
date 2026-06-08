@@ -7,6 +7,7 @@ use App\Livewire\Pages\Ornament\OrnamentStatusPanel;
 use App\Services\Image\ImageLinkPreviewService;
 use App\Services\Ornament\OrnamentService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Str;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -57,7 +58,11 @@ class AddProductDesign extends Component
     public function save(): void
     {
         $validated = $this->validate([
-            'keyword' => ['required', 'string', 'max:255'],
+            'keyword' => ['required', 'string', 'max:255', function (string $attribute, mixed $value, \Closure $fail): void {
+                if (! is_string($value) || ! Str::contains(Str::lower($value), 'ornament')) {
+                    $fail("Keyword phai chua tu 'ornament' cho trang Ornament.");
+                }
+            }],
             'imageLink' => ['required', 'url', 'max:1000', function (string $attribute, mixed $value, \Closure $fail): void {
                 if (! is_string($value) || ! app(ImageLinkPreviewService::class)->looksLikeImageUrl($value)) {
                     $fail('Link này chưa giống link ảnh.');

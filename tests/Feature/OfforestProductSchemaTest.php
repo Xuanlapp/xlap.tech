@@ -4,14 +4,17 @@ namespace Tests\Feature;
 
 use App\Livewire\Modals\Sticker\AddProductDesign;
 use App\Livewire\Modals\Sticker\EditProductDetail;
+use App\Livewire\Modals\Ornament\AddProductDesign as OrnamentAddProductDesign;
 use App\Livewire\Pages\Admin\ListUser;
 use App\Models\ActivityLog;
 use App\Models\Product;
 use App\Models\ProductDesignAsset;
+use App\Models\ProductDriveUpload;
 use App\Models\Prompt;
 use App\Models\User;
 use App\Models\VertexApiCredential;
 use App\Repositories\Product\ProductDesignAssetRepository;
+use App\Services\Ornament\OrnamentService;
 use App\Services\Sticker\PsdMockupRenderer;
 use App\Services\Sticker\PsdMockupTemplateService;
 use App\Services\Sticker\StickerService;
@@ -175,7 +178,7 @@ class OfforestProductSchemaTest extends TestCase
         $this->actingAs($admin);
 
         Livewire::test(ListUser::class)
-            ->set('name', 'Vertex User')
+            ->set('name', 'Sticker Vertex User')
             ->set('email', 'vertex-user@example.com')
             ->set('password', 'Password12345')
             ->set('selectedProducts', [$product->id])
@@ -200,6 +203,40 @@ class OfforestProductSchemaTest extends TestCase
         $this->assertSame('vertex-project', $credential->credentials_json['project_id']);
     }
 
+    public function test_admin_can_grant_product_access_without_user_name_matching_product(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $product = Product::where('slug', 'sticker')->firstOrFail();
+
+        $this->actingAs($admin);
+
+        Livewire::test(ListUser::class)
+            ->set('name', 'Any Operator')
+            ->set('email', 'any-operator@example.com')
+            ->set('password', 'Password12345')
+            ->set('selectedProducts', [$product->id])
+            ->call('createUser')
+            ->assertHasNoErrors();
+
+        $user = User::where('email', 'any-operator@example.com')->firstOrFail();
+
+        $this->assertTrue($user->products()->whereKey($product->id)->exists());
+    }
+
+    public function test_admin_can_toggle_product_access_without_user_name_matching_product(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $user = User::factory()->create(['name' => 'Any Operator']);
+        $product = Product::where('slug', 'ornament')->firstOrFail();
+
+        $this->actingAs($admin);
+
+        Livewire::test(ListUser::class)
+            ->call('toggleProduct', $user->id, $product->id);
+
+        $this->assertTrue($user->products()->whereKey($product->id)->exists());
+    }
+
     public function test_admin_can_create_user_by_copying_vertex_credential_from_another_user(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);
@@ -222,7 +259,7 @@ class OfforestProductSchemaTest extends TestCase
         $this->actingAs($admin);
 
         Livewire::test(ListUser::class)
-            ->set('name', 'Copied Vertex User')
+            ->set('name', 'Sticker Copied Vertex User')
             ->set('email', 'copied-vertex@example.com')
             ->set('password', 'Password12345')
             ->set('selectedProducts', [$product->id])
@@ -296,6 +333,70 @@ class OfforestProductSchemaTest extends TestCase
         $this->assertSame(1, $asset->item_number);
         $this->assertSame('cute cat sticker', $asset->keyword);
         $this->assertSame('https://example.com/source.png', $asset->image_link);
+    }
+
+    public function test_sticker_keyword_must_contain_product_slug(): void
+    {
+        $user = User::factory()->create();
+        $product = Product::where('slug', 'sticker')->firstOrFail();
+        $user->products()->attach($product);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage("Keyword phai chua tu 'sticker'");
+
+        app(StickerService::class)->createAsset(
+            $user,
+            'cute cat',
+            'https://example.com/source.png',
+        );
+    }
+
+    public function test_sticker_add_modal_shows_keyword_validation_error_without_server_error(): void
+    {
+        $user = User::factory()->create();
+        $product = Product::where('slug', 'sticker')->firstOrFail();
+        $user->products()->attach($product);
+
+        $this->actingAs($user);
+
+        Livewire::test(AddProductDesign::class)
+            ->set('isOpen', true)
+            ->set('keyword', 'lap')
+            ->set('imageLink', 'https://example.com/source.png')
+            ->call('save')
+            ->assertHasErrors(['keyword']);
+    }
+
+    public function test_ornament_keyword_must_contain_product_slug(): void
+    {
+        $user = User::factory()->create();
+        $product = Product::where('slug', 'ornament')->firstOrFail();
+        $user->products()->attach($product);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage("Keyword phai chua tu 'ornament'");
+
+        app(OrnamentService::class)->createAsset(
+            $user,
+            'cute cat',
+            'https://example.com/source.png',
+        );
+    }
+
+    public function test_ornament_add_modal_shows_keyword_validation_error_without_server_error(): void
+    {
+        $user = User::factory()->create();
+        $product = Product::where('slug', 'ornament')->firstOrFail();
+        $user->products()->attach($product);
+
+        $this->actingAs($user);
+
+        Livewire::test(OrnamentAddProductDesign::class)
+            ->set('isOpen', true)
+            ->set('keyword', 'lap')
+            ->set('imageLink', 'https://example.com/source.png')
+            ->call('save')
+            ->assertHasErrors(['keyword']);
     }
 
     public function test_sticker_source_details_cannot_be_edited_after_master_is_created(): void
@@ -736,7 +837,7 @@ class OfforestProductSchemaTest extends TestCase
 
     public function test_approved_local_images_are_uploaded_to_drive_and_removed_locally(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create(['name' => 'Xuan Lap']);
         $product = Product::where('slug', 'sticker')->firstOrFail();
         $relativePath = 'generated/test-drive/export.png';
         $absolutePath = public_path('storage/'.$relativePath);
@@ -760,11 +861,20 @@ class OfforestProductSchemaTest extends TestCase
             'approved_at' => now(),
         ]);
 
-        $this->mock(GoogleDriveService::class, function (MockInterface $mock) use ($absolutePath): void {
+        $this->mock(GoogleDriveService::class, function (MockInterface $mock) use ($absolutePath, $asset): void {
+            $mock->shouldReceive('findOrCreateFolderPath')
+                ->once()
+                ->withArgs(fn (array $folders): bool => $folders === ['xuanlap', (string) $asset->id])
+                ->andReturn([
+                    'id' => 'folder-id',
+                    'link' => 'https://drive.google.com/drive/folders/folder-id',
+                ]);
+
             $mock->shouldReceive('uploadLocalFile')
                 ->once()
-                ->withArgs(fn (string $path, string $filename, ?string $mimeType): bool => $path === $absolutePath
-                    && str_contains($filename, 'sticker-1-drive-export-redesign'))
+                ->withArgs(fn (string $path, string $filename, ?string $mimeType, ?string $folderId): bool => $path === $absolutePath
+                    && $filename === "{$asset->id}_item1_xuanlap.png"
+                    && $folderId === 'folder-id')
                 ->andReturn('https://drive.google.com/file/d/example/view');
         });
 
@@ -782,6 +892,15 @@ class OfforestProductSchemaTest extends TestCase
         $this->assertFileDoesNotExist($absolutePath);
         $this->assertFileDoesNotExist($candidateAbsolutePath);
         $this->assertNull($asset->refresh()->redesign_candidates);
+        $this->assertDatabaseHas('product_drive_uploads', [
+            'product_design_asset_id' => $asset->id,
+            'user_id' => $user->id,
+            'product_id' => $product->id,
+            'status' => 'completed',
+            'drive_folder_id' => 'folder-id',
+        ]);
+        $upload = ProductDriveUpload::where('product_design_asset_id', $asset->id)->firstOrFail();
+        $this->assertSame("{$asset->id}_item1_xuanlap.png", $upload->drive_files[0]['filename']);
         $this->assertDatabaseHas('activity_logs', [
             'event' => 'drive_export.image_uploaded',
             'subject_type' => ProductDesignAsset::class,
