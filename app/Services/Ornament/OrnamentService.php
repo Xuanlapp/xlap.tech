@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Repositories\Product\ProductDesignAssetRepository;
 use App\Repositories\Product\ProductRepository;
 use App\Repositories\Prompt\PromptRepository;
+use App\Services\Product\ProductDriveUploadQueueService;
 use App\Services\Vertex\VertexImageGenerator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -28,6 +29,7 @@ class OrnamentService
         private readonly ProductDesignAssetRepository $assets,
         private readonly PromptRepository $prompts,
         private readonly VertexImageGenerator $generator,
+        private readonly ProductDriveUploadQueueService $driveUploadQueue,
         private readonly PsdMockupTemplateService $psdTemplates,
         private readonly PsdMockupRenderer $psdRenderer,
     ) {}
@@ -227,7 +229,11 @@ class OrnamentService
             throw new RuntimeException('Can co it nhat mot anh mockup hoac lifestyle truoc khi duyet.');
         }
 
-        return $this->assets->setApproval($asset, ! $asset->is_approved);
+        $asset = $this->assets->setApproval($asset, ! $asset->is_approved);
+
+        $this->driveUploadQueue->syncForAsset($asset);
+
+        return $asset;
     }
 
     private function ensureNotApproved(ProductDesignAsset $asset): void

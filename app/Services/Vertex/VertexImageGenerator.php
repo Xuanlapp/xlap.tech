@@ -85,7 +85,6 @@ class VertexImageGenerator
 
                     return Http::withToken($this->accessToken($credentials))
                         ->withHeaders([
-                            'Expect' => '',
                             'User-Agent' => 'google-genai-php-offorest/1.0',
                         ])
                         ->withOptions($this->vertexHttpOptions())
@@ -177,7 +176,6 @@ class VertexImageGenerator
 
                     return Http::withToken($this->accessToken($credentials))
                         ->withHeaders([
-                            'Expect' => '',
                             'User-Agent' => 'google-genai-php-offorest/1.0',
                         ])
                         ->withOptions($this->vertexHttpOptions())

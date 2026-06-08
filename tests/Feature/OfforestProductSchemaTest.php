@@ -710,10 +710,20 @@ class OfforestProductSchemaTest extends TestCase
         $approved = app(StickerService::class)->toggleApproval($user, $asset->id);
         $this->assertTrue($approved->is_approved);
         $this->assertNotNull($approved->approved_at);
+        $this->assertDatabaseHas('product_drive_uploads', [
+            'product_design_asset_id' => $asset->id,
+            'user_id' => $user->id,
+            'product_id' => $product->id,
+            'status' => 'waiting',
+        ]);
 
         $unapproved = app(StickerService::class)->toggleApproval($user, $asset->id);
         $this->assertFalse($unapproved->is_approved);
         $this->assertNull($unapproved->approved_at);
+        $this->assertDatabaseMissing('product_drive_uploads', [
+            'product_design_asset_id' => $asset->id,
+            'status' => 'waiting',
+        ]);
     }
 
     public function test_sticker_item_can_be_approved_after_a_lifestyle_image_exists(): void

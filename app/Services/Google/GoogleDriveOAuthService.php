@@ -44,6 +44,7 @@ class GoogleDriveOAuthService
     public function connect(User $user, string $code): GoogleDriveConnection
     {
         $response = Http::asForm()
+            ->withOptions($this->googleHttpOptions())
             ->timeout(30)
             ->post('https://oauth2.googleapis.com/token', [
                 'client_id' => $this->clientId(),
@@ -130,6 +131,7 @@ class GoogleDriveOAuthService
         }
 
         $response = Http::asForm()
+            ->withOptions($this->googleHttpOptions())
             ->timeout(30)
             ->post('https://oauth2.googleapis.com/token', [
                 'client_id' => $this->clientId(),
@@ -169,6 +171,16 @@ class GoogleDriveOAuthService
         }
 
         return trim($clientId);
+    }
+
+    /**
+     * Disable Guzzle's automatic interim-continue handshake for Google OAuth.
+     *
+     * @return array<string, mixed>
+     */
+    private function googleHttpOptions(): array
+    {
+        return ['expect' => false];
     }
 
     private function clientSecret(): string

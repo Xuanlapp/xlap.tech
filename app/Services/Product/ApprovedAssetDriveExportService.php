@@ -13,24 +13,6 @@ use Illuminate\Support\Str;
 
 class ApprovedAssetDriveExportService
 {
-    private const IMAGE_FIELDS = [
-        'redesign',
-        'lifestyle1',
-        'lifestyle2',
-        'lifestyle3',
-        'mockup1',
-        'mockup2',
-        'mockup3',
-        'mockup4',
-        'mockup5',
-        'mockup6',
-        'mockup7',
-        'mockup8',
-        'mockup9',
-        'mockup10',
-        'mockup11',
-    ];
-
     public function __construct(
         private readonly GoogleDriveService $drive,
         private readonly ActivityLogService $activityLogs,
@@ -47,7 +29,7 @@ class ApprovedAssetDriveExportService
             ->with(['product', 'user'])
             ->where('is_approved', true)
             ->where(function ($query): void {
-                foreach (self::IMAGE_FIELDS as $field) {
+                foreach (ProductDriveUploadQueueService::IMAGE_FIELDS as $field) {
                     $query->orWhere($field, 'like', '/storage/%');
                 }
 
@@ -91,6 +73,19 @@ class ApprovedAssetDriveExportService
         return $summary;
     }
 
+    public function exportAssetById(int $assetId, ?User $actor = null, string $trigger = 'manual'): int
+    {
+        $asset = ProductDesignAsset::query()
+            ->with(['product', 'user'])
+            ->findOrFail($assetId);
+
+        if (! $asset->is_approved) {
+            throw new \RuntimeException('Item nay chua duyet nen khong the upload Drive.');
+        }
+
+        return $this->exportAsset($asset, $actor, $trigger);
+    }
+
     private function exportAsset(ProductDesignAsset $asset, ?User $actor, string $trigger): int
     {
         $upload = $this->uploadRecord($asset);
@@ -112,7 +107,7 @@ class ApprovedAssetDriveExportService
             (string) $asset->id,
         ]);
 
-        foreach (self::IMAGE_FIELDS as $field) {
+        foreach (ProductDriveUploadQueueService::IMAGE_FIELDS as $field) {
             $url = $asset->getAttribute($field);
 
             if (! is_string($url) || ! str_starts_with($url, '/storage/')) {

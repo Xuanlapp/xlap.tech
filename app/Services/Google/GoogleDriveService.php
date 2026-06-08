@@ -47,6 +47,7 @@ class GoogleDriveService
         ]);
 
         $response = Http::withToken($this->accessToken())
+            ->withOptions($this->googleHttpOptions())
             ->timeout(120)
             ->withBody($body, "multipart/related; boundary={$boundary}")
             ->post($this->uploadEndpoint());
@@ -107,6 +108,7 @@ class GoogleDriveService
     public function downloadImageFile(string $fileId): array
     {
         $response = Http::withToken($this->accessToken())
+            ->withOptions($this->googleHttpOptions())
             ->timeout(60)
             ->retry(1, 300)
             ->get($this->fileMediaEndpoint($fileId));
@@ -138,6 +140,7 @@ class GoogleDriveService
     private function makePublic(string $fileId): void
     {
         $response = Http::withToken($this->accessToken())
+            ->withOptions($this->googleHttpOptions())
             ->timeout(30)
             ->post($this->permissionEndpoint($fileId), [
                 'role' => 'reader',
@@ -160,6 +163,7 @@ class GoogleDriveService
         }
 
         $response = Http::withToken($this->accessToken())
+            ->withOptions($this->googleHttpOptions())
             ->timeout(30)
             ->post($this->createFolderEndpoint(), [
                 'name' => $name,
@@ -191,6 +195,7 @@ class GoogleDriveService
         );
 
         $response = Http::withToken($this->accessToken())
+            ->withOptions($this->googleHttpOptions())
             ->timeout(30)
             ->get($this->filesEndpoint(), [
                 'q' => $query,
@@ -260,6 +265,7 @@ class GoogleDriveService
         }
 
         $response = Http::asForm()
+            ->withOptions($this->googleHttpOptions())
             ->timeout(30)
             ->post('https://oauth2.googleapis.com/token', [
                 'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
@@ -290,6 +296,16 @@ class GoogleDriveService
         ]);
 
         return "https://www.googleapis.com/upload/drive/v3/files?{$query}";
+    }
+
+    /**
+     * Disable Guzzle's automatic interim-continue handshake for Google APIs.
+     *
+     * @return array<string, mixed>
+     */
+    private function googleHttpOptions(): array
+    {
+        return ['expect' => false];
     }
 
     private function createFolderEndpoint(): string

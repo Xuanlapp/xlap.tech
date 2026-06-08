@@ -3,8 +3,10 @@
 namespace App\Livewire\Pages\Drive;
 
 use App\Models\ProductDriveUpload;
+use App\Services\Product\ApprovedAssetDriveExportService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
+use Throwable;
 use Livewire\Attributes\Session;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -22,6 +24,10 @@ class DriveUploads extends Component
     public string $search = '';
 
     public ?int $selectedUploadId = null;
+
+    public ?string $retryMessage = null;
+
+    public ?string $retryError = null;
 
     public function updatedStatus(string $status): void
     {
@@ -44,6 +50,28 @@ class DriveUploads extends Component
     public function closeLinks(): void
     {
         $this->selectedUploadId = null;
+    }
+
+    public function retryUpload(int $uploadId): void
+    {
+        $this->retryMessage = null;
+        $this->retryError = null;
+
+        $upload = $this->visibleQuery()->whereKey($uploadId)->firstOrFail();
+
+        try {
+            $count = app(ApprovedAssetDriveExportService::class)->exportAssetById(
+                $upload->product_design_asset_id,
+                auth()->user(),
+                'manual',
+            );
+
+            $this->retryMessage = $count > 0
+                ? "Da upload lai {$count} anh cho item #{$upload->product_design_asset_id}."
+                : "Item #{$upload->product_design_asset_id} khong con anh local de upload.";
+        } catch (Throwable $exception) {
+            $this->retryError = $exception->getMessage();
+        }
     }
 
     public function render(): View

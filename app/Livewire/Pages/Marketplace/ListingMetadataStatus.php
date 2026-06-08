@@ -3,8 +3,10 @@
 namespace App\Livewire\Pages\Marketplace;
 
 use App\Models\ProductDesignAsset;
+use App\Services\Marketplace\MarketplaceListingMetadataService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
+use Throwable;
 use Livewire\Attributes\Session;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -21,6 +23,10 @@ class ListingMetadataStatus extends Component
     #[Session(key: 'listing-metadata.search')]
     public string $search = '';
 
+    public ?string $retryMessage = null;
+
+    public ?string $retryError = null;
+
     public function updatedStatus(string $status): void
     {
         $this->status = in_array($status, self::STATUS_OPTIONS, true) ? $status : 'all';
@@ -31,6 +37,24 @@ class ListingMetadataStatus extends Component
     {
         $this->search = trim($search);
         $this->resetPage();
+    }
+
+    public function retryListing(int $assetId): void
+    {
+        $this->retryMessage = null;
+        $this->retryError = null;
+
+        $asset = $this->baseQuery()->whereKey($assetId)->firstOrFail();
+
+        try {
+            $result = app(MarketplaceListingMetadataService::class)->retryApprovedAsset($asset->id);
+
+            $this->retryMessage = $result?->title
+                ? "Da tao lai title cho item #{$asset->id}."
+                : "Item #{$asset->id} khong tao duoc title.";
+        } catch (Throwable $exception) {
+            $this->retryError = $exception->getMessage();
+        }
     }
 
     public function render(): View

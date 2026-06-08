@@ -47,6 +47,18 @@
             >
         </div>
 
+        @if ($retryMessage)
+            <div class="mt-4 rounded-md border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
+                {{ $retryMessage }}
+            </div>
+        @endif
+
+        @if ($retryError)
+            <div class="mt-4 rounded-md border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-100">
+                {{ $retryError }}
+            </div>
+        @endif
+
         <div class="mt-6 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-white/10 text-sm">
@@ -116,6 +128,18 @@
                                         @endif
                                     @else
                                         <span class="text-white/35">No output yet</span>
+                                        @if (in_array($derivedStatus, ['failed', 'waiting'], true) && $marketplace !== 'none')
+                                            <button
+                                                type="button"
+                                                wire:click="retryListing({{ $asset->id }})"
+                                                wire:loading.attr="disabled"
+                                                wire:target="retryListing({{ $asset->id }})"
+                                                class="mt-3 inline-flex items-center rounded-md bg-amber-400/15 px-3 py-2 text-xs font-semibold text-amber-100 transition hover:bg-amber-400/25 disabled:cursor-wait disabled:opacity-60"
+                                            >
+                                                <span wire:loading.remove wire:target="retryListing({{ $asset->id }})">Retry title</span>
+                                                <span wire:loading wire:target="retryListing({{ $asset->id }})">Generating...</span>
+                                            </button>
+                                        @endif
                                     @endif
                                 </td>
                             </tr>

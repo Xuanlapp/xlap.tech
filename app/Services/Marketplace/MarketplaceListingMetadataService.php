@@ -163,6 +163,31 @@ PROMPT;
         return null;
     }
 
+    public function retryApprovedAsset(int $assetId): ?ProductDesignAsset
+    {
+        $asset = ProductDesignAsset::query()
+            ->with(['user', 'product'])
+            ->findOrFail($assetId);
+
+        if (! $asset->is_approved) {
+            throw new RuntimeException('Item nay chua duyet nen khong the tao listing metadata.');
+        }
+
+        if ($asset->title) {
+            return $asset;
+        }
+
+        $processing = $this->assets->markListingProcessing($asset, $this->marketplaceForAsset($asset));
+
+        try {
+            return $this->generateForApprovedAsset($processing->id);
+        } catch (RuntimeException $exception) {
+            $this->assets->markListingFailed($processing, $exception->getMessage());
+
+            throw $exception;
+        }
+    }
+
     /**
      * Generate listing metadata for approved assets that do not have a title yet.
      */

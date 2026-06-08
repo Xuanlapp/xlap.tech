@@ -8,10 +8,12 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::command('offorest:upload-approved-images-to-drive')
-    ->everyFiveMinutes()
-    ->withoutOverlapping();
+if ((bool) env('OFFOREST_SCHEDULER_ENABLED', true)) {
+    Schedule::command('offorest:upload-approved-images-to-drive')
+        ->everyFiveMinutes()
+        ->withoutOverlapping();
 
-Schedule::command('offorest:generate-listing-metadata')
-    ->everyFiveMinutes()
-    ->withoutOverlapping();
+    Schedule::command('offorest:generate-listing-metadata')
+        ->everyFiveMinutes()
+        ->withoutOverlapping();
+}
