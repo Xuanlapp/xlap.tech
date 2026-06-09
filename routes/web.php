@@ -8,6 +8,7 @@ use App\Livewire\Pages\Admin\ListUser;
 use App\Livewire\Pages\Drive\DriveUploads;
 use App\Livewire\Pages\Marketplace\MarketplaceExports;
 use App\Livewire\Pages\Marketplace\ListingMetadataStatus;
+use App\Livewire\Pages\YTrends\Index as YTrendsIndex;
 use App\Support\ProductRegistry;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
@@ -62,6 +63,9 @@ Route::middleware(['auth', 'verified'])->prefix('offorest')->group(function (): 
 
     Route::get('drive-uploads', DriveUploads::class)
         ->name('offorest.drive-uploads');
+
+    Route::get('ytrends', YTrendsIndex::class)
+        ->name('offorest.ytrends');
 
     Route::get('admin/google-drive/connect', [GoogleDriveOAuthController::class, 'connect'])
         ->middleware('admin')

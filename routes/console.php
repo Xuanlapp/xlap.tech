@@ -19,13 +19,14 @@ if ((bool) env('OFFOREST_SCHEDULER_ENABLED', true)) {
 
     if ((bool) env('OFFOREST_DATABASE_BACKUP_ENABLED', true)) {
         $backupCommand = 'offorest:backup-database --keep-days='.(int) env('OFFOREST_DATABASE_BACKUP_KEEP_DAYS', 14);
+        $backupEveryMinutes = max(1, (int) env('OFFOREST_DATABASE_BACKUP_EVERY_MINUTES', 30));
 
         if ((bool) env('OFFOREST_DATABASE_BACKUP_TO_DRIVE', true)) {
             $backupCommand .= ' --drive';
         }
 
         Schedule::command($backupCommand)
-            ->everyThirtyMinutes()
+            ->cron('*/'.$backupEveryMinutes.' * * * *')
             ->withoutOverlapping(45)
             ->runInBackground();
     }

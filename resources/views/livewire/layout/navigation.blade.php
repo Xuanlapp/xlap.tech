@@ -95,6 +95,18 @@ new class extends Component
                     </svg>
                     <span>Export</span>
                 </a>
+                <a
+                    href="{{ route('offorest.ytrends') }}"
+                    wire:navigate
+                    class="inline-flex items-center gap-3 rounded-full px-5 py-3 text-sm font-medium transition {{ request()->routeIs('offorest.ytrends') ? 'bg-white/20 text-white shadow-sm' : 'text-white/75 hover:bg-white/10 hover:text-white' }}"
+                >
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                        <path d="M4 19V5" />
+                        <path d="M4 19h16" />
+                        <path d="m7 14 4-4 3 3 5-6" />
+                    </svg>
+                    <span>YTrends</span>
+                </a>
                 @if (auth()->user()->is_admin)
                     <a
                         href="{{ route('offorest.admin.users') }}"
@@ -158,6 +170,9 @@ new class extends Component
             </a>
             <a href="{{ route('offorest.exports') }}" wire:navigate class="block rounded-md px-3 py-2 text-sm {{ request()->routeIs('offorest.exports') ? 'bg-white/15 text-white' : 'text-white/70' }}">
                 Export
+            </a>
+            <a href="{{ route('offorest.ytrends') }}" wire:navigate class="block rounded-md px-3 py-2 text-sm {{ request()->routeIs('offorest.ytrends') ? 'bg-white/15 text-white' : 'text-white/70' }}">
+                YTrends
             </a>
             @if (auth()->user()->is_admin)
                 <a href="{{ route('offorest.admin.users') }}" wire:navigate class="block rounded-md px-3 py-2 text-sm {{ request()->routeIs('offorest.admin.users') ? 'bg-white/15 text-white' : 'text-white/70' }}">Admin</a>

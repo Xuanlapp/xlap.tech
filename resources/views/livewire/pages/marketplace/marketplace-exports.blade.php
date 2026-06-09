@@ -84,9 +84,9 @@
                     </div>
                 </div>
 
-                <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
                     <label class="relative block w-full sm:w-80">
-                        <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400">
+                        <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-14 text-slate-400">
                             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                                 <circle cx="11" cy="11" r="7" />
                                 <path d="m20 20-3.5-3.5" />
@@ -95,7 +95,7 @@
                         <input
                             wire:model.live.debounce.400ms="search"
                             type="text"
-                            class="h-11 w-full rounded-md border border-slate-300 bg-white pl-11 pr-4 text-sm text-slate-950 placeholder:text-slate-400"
+                            class="h-11 w-full rounded-md border border-slate-300 bg-white pl-28 pr-4 text-sm text-slate-950 placeholder:text-slate-400 "
                             placeholder="Search..."
                         >
                     </label>
