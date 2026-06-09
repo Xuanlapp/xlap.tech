@@ -13,7 +13,8 @@ class BackupDatabase extends Command
 {
     protected $signature = 'offorest:backup-database
         {--drive : Upload the compressed backup to configured Google Drive}
-        {--path= : Local backup directory, defaults to storage/app/backups/database}';
+        {--path= : Local backup directory, defaults to storage/app/backups/database}
+        {--keep-days=14 : Delete local database backups older than this many days. Use 0 to keep all}';
 
     protected $description = 'Create a local SQL backup of the configured MySQL database, optionally uploading it to Google Drive.';
 
@@ -62,6 +63,7 @@ class BackupDatabase extends Command
         }
 
         $this->info('Backup created: '.$gzPath);
+        $this->deleteOldBackups($backupDir);
 
         if ($this->option('drive')) {
             try {
@@ -93,6 +95,24 @@ class BackupDatabase extends Command
         }
 
         return storage_path('app/backups/database');
+    }
+
+    private function deleteOldBackups(string $backupDir): void
+    {
+        $keepDays = (int) $this->option('keep-days');
+
+        if ($keepDays <= 0) {
+            return;
+        }
+
+        $cutoff = now()->subDays($keepDays)->getTimestamp();
+
+        foreach (File::glob($backupDir.DIRECTORY_SEPARATOR.'*.sql.gz') ?: [] as $path) {
+            if (File::lastModified($path) < $cutoff) {
+                File::delete($path);
+                $this->line('Deleted old backup: '.$path);
+            }
+        }
     }
 
     /**

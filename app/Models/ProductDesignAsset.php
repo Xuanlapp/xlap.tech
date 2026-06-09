@@ -29,6 +29,8 @@ class ProductDesignAsset extends Model
         'marketplace_listing_started_at',
         'marketplace_listing_completed_at',
         'marketplace_listing_error',
+        'marketplace_exported_at',
+        'marketplace_export_filename',
         'redesign',
         'redesign_candidates',
         'lifestyle1',
@@ -60,6 +62,7 @@ class ProductDesignAsset extends Model
             'marketplace_listing_attempts' => 'integer',
             'marketplace_listing_started_at' => 'datetime',
             'marketplace_listing_completed_at' => 'datetime',
+            'marketplace_exported_at' => 'datetime',
         ];
     }
 

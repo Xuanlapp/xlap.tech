@@ -82,6 +82,19 @@ new class extends Component
                     </svg>
                     <span>Uploads</span>
                 </a>
+                <a
+                    href="{{ route('offorest.exports') }}"
+                    wire:navigate
+                    class="inline-flex items-center gap-3 rounded-full px-5 py-3 text-sm font-medium transition {{ request()->routeIs('offorest.exports') ? 'bg-white/20 text-white shadow-sm' : 'text-white/75 hover:bg-white/10 hover:text-white' }}"
+                >
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                        <path d="M4 4h16v16H4z" />
+                        <path d="M8 9h8" />
+                        <path d="M8 13h8" />
+                        <path d="M8 17h5" />
+                    </svg>
+                    <span>Export</span>
+                </a>
                 @if (auth()->user()->is_admin)
                     <a
                         href="{{ route('offorest.admin.users') }}"
@@ -142,6 +155,9 @@ new class extends Component
             </a>
             <a href="{{ route('offorest.drive-uploads') }}" wire:navigate class="block rounded-md px-3 py-2 text-sm {{ request()->routeIs('offorest.drive-uploads') ? 'bg-white/15 text-white' : 'text-white/70' }}">
                 Uploads
+            </a>
+            <a href="{{ route('offorest.exports') }}" wire:navigate class="block rounded-md px-3 py-2 text-sm {{ request()->routeIs('offorest.exports') ? 'bg-white/15 text-white' : 'text-white/70' }}">
+                Export
             </a>
             @if (auth()->user()->is_admin)
                 <a href="{{ route('offorest.admin.users') }}" wire:navigate class="block rounded-md px-3 py-2 text-sm {{ request()->routeIs('offorest.admin.users') ? 'bg-white/15 text-white' : 'text-white/70' }}">Admin</a>

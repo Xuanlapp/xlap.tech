@@ -16,4 +16,17 @@ if ((bool) env('OFFOREST_SCHEDULER_ENABLED', true)) {
     Schedule::command('offorest:generate-listing-metadata')
         ->everyFiveMinutes()
         ->withoutOverlapping();
+
+    if ((bool) env('OFFOREST_DATABASE_BACKUP_ENABLED', true)) {
+        $backupCommand = 'offorest:backup-database --keep-days='.(int) env('OFFOREST_DATABASE_BACKUP_KEEP_DAYS', 14);
+
+        if ((bool) env('OFFOREST_DATABASE_BACKUP_TO_DRIVE', true)) {
+            $backupCommand .= ' --drive';
+        }
+
+        Schedule::command($backupCommand)
+            ->everyThirtyMinutes()
+            ->withoutOverlapping(45)
+            ->runInBackground();
+    }
 }

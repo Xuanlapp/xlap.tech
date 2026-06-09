@@ -4,6 +4,7 @@ namespace App\Livewire\Modals\Image;
 
 use App\Livewire\Pages\Sticker\ListSticker;
 use App\Livewire\Pages\Sticker\StickerStatusPanel;
+use App\Models\ProductDesignAsset;
 use App\Services\Image\ImageLinkPreviewService;
 use App\Services\Logging\ActivityLogService;
 use App\Services\Sticker\StickerService;
@@ -40,6 +41,11 @@ class ReviewImage extends Component
 
     public string $customPrompt = '';
 
+    /**
+     * @var array<int, array{label: string, value: string}>
+     */
+    public array $listingInfo = [];
+
     #[On('review-image')]
     public function open(
         string $src,
@@ -65,6 +71,7 @@ class ReviewImage extends Component
         $this->keyword = $keyword;
         $this->customPrompt = '';
         $this->setCurrentFromGallery();
+        $this->loadListingInfo();
         $this->isOpen = true;
     }
 
@@ -177,7 +184,7 @@ class ReviewImage extends Component
 
     public function close(): void
     {
-        $this->reset(['isOpen', 'src', 'original', 'gallery', 'currentIndex', 'action', 'productSlug', 'assetId', 'keyword', 'customPrompt']);
+        $this->reset(['isOpen', 'src', 'original', 'gallery', 'currentIndex', 'action', 'productSlug', 'assetId', 'keyword', 'customPrompt', 'listingInfo']);
         $this->title = 'Review image';
     }
 
@@ -195,5 +202,59 @@ class ReviewImage extends Component
         $this->title = is_string($current['title'] ?? null) && $current['title'] !== ''
             ? $current['title']
             : 'Review image';
+    }
+
+    private function loadListingInfo(): void
+    {
+        $this->listingInfo = [];
+
+        if (! $this->assetId) {
+            return;
+        }
+
+        $asset = ProductDesignAsset::query()
+            ->select([
+                'id',
+                'user_id',
+                'is_approved',
+                'title',
+                'description',
+                'bullet_point_1',
+                'bullet_point_2',
+                'bullet_point_3',
+                'bullet_point_4',
+                'bullet_point_5',
+                'generic_keyword',
+                'tags',
+            ])
+            ->when(! auth()->user()->is_admin, fn ($query) => $query->where('user_id', auth()->id()))
+            ->find($this->assetId);
+
+        if (! $asset || ! $asset->is_approved) {
+            return;
+        }
+
+        $fields = [
+            'title' => 'Title',
+            'description' => 'Description',
+            'bullet_point_1' => 'Bullet Point 1',
+            'bullet_point_2' => 'Bullet Point 2',
+            'bullet_point_3' => 'Bullet Point 3',
+            'bullet_point_4' => 'Bullet Point 4',
+            'bullet_point_5' => 'Bullet Point 5',
+            'generic_keyword' => 'Generic Keyword',
+            'tags' => 'Tags',
+        ];
+
+        foreach ($fields as $field => $label) {
+            $value = $asset->getAttribute($field);
+
+            if (is_string($value) && trim($value) !== '') {
+                $this->listingInfo[] = [
+                    'label' => $label,
+                    'value' => trim($value),
+                ];
+            }
+        }
     }
 }

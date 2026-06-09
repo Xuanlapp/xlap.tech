@@ -55,7 +55,7 @@
                 <x-label class="truncate text-xs font-bold uppercase text-slate-600">1. Source Image</x-label>
             </div>
 
-            <x-image-preview reviewable class="aspect-[4/4.45] rounded-xl border border-slate-200 bg-slate-50" :src="$asset->image_preview_url" :original="$asset->image_link" alt="Source image">
+            <x-image-preview reviewable class="aspect-[4/4.45] rounded-xl border border-slate-200 bg-slate-50" :src="$asset->image_preview_url" :original="$asset->image_link" alt="Source image" :asset-id="$asset->id" product-slug="sticker" :keyword="$asset->keyword">
                 <span class="px-4 text-center text-sm font-medium text-slate-400">Dan link anh nguon vao day</span>
             </x-image-preview>
 
@@ -63,7 +63,7 @@
                 @if ($asset->image_link)
                     <button
                         type="button"
-                        wire:click="$dispatch('review-image', { src: @js($asset->image_preview_url), original: @js($asset->image_link), title: 'Source image' })"
+                        wire:click="$dispatch('review-image', { src: @js($asset->image_preview_url), original: @js($asset->image_link), title: 'Source image', productSlug: 'sticker', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
                         class="text-xs font-semibold text-blue-600 hover:text-blue-700"
                     >
                         Xem anh nguon
@@ -190,7 +190,7 @@
                                 @foreach ($psdMockups as $mockup)
                                     <button
                                         type="button"
-                                        wire:click="$dispatch('review-image', { src: @js($mockup['src']), original: @js($mockup['original']), title: @js('MOCKUP '.$mockup['slot']), gallery: @js($psdMockupGallery), currentIndex: {{ $loop->index }} })"
+                                        wire:click="$dispatch('review-image', { src: @js($mockup['src']), original: @js($mockup['original']), title: @js('MOCKUP '.$mockup['slot']), gallery: @js($psdMockupGallery), currentIndex: {{ $loop->index }}, productSlug: 'sticker', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
                                         class="aspect-[4/3] overflow-hidden rounded-lg border border-slate-100 bg-slate-50 shadow-sm transition hover:border-orange-300 hover:ring-2 hover:ring-orange-100"
                                     >
                                         <img src="{{ $mockup['src'] }}" alt="MOCKUP {{ $mockup['slot'] }}" loading="lazy" decoding="async" fetchpriority="low" class="h-full w-full object-cover">

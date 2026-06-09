@@ -1,15 +1,15 @@
-<section class="min-h-[calc(100vh-4rem)] bg-[#111217] text-white">
-    <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8" wire:poll.30s>
+<section class="min-h-[calc(100vh-4rem)] bg-[#f4f6fb] px-4 py-6 text-slate-950 sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-[1520px] space-y-6" wire:poll.30s>
         <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-                <p class="text-sm font-medium text-cyan-300">Marketplace</p>
+                <p class="text-sm font-medium text-slate-500">Marketplace</p>
                 <h1 class="mt-2 text-3xl font-semibold">Listing metadata logs</h1>
-                <p class="mt-2 text-sm text-white/55">
+                <p class="mt-2 text-sm text-slate-500">
                     Theo doi item nao dang doi, dang chay, da xong hoac bi loi khi tao Amazon/Etsy title metadata.
                 </p>
             </div>
 
-            <button type="button" wire:click="$refresh" class="inline-flex items-center justify-center rounded-md bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/15">
+            <button type="button" wire:click="$refresh" class="inline-flex items-center justify-center rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700">
                 Refresh
             </button>
         </div>
@@ -28,7 +28,7 @@
                 <button
                     type="button"
                     wire:click="$set('status', '{{ $option }}')"
-                    class="rounded-lg border px-4 py-3 text-left transition {{ $status === $option ? 'border-cyan-300 bg-cyan-300/15 text-cyan-100' : 'border-white/10 bg-white/[0.04] text-white/70 hover:bg-white/[0.07]' }}"
+                    class="rounded-lg border px-4 py-3 text-left transition {{ $status === $option ? 'border-slate-900 bg-white text-slate-950 shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}"
                 >
                     <div class="text-xs font-semibold uppercase">{{ $labels[$option] }}</div>
                     <div class="mt-1 text-2xl font-bold">{{ $statusCounts[$option] ?? 0 }}</div>
@@ -36,33 +36,33 @@
             @endforeach
         </div>
 
-        <div class="mt-6 rounded-lg border border-white/10 bg-white/[0.04] p-4">
-            <label for="listing-search" class="text-sm text-white/70">Search</label>
+        <div class="mt-6 rounded-lg border border-slate-200 bg-white shadow-sm p-4">
+            <label for="listing-search" class="text-sm text-slate-600">Search</label>
             <input
                 id="listing-search"
                 wire:model.live.debounce.400ms="search"
                 type="text"
-                class="mt-1 w-full rounded-md border-white/10 bg-white text-gray-950"
+                class="mt-1 w-full rounded-md border-slate-300 bg-white text-slate-950"
                 placeholder="Keyword, title{{ auth()->user()->is_admin ? ', user email' : '' }}..."
             >
         </div>
 
         @if ($retryMessage)
-            <div class="mt-4 rounded-md border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
+            <div class="mt-4 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
                 {{ $retryMessage }}
             </div>
         @endif
 
         @if ($retryError)
-            <div class="mt-4 rounded-md border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-100">
+            <div class="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                 {{ $retryError }}
             </div>
         @endif
 
-        <div class="mt-6 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
+        <div class="mt-6 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
             <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-white/10 text-sm">
-                    <thead class="bg-white/[0.03] text-left text-white/55">
+                <table class="min-w-full divide-y divide-slate-200 text-sm">
+                    <thead class="bg-slate-50 text-left text-slate-500">
                         <tr>
                             <th class="px-4 py-3 font-medium">Item</th>
                             @if (auth()->user()->is_admin)
@@ -74,7 +74,7 @@
                             <th class="px-4 py-3 font-medium">Output</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-white/10">
+                    <tbody class="divide-y divide-slate-200">
                         @forelse ($assets as $asset)
                             @php
                                 $derivedStatus = $asset->marketplace_listing_status
@@ -82,59 +82,59 @@
                                 $marketplace = $asset->marketplace_listing_marketplace
                                     ?: ($asset->user?->can_generate_amazon_listing ? 'amazon' : ($asset->user?->can_generate_etsy_listing ? 'etsy' : 'none'));
                                 $statusClasses = [
-                                    'waiting' => 'bg-amber-400/15 text-amber-200',
-                                    'processing' => 'bg-blue-400/15 text-blue-200',
-                                    'completed' => 'bg-emerald-400/15 text-emerald-200',
-                                    'failed' => 'bg-red-400/15 text-red-200',
+                                    'waiting' => 'bg-amber-100 text-amber-700',
+                                    'processing' => 'bg-blue-100 text-blue-700',
+                                    'completed' => 'bg-emerald-100 text-emerald-700',
+                                    'failed' => 'bg-red-100 text-red-700',
                                 ];
                             @endphp
                             <tr wire:key="listing-metadata-row-{{ $asset->id }}">
                                 <td class="px-4 py-4 align-top">
-                                    <p class="font-semibold text-white">#{{ $asset->id }} - {{ $asset->keyword }}</p>
-                                    <p class="mt-1 text-xs text-white/45">{{ $asset->product?->name }} | approved {{ optional($asset->approved_at)->format('Y-m-d H:i') }}</p>
+                                    <p class="font-semibold text-slate-950">#{{ $asset->id }} - {{ $asset->keyword }}</p>
+                                    <p class="mt-1 text-xs text-slate-400">{{ $asset->product?->name }} | approved {{ optional($asset->approved_at)->format('Y-m-d H:i') }}</p>
                                 </td>
                                 @if (auth()->user()->is_admin)
                                     <td class="px-4 py-4 align-top">
-                                        <p class="font-medium text-white/90">{{ $asset->user?->name }}</p>
-                                        <p class="mt-1 text-xs text-white/45">{{ $asset->user?->email }}</p>
+                                        <p class="font-medium text-slate-700">{{ $asset->user?->name }}</p>
+                                        <p class="mt-1 text-xs text-slate-400">{{ $asset->user?->email }}</p>
                                     </td>
                                 @endif
                                 <td class="px-4 py-4 align-top">
-                                    <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold {{ $marketplace === 'amazon' ? 'bg-orange-400/15 text-orange-200' : ($marketplace === 'etsy' ? 'bg-purple-400/15 text-purple-200' : 'bg-white/10 text-white/45') }}">
+                                    <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold {{ $marketplace === 'amazon' ? 'bg-orange-100 text-orange-700' : ($marketplace === 'etsy' ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-500') }}">
                                         {{ ucfirst($marketplace) }}
                                     </span>
                                 </td>
                                 <td class="px-4 py-4 align-top">
-                                    <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold {{ $statusClasses[$derivedStatus] ?? 'bg-white/10 text-white/45' }}">
+                                    <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold {{ $statusClasses[$derivedStatus] ?? 'bg-slate-100 text-slate-500' }}">
                                         {{ $derivedStatus === 'processing' ? 'Running' : ucfirst($derivedStatus) }}
                                     </span>
-                                    <p class="mt-2 text-xs text-white/45">Attempts: {{ $asset->marketplace_listing_attempts ?? 0 }}</p>
+                                    <p class="mt-2 text-xs text-slate-400">Attempts: {{ $asset->marketplace_listing_attempts ?? 0 }}</p>
                                     @if ($asset->marketplace_listing_error)
-                                        <p class="mt-2 max-w-xs text-xs text-red-200">{{ $asset->marketplace_listing_error }}</p>
+                                        <p class="mt-2 max-w-xs text-xs text-red-600">{{ $asset->marketplace_listing_error }}</p>
                                     @endif
                                 </td>
-                                <td class="px-4 py-4 align-top text-xs text-white/55">
+                                <td class="px-4 py-4 align-top text-xs text-slate-500">
                                     <p>Started: {{ optional($asset->marketplace_listing_started_at)->format('Y-m-d H:i:s') ?: '-' }}</p>
                                     <p class="mt-1">Done: {{ optional($asset->marketplace_listing_completed_at)->format('Y-m-d H:i:s') ?: '-' }}</p>
                                 </td>
                                 <td class="px-4 py-4 align-top">
                                     @if ($asset->title)
-                                        <p class="max-w-md font-medium text-white">{{ $asset->title }}</p>
+                                        <p class="max-w-md font-medium text-slate-950">{{ $asset->title }}</p>
                                         @if ($asset->generic_keyword)
-                                            <p class="mt-2 max-w-md text-xs text-white/45">Generic: {{ $asset->generic_keyword }}</p>
+                                            <p class="mt-2 max-w-md text-xs text-slate-400">Generic: {{ $asset->generic_keyword }}</p>
                                         @endif
                                         @if ($asset->tags)
-                                            <p class="mt-2 max-w-md text-xs text-white/45">Tags: {{ $asset->tags }}</p>
+                                            <p class="mt-2 max-w-md text-xs text-slate-400">Tags: {{ $asset->tags }}</p>
                                         @endif
                                     @else
-                                        <span class="text-white/35">No output yet</span>
+                                        <span class="text-slate-400">No output yet</span>
                                         @if (in_array($derivedStatus, ['failed', 'waiting'], true) && $marketplace !== 'none')
                                             <button
                                                 type="button"
                                                 wire:click="retryListing({{ $asset->id }})"
                                                 wire:loading.attr="disabled"
                                                 wire:target="retryListing({{ $asset->id }})"
-                                                class="mt-3 inline-flex items-center rounded-md bg-amber-400/15 px-3 py-2 text-xs font-semibold text-amber-100 transition hover:bg-amber-400/25 disabled:cursor-wait disabled:opacity-60"
+                                                class="mt-3 inline-flex items-center rounded-md bg-amber-100 px-3 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-200 disabled:cursor-wait disabled:opacity-60"
                                             >
                                                 <span wire:loading.remove wire:target="retryListing({{ $asset->id }})">Retry title</span>
                                                 <span wire:loading wire:target="retryListing({{ $asset->id }})">Generating...</span>
@@ -145,7 +145,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="{{ auth()->user()->is_admin ? 6 : 5 }}" class="px-4 py-10 text-center text-white/45">
+                                <td colspan="{{ auth()->user()->is_admin ? 6 : 5 }}" class="px-4 py-10 text-center text-slate-400">
                                     Chua co listing metadata nao trong filter nay.
                                 </td>
                             </tr>
@@ -154,7 +154,7 @@
                 </table>
             </div>
 
-            <div class="border-t border-white/10 px-4 py-3">
+            <div class="border-t border-slate-200 bg-white px-4 py-3">
                 {{ $assets->links() }}
             </div>
         </div>

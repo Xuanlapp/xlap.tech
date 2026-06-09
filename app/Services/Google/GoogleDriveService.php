@@ -218,18 +218,30 @@ class GoogleDriveService
 
     private function accessToken(): string
     {
+        $oauthService = app(GoogleDriveOAuthService::class);
+        $hasOAuthConnection = $oauthService->activeConnection() !== null;
+
         try {
-            $oauthToken = app(GoogleDriveOAuthService::class)->accessToken();
+            $oauthToken = $oauthService->accessToken();
         } catch (\Throwable $exception) {
-            Log::warning('Google Drive OAuth token unavailable; falling back to service account.', [
+            Log::warning('Google Drive OAuth token unavailable.', [
                 'message' => $this->redactedBody($exception->getMessage()),
+                'fallback_to_service_account' => ! $hasOAuthConnection,
             ]);
+
+            if ($hasOAuthConnection) {
+                throw new RuntimeException('Google Drive da connect OAuth nhung token khong dung hoac khong refresh duoc. Hay bam Connect Google Drive lai tren dung domain VPS, roi chay optimize:clear.');
+            }
 
             $oauthToken = null;
         }
 
         if (is_string($oauthToken) && $oauthToken !== '') {
             return $oauthToken;
+        }
+
+        if ($hasOAuthConnection) {
+            throw new RuntimeException('Google Drive da connect OAuth nhung khong lay duoc access token. Hay bam Connect Google Drive lai tren dung domain VPS, roi chay optimize:clear.');
         }
 
         return $this->serviceAccountAccessToken();

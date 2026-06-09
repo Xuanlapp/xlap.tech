@@ -3,6 +3,9 @@
     'original' => null,
     'alt' => 'Image preview',
     'reviewable' => false,
+    'assetId' => null,
+    'productSlug' => null,
+    'keyword' => null,
 ])
 
 <div
@@ -14,7 +17,7 @@
             <button
                 type="button"
                 x-show="! failed"
-                wire:click="$dispatch('review-image', { src: @js($src), original: @js($original ?: $src), title: @js($alt) })"
+                wire:click="$dispatch('review-image', { src: @js($src), original: @js($original ?: $src), title: @js($alt), assetId: @js($assetId), productSlug: @js($productSlug), keyword: @js($keyword) })"
                 class="h-full w-full cursor-zoom-in"
             >
                 <img

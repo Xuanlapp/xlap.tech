@@ -197,6 +197,49 @@
                                 </div>
                             </section>
 
+                            @if (! empty($listingInfo))
+                                <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                                    <div class="mb-4 flex items-center gap-3">
+                                        <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                                <path d="M4 19.5V4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5Z" />
+                                                <path d="M8 7h8M8 11h8M8 15h5" />
+                                            </svg>
+                                        </span>
+                                        <div>
+                                            <h3 class="text-sm font-bold text-slate-950">Listing Information</h3>
+                                            <p class="mt-0.5 text-xs font-medium text-slate-500">Da duyet</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="space-y-4">
+                                        @foreach ($listingInfo as $field)
+                                            @php
+                                                $value = $field['value'];
+                                                $isLong = mb_strlen($value) > 100;
+                                                $preview = $isLong ? mb_substr($value, 0, 100).'...' : $value;
+                                            @endphp
+                                            <div
+                                                x-data="{ expanded: false }"
+                                                class="rounded-xl border border-slate-200 bg-slate-50 p-3"
+                                            >
+                                                <div class="mb-1 text-xs font-bold uppercase text-slate-500">{{ $field['label'] }}</div>
+                                                <p class="whitespace-pre-line break-words text-sm leading-6 text-slate-800" x-text="expanded ? @js($value) : @js($preview)"></p>
+
+                                                @if ($isLong)
+                                                    <button
+                                                        type="button"
+                                                        x-on:click="expanded = ! expanded"
+                                                        class="mt-2 text-xs font-bold text-blue-600 transition hover:text-blue-700"
+                                                        x-text="expanded ? 'Thu gon' : 'Xem tiep'"
+                                                    ></button>
+                                                @endif
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </section>
+                            @endif
+
                             @if ($action === 'sticker-redesign')
                                 <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                                     <div class="mb-4 flex items-center gap-3">
