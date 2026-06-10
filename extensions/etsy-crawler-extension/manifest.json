@@ -1,0 +1,59 @@
+{
+  "manifest_version": 3,
+  "name": "Etsy Crawler Bridge",
+  "version": "0.1.0",
+  "description": "Crawl Etsy listing data from the active Chrome profile and return results to popup or an allowed web app.",
+  "permissions": [
+    "scripting",
+    "tabs",
+    "storage",
+    "downloads"
+  ],
+  "host_permissions": [
+    "https://www.etsy.com/*",
+    "https://etsy.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://localhost/*",
+        "http://127.0.0.1/*",
+        "https://localhost/*",
+        "http://xlap.com.vn/*",
+        "https://xlap.com.vn/*",
+        "http://*.xlap.com.vn/*",
+        "https://*.xlap.com.vn/*",
+        "http://xlap.tech/*",
+        "https://xlap.tech/*",
+        "http://*.xlap.tech/*",
+        "https://*.xlap.tech/*"
+      ],
+      "js": [
+        "bridge.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "action": {
+    "default_title": "Etsy Crawler",
+    "default_popup": "popup.html"
+  },
+  "externally_connectable": {
+    "matches": [
+      "http://localhost/*",
+      "http://127.0.0.1/*",
+      "https://localhost/*",
+      "http://xlap.com.vn/*",
+      "https://xlap.com.vn/*",
+      "http://*.xlap.com.vn/*",
+      "https://*.xlap.com.vn/*",
+      "http://xlap.tech/*",
+      "https://xlap.tech/*",
+      "http://*.xlap.tech/*",
+      "https://*.xlap.tech/*"
+    ]
+  }
+}

@@ -2,10 +2,12 @@
 
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Admin\GoogleDriveOAuthController;
+use App\Http\Controllers\IdeaEtsyExtensionDownloadController;
 use App\Http\Controllers\ImagePreviewController;
 use App\Livewire\Pages\Admin\ActivityLogs;
 use App\Livewire\Pages\Admin\ListUser;
 use App\Livewire\Pages\Drive\DriveUploads;
+use App\Livewire\Pages\IdeaEtsy\IdeaEtsy;
 use App\Livewire\Pages\Marketplace\MarketplaceExports;
 use App\Livewire\Pages\Marketplace\ListingMetadataStatus;
 use App\Livewire\Pages\YTrends\Index as YTrendsIndex;
@@ -66,6 +68,12 @@ Route::middleware(['auth', 'verified'])->prefix('offorest')->group(function (): 
 
     Route::get('ytrends', YTrendsIndex::class)
         ->name('offorest.ytrends');
+
+    Route::get('idea-etsy', IdeaEtsy::class)
+        ->name('offorest.idea-etsy');
+
+    Route::get('idea-etsy/extension/download', IdeaEtsyExtensionDownloadController::class)
+        ->name('offorest.idea-etsy.extension.download');
 
     Route::get('admin/google-drive/connect', [GoogleDriveOAuthController::class, 'connect'])
         ->middleware('admin')

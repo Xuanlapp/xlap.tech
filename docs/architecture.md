@@ -86,6 +86,8 @@
 â”‚   â”œâ”€â”€ mlb.md
 â”‚   â”œâ”€â”€ wnba.md
 â”‚   â””â”€â”€ program.md
+â”œâ”€â”€ extensions/
+â”‚   â””â”€â”€ etsy-crawler-extension/     # Chrome extension bridge cho trang Idea Etsy
 â”œâ”€â”€ resources/
 â”‚   â”œâ”€â”€ views/
 â”‚   â”‚   â”œâ”€â”€ layouts/
@@ -142,6 +144,7 @@
 - `app/Livewire/Shared/`: component dÃ¹ng chung.
 - `routes/admin.php`, `routes/sports.php`: tÃ¡ch route theo domain.
 - `docs/`: mÃ´ táº£ kiáº¿n trÃºc, database, import/export, vÃ  spec theo domain.
+- `extensions/`: browser extensions duoc version cung repo; `etsy-crawler-extension` la Chrome bridge cho trang Idea Etsy.
 
 ## Ghi chÃº cho AI
 
@@ -204,6 +207,7 @@ app/Livewire/Pages/Ornament/ProductDesignCard.php
 app/Livewire/Pages/Mockup/Index.php
 app/Livewire/Pages/Redesign/Index.php
 app/Livewire/Pages/Poster/Index.php
+app/Livewire/Pages/IdeaEtsy/IdeaEtsy.php
 app/Livewire/Modals/Prompt/DetailPrompt.php
 app/Livewire/Modals/Sticker/PsdMockupTemplate.php
 app/Livewire/Modals/Ornament/PsdMockupTemplate.php
@@ -233,9 +237,13 @@ resources/views/livewire/pages/{product}/{page-name}.blade.php
 resources/views/livewire/modals/prompt/detail-prompt.blade.php
 resources/views/livewire/modals/sticker/psd-mockup-template.blade.php
 resources/views/livewire/pages/admin/list-user.blade.php
+resources/views/livewire/pages/idea-test/idea-etsy.blade.php
 resources/views/errors/403.blade.php
 resources/views/errors/404.blade.php
 resources/views/errors/500.blade.php
+extensions/etsy-crawler-extension/manifest.json
+extensions/etsy-crawler-extension/background.js
+extensions/etsy-crawler-extension/bridge.js
 ```
 
 ## Livewire UI Rules
