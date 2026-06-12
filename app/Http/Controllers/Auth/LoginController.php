@@ -35,7 +35,7 @@ class LoginController extends Controller
             $request->input('website'),
             $request->integer('started_at'),
             $request->input('cf-turnstile-response'),
-            'login'
+            'cf-turnstile-response'
         );
 
         $user = User::where($loginField, $login)->first();
@@ -45,7 +45,7 @@ class LoginController extends Controller
             $security->recordFailedAttempt($login);
 
             throw ValidationException::withMessages([
-                'login' => trans('auth.failed'),
+                'password' => trans('auth.failed'),
             ]);
         }
 

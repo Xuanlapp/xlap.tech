@@ -53,6 +53,16 @@ new #[Layout('layouts.guest')] class extends Component
                 <input type="text" tabindex="-1" autocomplete="off" class="hidden" wire:model="form.website">
                 <input type="hidden" wire:model="form.startedAt">
 
+                @php
+                    $authFailedMessage = trans('auth.failed');
+                    $loginMessages = collect($errors->get('form.login'));
+                    $credentialMessages = collect($errors->get('form.password'))
+                        ->merge($loginMessages->filter(fn ($message) => $message === $authFailedMessage));
+                    $turnstileMessages = collect($errors->get('form.turnstileToken'))
+                        ->merge($loginMessages->filter(fn ($message) => str_contains($message, 'xac minh') || str_contains($message, 'xÃ¡c minh') || str_contains($message, 'security')));
+                    $visibleLoginMessages = $loginMessages->reject(fn ($message) => $message === $authFailedMessage || $turnstileMessages->contains($message));
+                @endphp
+
                 <div>
                     <div class="relative">
                         <span class="pointer-events-none absolute inset-y-0 left-4 flex items-center text-slate-400">
@@ -72,7 +82,7 @@ new #[Layout('layouts.guest')] class extends Component
                             class="w-full rounded-full border border-slate-300/80 bg-white/75 py-3.5 pl-12 pr-4 text-sm text-slate-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] outline-none transition placeholder:text-slate-400 focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-400/20"
                         />
                     </div>
-                    <x-input-error :messages="$errors->get('form.login')" class="mt-2 px-3 text-sm" />
+                    <x-input-error :messages="$visibleLoginMessages->all()" class="mt-2 px-3 text-sm" />
                 </div>
 
                 <div>
@@ -104,7 +114,7 @@ new #[Layout('layouts.guest')] class extends Component
                             </svg>
                         </button>
                     </div>
-                    <x-input-error :messages="$errors->get('form.password')" class="mt-2 px-3 text-sm" />
+                    <x-input-error :messages="$credentialMessages->all()" class="mt-2 px-3 text-sm" />
                 </div>
 
                 @if (app(TurnstileVerifier::class)->enabled())
@@ -117,7 +127,7 @@ new #[Layout('layouts.guest')] class extends Component
                             data-error-callback="offorestTurnstileExpired"
                         ></div>
                     </div>
-                    <x-input-error :messages="$errors->get('form.login')" class="mt-2 px-3 text-sm" />
+                    <x-input-error :messages="$turnstileMessages->all()" class="mt-2 px-3 text-sm" />
                 @endif
 
                 <div class="flex items-center justify-between gap-4 pt-1">

@@ -30,6 +30,16 @@
                 <input type="text" name="website" tabindex="-1" autocomplete="off" class="hidden">
                 <input type="hidden" name="started_at" value="{{ now()->timestamp }}">
 
+                @php
+                    $authFailedMessage = trans('auth.failed');
+                    $loginMessages = collect($errors->get('login'));
+                    $credentialMessages = collect($errors->get('password'))
+                        ->merge($loginMessages->filter(fn ($message) => $message === $authFailedMessage));
+                    $turnstileMessages = collect($errors->get('cf-turnstile-response'))
+                        ->merge($loginMessages->filter(fn ($message) => str_contains($message, 'xac minh') || str_contains($message, 'xÃ¡c minh') || str_contains($message, 'security')));
+                    $visibleLoginMessages = $loginMessages->reject(fn ($message) => $message === $authFailedMessage || $turnstileMessages->contains($message));
+                @endphp
+
                 <div>
                     <div class="relative">
                         <span class="pointer-events-none absolute inset-y-0 left-4 flex items-center text-slate-400">
@@ -49,7 +59,9 @@
                             class="w-full rounded-full border border-slate-300/80 bg-white/75 py-3.5 pl-12 pr-4 text-sm text-slate-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] outline-none transition placeholder:text-slate-400 focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-400/20"
                         />
                     </div>
-                    @error('login') <div class="mt-2 px-3 text-sm text-red-600">{{ $message }}</div> @enderror
+                    @foreach ($visibleLoginMessages as $message)
+                        <div class="mt-2 px-3 text-sm text-red-600">{{ $message }}</div>
+                    @endforeach
                 </div>
 
                 <div>
@@ -80,14 +92,18 @@
                             </svg>
                         </button>
                     </div>
-                    @error('password') <div class="mt-2 px-3 text-sm text-red-600">{{ $message }}</div> @enderror
+                    @foreach ($credentialMessages as $message)
+                        <div class="mt-2 px-3 text-sm text-red-600">{{ $message }}</div>
+                    @endforeach
                 </div>
 
                 @if ($turnstile->enabled())
                     <div class="flex justify-center">
                         <div class="cf-turnstile" data-sitekey="{{ $turnstile->siteKey() }}"></div>
                     </div>
-                    @error('login') <div class="mt-2 px-3 text-sm text-red-600">{{ $message }}</div> @enderror
+                    @foreach ($turnstileMessages as $message)
+                        <div class="mt-2 px-3 text-sm text-red-600">{{ $message }}</div>
+                    @endforeach
                 @endif
 
                 <div class="flex items-center justify-between gap-4 pt-1">

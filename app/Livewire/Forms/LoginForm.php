@@ -39,7 +39,7 @@ class LoginForm extends Form
             $this->website,
             $this->startedAt,
             $this->turnstileToken,
-            'form.login'
+            'form.turnstileToken'
         );
 
         $loginField = filter_var($this->login, FILTER_VALIDATE_EMAIL) ? 'email' : 'name';
@@ -52,7 +52,7 @@ class LoginForm extends Form
             app(LoginSecurity::class)->recordFailedAttempt($this->login);
 
             throw ValidationException::withMessages([
-                'form.login' => trans('auth.failed'),
+                'form.password' => trans('auth.failed'),
             ]);
         }
 

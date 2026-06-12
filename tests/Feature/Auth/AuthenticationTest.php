@@ -86,7 +86,8 @@ class AuthenticationTest extends TestCase
         $component->call('login');
 
         $component
-            ->assertHasErrors()
+            ->assertHasErrors(['form.turnstileToken'])
+            ->assertHasNoErrors(['form.login', 'form.password'])
             ->assertNoRedirect();
 
         $this->assertGuest();
@@ -135,7 +136,8 @@ class AuthenticationTest extends TestCase
         $component->call('login');
 
         $component
-            ->assertHasErrors()
+            ->assertHasErrors(['form.password'])
+            ->assertHasNoErrors(['form.login', 'form.turnstileToken'])
             ->assertNoRedirect();
 
         $this->assertGuest();
@@ -154,7 +156,7 @@ class AuthenticationTest extends TestCase
         $component->call('login');
 
         $component
-            ->assertHasErrors()
+            ->assertHasErrors(['form.turnstileToken'])
             ->assertNoRedirect();
 
         $this->assertGuest();
@@ -172,7 +174,7 @@ class AuthenticationTest extends TestCase
         $component->call('login');
 
         $component
-            ->assertHasErrors()
+            ->assertHasErrors(['form.turnstileToken'])
             ->assertNoRedirect();
 
         $this->assertGuest();
