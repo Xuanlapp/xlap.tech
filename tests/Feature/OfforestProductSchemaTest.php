@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\Modals\Admin\AddUser;
+use App\Livewire\Modals\Admin\EditUser;
 use App\Livewire\Modals\Sticker\AddProductDesign;
 use App\Livewire\Modals\Sticker\EditProductDetail;
 use App\Livewire\Modals\Ornament\AddProductDesign as OrnamentAddProductDesign;
@@ -177,7 +179,8 @@ class OfforestProductSchemaTest extends TestCase
 
         $this->actingAs($admin);
 
-        Livewire::test(ListUser::class)
+        Livewire::test(AddUser::class)
+            ->call('openModal', 'modals.admin.add-user')
             ->set('name', 'Sticker Vertex User')
             ->set('email', 'vertex-user@example.com')
             ->set('password', 'Password12345')
@@ -190,7 +193,7 @@ class OfforestProductSchemaTest extends TestCase
                 'private_key' => "-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----\n",
                 'client_email' => 'vertex@example.iam.gserviceaccount.com',
             ], JSON_THROW_ON_ERROR))
-            ->call('createUser')
+            ->call('save')
             ->assertHasNoErrors();
 
         $user = User::where('email', 'vertex-user@example.com')->firstOrFail();
@@ -210,12 +213,13 @@ class OfforestProductSchemaTest extends TestCase
 
         $this->actingAs($admin);
 
-        Livewire::test(ListUser::class)
+        Livewire::test(AddUser::class)
+            ->call('openModal', 'modals.admin.add-user')
             ->set('name', 'Any Operator')
             ->set('email', 'any-operator@example.com')
             ->set('password', 'Password12345')
             ->set('selectedProducts', [$product->id])
-            ->call('createUser')
+            ->call('save')
             ->assertHasNoErrors();
 
         $user = User::where('email', 'any-operator@example.com')->firstOrFail();
@@ -231,8 +235,11 @@ class OfforestProductSchemaTest extends TestCase
 
         $this->actingAs($admin);
 
-        Livewire::test(ListUser::class)
-            ->call('toggleProduct', $user->id, $product->id);
+        Livewire::test(EditUser::class)
+            ->call('openModal', 'modals.admin.edit-user', ['userId' => $user->id])
+            ->set('selectedProducts', [$product->id])
+            ->call('save')
+            ->assertHasNoErrors();
 
         $this->assertTrue($user->products()->whereKey($product->id)->exists());
     }
@@ -258,14 +265,15 @@ class OfforestProductSchemaTest extends TestCase
 
         $this->actingAs($admin);
 
-        Livewire::test(ListUser::class)
+        Livewire::test(AddUser::class)
+            ->call('openModal', 'modals.admin.add-user')
             ->set('name', 'Sticker Copied Vertex User')
             ->set('email', 'copied-vertex@example.com')
             ->set('password', 'Password12345')
             ->set('selectedProducts', [$product->id])
             ->set('vertexMode', 'copy')
             ->set('vertexCopyUserId', $source->id)
-            ->call('createUser')
+            ->call('save')
             ->assertHasNoErrors();
 
         $user = User::where('email', 'copied-vertex@example.com')->firstOrFail();

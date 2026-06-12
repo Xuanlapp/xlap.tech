@@ -5,6 +5,7 @@ namespace App\Livewire\Modals\Ornament;
 use App\Livewire\Pages\Ornament\ListOrnament;
 use App\Livewire\Pages\Ornament\OrnamentStatusPanel;
 use App\Services\Image\ImageLinkPreviewService;
+use App\Services\Ornament\CompetitorListingScraper;
 use App\Services\Ornament\OrnamentService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Str;
@@ -20,6 +21,17 @@ class AddProductDesign extends Component
     public string $imageLink = '';
 
     public ?bool $isImageLink = null;
+
+    public string $competitorUrl = '';
+
+    /**
+     * @var array{platform?: string, productTitle?: string, link?: string, productDescription?: string, bulletPoints?: array<int, string>, images?: array<int, string>}
+     */
+    public array $competitorListing = [];
+
+    public string $selectedImageUrl = '';
+
+    public ?string $scrapeError = null;
 
     /**
      * Open this modal through the shared modal event used by product pages.
@@ -38,14 +50,31 @@ class AddProductDesign extends Component
     public function open(): void
     {
         $this->resetValidation();
-        $this->reset(['keyword', 'imageLink', 'isImageLink']);
+        $this->reset([
+            'keyword',
+            'imageLink',
+            'isImageLink',
+            'competitorUrl',
+            'competitorListing',
+            'selectedImageUrl',
+            'scrapeError',
+        ]);
         $this->isOpen = true;
     }
 
     public function close(): void
     {
         $this->resetValidation();
-        $this->reset(['isOpen', 'keyword', 'imageLink', 'isImageLink']);
+        $this->reset([
+            'isOpen',
+            'keyword',
+            'imageLink',
+            'isImageLink',
+            'competitorUrl',
+            'competitorListing',
+            'selectedImageUrl',
+            'scrapeError',
+        ]);
     }
 
     public function updatedImageLink(): void
@@ -53,6 +82,67 @@ class AddProductDesign extends Component
         $this->isImageLink = $this->imageLink === ''
             ? null
             : $this->looksLikeImageUrl($this->imageLink);
+    }
+
+    public function updatedCompetitorUrl(): void
+    {
+        $url = trim($this->competitorUrl);
+
+        $this->resetValidation();
+        $this->scrapeError = null;
+        $this->competitorListing = [];
+        $this->selectedImageUrl = '';
+        $this->keyword = '';
+        $this->imageLink = '';
+        $this->isImageLink = null;
+
+        if ($url === '') {
+            return;
+        }
+
+        if (! filter_var($url, FILTER_VALIDATE_URL)) {
+            $this->addError('competitorUrl', 'Link doi thu khong hop le.');
+            $this->dispatch('ornament-competitor-scrape-finished');
+
+            return;
+        }
+
+        if (! $this->isSupportedCompetitorUrl($url)) {
+            $this->addError('competitorUrl', 'Chi ho tro link Amazon hoac Etsy.');
+            $this->dispatch('ornament-competitor-scrape-finished');
+
+            return;
+        }
+
+        try {
+            $this->competitorListing = app(CompetitorListingScraper::class)->scrape($url);
+            $this->keyword = $this->keywordFromTitle($this->competitorListing['productTitle'] ?? '');
+            $this->selectedImageUrl = $this->competitorListing['images'][0] ?? '';
+            $this->imageLink = $this->selectedImageUrl;
+            $this->updatedImageLink();
+        } catch (\Throwable $exception) {
+            $this->scrapeError = $exception->getMessage();
+        }
+
+        $this->dispatch('ornament-competitor-scrape-finished');
+    }
+
+    private function isSupportedCompetitorUrl(string $url): bool
+    {
+        $host = Str::lower((string) parse_url($url, PHP_URL_HOST));
+
+        return Str::contains($host, 'amazon.') || Str::contains($host, 'etsy.');
+    }
+
+    public function selectImage(string $imageUrl): void
+    {
+        if (! in_array($imageUrl, $this->competitorListing['images'] ?? [], true)) {
+            return;
+        }
+
+        $this->selectedImageUrl = $imageUrl;
+        $this->imageLink = $imageUrl;
+        $this->updatedImageLink();
     }
 
     public function save(): void
@@ -86,5 +176,20 @@ class AddProductDesign extends Component
     private function looksLikeImageUrl(string $url): bool
     {
         return app(ImageLinkPreviewService::class)->looksLikeImageUrl($url);
+    }
+
+    private function keywordFromTitle(string $title): string
+    {
+        $keyword = trim($title);
+
+        if ($keyword === '') {
+            return '';
+        }
+
+        if (! Str::contains(Str::lower($keyword), 'ornament')) {
+            $keyword = trim($keyword.' ornament');
+        }
+
+        return Str::limit($keyword, 255, '');
     }
 }

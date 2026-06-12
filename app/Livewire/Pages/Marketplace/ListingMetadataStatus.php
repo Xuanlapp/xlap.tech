@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Pages\Marketplace;
 
+use App\Livewire\Concerns\ReportsUserActionErrors;
 use App\Models\ProductDesignAsset;
 use App\Services\Marketplace\MarketplaceListingMetadataService;
 use Illuminate\Contracts\View\View;
@@ -13,6 +14,7 @@ use Livewire\WithPagination;
 
 class ListingMetadataStatus extends Component
 {
+    use ReportsUserActionErrors;
     use WithPagination;
 
     private const STATUS_OPTIONS = ['all', 'waiting', 'processing', 'completed', 'failed'];
@@ -53,6 +55,7 @@ class ListingMetadataStatus extends Component
                 ? "Da tao lai title cho item #{$asset->id}."
                 : "Item #{$asset->id} khong tao duoc title.";
         } catch (Throwable $exception) {
+            $this->reportUserActionError($exception, 'marketplace.retry_listing', ['asset_id' => $asset->id]);
             $this->retryError = $exception->getMessage();
         }
     }

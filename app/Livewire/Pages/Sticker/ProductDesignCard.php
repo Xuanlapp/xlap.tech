@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Pages\Sticker;
 
+use App\Livewire\Concerns\ReportsUserActionErrors;
 use App\Livewire\Pages\Sticker\ListSticker;
 use App\Models\ProductDesignAsset;
 use App\Services\Image\ImageLinkPreviewService;
@@ -17,6 +18,8 @@ use Throwable;
 
 class ProductDesignCard extends Component
 {
+    use ReportsUserActionErrors;
+
     public int $assetId;
 
     public ?string $activePsdTemplateName = null;
@@ -50,8 +53,10 @@ class ProductDesignCard extends Component
             $this->dispatch('sticker-product-design-workflow-updated')->to(StickerStatusPanel::class);
             $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da tao anh master.');
         } catch (RuntimeException $exception) {
+            $this->reportUserActionError($exception, 'sticker.generate_redesign', ['asset_id' => $this->assetId]);
             $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
         } catch (Throwable $exception) {
+            $this->reportUserActionError($exception, 'sticker.generate_redesign', ['asset_id' => $this->assetId]);
             Log::error('Sticker master generation failed unexpectedly.', [
                 'asset_id' => $this->assetId,
                 'message' => $exception->getMessage(),
@@ -76,8 +81,10 @@ class ProductDesignCard extends Component
 
             $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da render PSD mockup.');
         } catch (RuntimeException $exception) {
+            $this->reportUserActionError($exception, 'sticker.generate_psd_mockups', ['asset_id' => $this->assetId]);
             $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
         } catch (Throwable $exception) {
+            $this->reportUserActionError($exception, 'sticker.generate_psd_mockups', ['asset_id' => $this->assetId]);
             Log::error('Sticker PSD mockup generation failed unexpectedly.', [
                 'asset_id' => $this->assetId,
                 'message' => $exception->getMessage(),
@@ -107,6 +114,7 @@ class ProductDesignCard extends Component
             $this->dispatch('sticker-counts-updated')->to(StickerStatusPanel::class);
             $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: $message);
         } catch (RuntimeException $exception) {
+            $this->reportUserActionError($exception, 'sticker.toggle_approval', ['asset_id' => $this->assetId]);
             $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
         }
     }

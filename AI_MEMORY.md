@@ -288,3 +288,150 @@ Tạo hệ thống memory để AI nhớ quá trình đã làm.
 
 **Việc cần làm tiếp:**  
 - Áp dụng file này cho từng lần làm việc tiếp theo trong project/code.
+
+### 2026-06-12 09:04:30 +07:00
+
+**Muc tieu:**  
+Cho Sticker "mockup tu chon" vao hang doi de VPS yeu khong render nhieu PSD cung luc.
+
+**File da sua/tao:**  
+- `app/Services/Sticker/PsdMockupRenderer.php`
+- `config/services.php`
+- `.env.example`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Boc `PsdMockupRenderer::render()` bang Laravel cache lock.
+- Chi cho 1 render PSD sticker chay tai mot thoi diem; request sau se doi request truoc chay xong roi moi render.
+- Them config `PSD_MOCKUP_RENDERER_LOCK_SECONDS` va `PSD_MOCKUP_RENDERER_WAIT_SECONDS`.
+
+**Loi da gap va cach xu ly:**  
+- Patch `.env.example` lan dau fail vi file co 2 dong `PSD_MOCKUP_RENDERER_COMMAND`; da them bien lock/wait vao ca block chinh va block `mockup tu chon`.
+
+**Logic can nho:**  
+- Lock key: `sticker:psd-mockup-renderer:lock`.
+- Mac dinh lock TTL 900s, thoi gian cho hang doi 1800s.
+- Neu doi qua lau se bao loi: `Hang doi render PSD dang qua lau...`.
+- Day la hang doi dong bo trong request Livewire, khong phai background queue worker.
+
+**Viec can lam tiep:**  
+- Neu co rat nhieu user bam cung luc va request bi timeout, nen chuyen sang Laravel Queue + worker rieng cho render PSD.
+- Test da chay: `php -l app/Services/Sticker/PsdMockupRenderer.php`, `php -l config/services.php`, `php artisan test tests/Feature/OfforestProductSchemaTest.php`, `php artisan test`, `php artisan optimize:clear`.
+
+### 2026-06-12 11:14:29 +07:00
+
+**Muc tieu:**  
+Kiem tra vi sao admin va user da chinh cung Vertex key nhung admin van tao anh loi 403.
+
+**File da sua/tao:**  
+- `app/Services/Vertex/VertexImageGenerator.php`
+- `tests/Unit/VertexImageGeneratorTest.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Sua `credentialsFor()` de cot `client_email` va `private_key` trong `vertex_api_credentials` override `credentials_json`.
+- Them test dam bao khi `credentials_json` cu khac key, service van dung cot key hien tai.
+
+**Loi da gap va cach xu ly:**  
+- Admin record id=1 co cot `project_id/client_email/private_key` da giong user, nhung `credentials_json` van la JSON cu: project `psychic-cursor-494308-i8`, email `nhom5pc@...`.
+- Code cu dung `??=` nen neu JSON co `client_email/private_key` thi no thang cot hien tai, lam admin ky token bang key cu roi goi project moi `velvety-carving-494308-q6`, dan den HTTP 403 `aiplatform.endpoints.predict`.
+- Da doi sang uu tien cot explicit, `php artisan optimize:clear`.
+
+**Logic can nho:**  
+- `VertexImageGenerator::generate()` lay credential theo user dang login va function_key `image_generation`.
+- Neu admin/user "nhin nhu cung key" nhung van khac, kiem tra ca `credentials_json` vi truoc day JSON cu co the override cot.
+- Sau fix, cot `client_email/private_key` la nguon uu tien; JSON chi lam fallback/metadata.
+
+**Viec can lam tiep:**  
+- Neu van 403 sau fix, luc do la IAM thuc su cua service account/project/model, khong con do JSON cu override.
+- Test da chay: `php -l app/Services/Vertex/VertexImageGenerator.php`, `php artisan test tests/Unit/VertexImageGeneratorTest.php`, `php artisan test`, `php artisan optimize:clear`.
+
+### 2026-06-12 15:04:01 +07:00
+
+**Muc tieu:**  
+Gui loi user action ve Telegram bot, gom user nao bi loi gi va du lieu dang thao tac.
+
+**File da sua/tao:**  
+- `app/Services/Monitoring/TelegramErrorReporter.php`
+- `app/Livewire/Concerns/ReportsUserActionErrors.php`
+- `bootstrap/app.php`
+- `config/services.php`
+- `.env.example`
+- `app/Livewire/Pages/Sticker/ProductDesignCard.php`
+- `app/Livewire/Pages/Ornament/ProductDesignCard.php`
+- `app/Livewire/Modals/Image/ReviewImage.php`
+- `app/Livewire/Pages/Marketplace/ListingMetadataStatus.php`
+- `tests/Unit/TelegramErrorReporterTest.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Them `TelegramErrorReporter` gui text ve Telegram `sendMessage`.
+- Them config/env: `TELEGRAM_ERROR_LOG_ENABLED`, `TELEGRAM_ERROR_LOG_BOT_TOKEN`, `TELEGRAM_ERROR_LOG_CHAT_ID`, `TELEGRAM_ERROR_LOG_TIMEOUT`.
+- Global exception handler trong `bootstrap/app.php` se report loi chua catch.
+- Cac Livewire action quan trong da catch loi van report Telegram bang trait `ReportsUserActionErrors`.
+- Context gui gom env/time/user/request/action/component/asset_id/input da loc field nhay cam.
+
+**Loi da gap va cach xu ly:**  
+- `php -l` canh bao `use Throwable` trong file khong namespace; da doi thanh `\Throwable`.
+- Telegram reporter bat loi rieng va chi log warning, khong lam request user fail them neu bot/config loi.
+
+**Logic can nho:**  
+- Cac field nhay cam bi loai khoi request input: password, token, access/refresh token, private_key, credentials_json, vertexJson, marketplaceVertexJson.
+- Message gioi han 3900 ky tu de khong vuot Telegram limit.
+- Muon bat that can set `.env`, chay `php artisan optimize:clear`, restart server/worker.
+
+**Viec can lam tiep:**  
+- Dien bot token/chat id that vao `.env` tren VPS va test bang mot loi Vertex/PSD co chu dich.
+- Test da chay: `php -l` cac file sua, `php artisan test tests/Unit/TelegramErrorReporterTest.php tests/Unit/VertexImageGeneratorTest.php`, `php artisan test`, `php artisan optimize:clear`.
+
+### 2026-06-12 15:05:59 +07:00
+
+**Muc tieu:**  
+Bat cau hinh Telegram error log bang bot token/chat id user cung cap.
+
+**File da sua/tao:**  
+- `.env`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Them `TELEGRAM_ERROR_LOG_ENABLED=true`.
+- Them `TELEGRAM_ERROR_LOG_BOT_TOKEN`, `TELEGRAM_ERROR_LOG_CHAT_ID`, `TELEGRAM_ERROR_LOG_TIMEOUT` vao `.env`.
+- Chay `php artisan optimize:clear`.
+
+**Loi da gap va cach xu ly:**  
+- Gui test qua `TelegramErrorReporter` bi Telegram tra `400 Bad Request: chat not found`.
+- Nguyen nhan thuong gap: user chua mo chat voi bot/chua bam `/start`, hoac chat id khong dung.
+
+**Logic can nho:**  
+- Khong ghi token Telegram vao memory/final answer.
+- Sau khi user bam `/start` voi bot, gui test lai bang reporter.
+
+**Viec can lam tiep:**  
+- User can bam `/start` trong chat voi bot Telegram, sau do test lai.
+
+### 2026-06-12 15:55:27 +07:00
+
+**Muc tieu:**  
+Doi format loi Telegram cho de doc, giong card thong bao co tieu de va block chi tiet.
+
+**File da sua/tao:**  
+- `app/Services/Monitoring/TelegramErrorReporter.php`
+- `tests/Unit/TelegramErrorReporterTest.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**  
+- Telegram message dung `parse_mode=HTML`.
+- Noi dung tach thanh cac dong: title, time, env, user, action, component, route, URL, IP, error, message.
+- Context/request/file dua vao block `<pre>` de de copy/doc.
+
+**Loi da gap va cach xu ly:**  
+- Test fail vi JSON trong `<pre>` da escape quote thanh `&quot;`; da cap nhat assertion.
+
+**Logic can nho:**  
+- Van cat message 3900 ky tu.
+- Van escape HTML truoc khi gui de tranh loi parse mode va khong lam lo markup.
+- Da gui test that qua Telegram reporter voi action `sticker.generate_redesign`; khong co warning Telegram moi.
+
+**Viec can lam tiep:**  
+- Neu user muon dep hon nua co the them emoji theo tung loai action/status.
+- Test da chay: `php -l app/Services/Monitoring/TelegramErrorReporter.php`, `php artisan test tests/Unit/TelegramErrorReporterTest.php`, `php artisan test`.

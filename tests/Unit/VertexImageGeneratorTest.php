@@ -158,6 +158,31 @@ class VertexImageGeneratorTest extends TestCase
         );
     }
 
+    public function test_explicit_vertex_credential_columns_override_stale_json_credentials(): void
+    {
+        $user = User::factory()->create();
+        $credential = VertexApiCredential::create([
+            'user_id' => $user->id,
+            'project_id' => 'current-project',
+            'location' => 'global',
+            'client_email' => 'current@example.iam.gserviceaccount.com',
+            'private_key' => "-----BEGIN PRIVATE KEY-----\ncurrent\n-----END PRIVATE KEY-----\n",
+            'credentials_json' => [
+                'project_id' => 'old-project',
+                'client_email' => 'old@example.iam.gserviceaccount.com',
+                'private_key' => "-----BEGIN PRIVATE KEY-----\nold\n-----END PRIVATE KEY-----\n",
+            ],
+            'is_active' => true,
+        ]);
+
+        $service = new VertexImageGenerator;
+        $method = new ReflectionMethod($service, 'credentialsFor');
+        $credentials = $method->invoke($service, $credential);
+
+        $this->assertSame('current@example.iam.gserviceaccount.com', $credentials['client_email']);
+        $this->assertSame("-----BEGIN PRIVATE KEY-----\ncurrent\n-----END PRIVATE KEY-----\n", $credentials['private_key']);
+    }
+
     /**
      * @return array{x: int, y: int, unit: int}|null
      */

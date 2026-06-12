@@ -7,6 +7,8 @@ use App\Livewire\Pages\Ornament\ListOrnament;
 use App\Livewire\Pages\Poster\Index as PosterPage;
 use App\Livewire\Pages\Redesign\Index as RedesignPage;
 use App\Livewire\Pages\Sticker\ListSticker;
+use App\Livewire\Pages\YTrends\Index as YTrendsPage;
+use App\Livewire\Pages\IdeaEtsy\IdeaEtsy as IdeaEtsyPage;
 
 class ProductRegistry
 {
@@ -66,6 +68,26 @@ class ProductRegistry
                 'path' => 'poster',
                 'component' => PosterPage::class,
                 'sort_order' => 40,
+                'is_active' => true,
+            ],
+            [
+                'name' => 'YTrends',
+                'slug' => 'ytrends',
+                'description' => 'Research product and keyword trends.',
+                'route_name' => 'offorest.products.ytrends',
+                'path' => 'ytrends',
+                'component' => YTrendsPage::class,
+                'sort_order' => 50,
+                'is_active' => true,
+            ],
+            [
+                'name' => 'Idea Etsy',
+                'slug' => 'idea-etsy',
+                'description' => 'Research and approve Etsy product ideas.',
+                'route_name' => 'offorest.products.idea-etsy',
+                'path' => 'idea-etsy',
+                'component' => IdeaEtsyPage::class,
+                'sort_order' => 60,
                 'is_active' => true,
             ],
         ];

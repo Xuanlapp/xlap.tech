@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Modals\Image;
 
+use App\Livewire\Concerns\ReportsUserActionErrors;
 use App\Livewire\Pages\Sticker\ListSticker;
 use App\Livewire\Pages\Sticker\StickerStatusPanel;
 use App\Models\ProductDesignAsset;
@@ -18,6 +19,8 @@ use Throwable;
 
 class ReviewImage extends Component
 {
+    use ReportsUserActionErrors;
+
     public bool $isOpen = false;
 
     public ?string $src = null;
@@ -106,6 +109,10 @@ class ReviewImage extends Component
         try {
             app(StickerService::class)->selectRedesign(auth()->user(), $this->assetId, $this->original);
         } catch (RuntimeException $exception) {
+            $this->reportUserActionError($exception, 'sticker.select_redesign', [
+                'asset_id' => $this->assetId,
+                'original' => $this->original,
+            ]);
             $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
 
             return;
@@ -152,10 +159,20 @@ class ReviewImage extends Component
                 properties: ['item_number' => $asset->item_number, 'redesign' => $asset->redesign],
             );
         } catch (InvalidArgumentException|RuntimeException $exception) {
+            $this->reportUserActionError($exception, 'sticker.customize_redesign', [
+                'asset_id' => $this->assetId,
+                'original' => $this->original,
+                'custom_prompt' => $this->customPrompt,
+            ]);
             $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
 
             return;
         } catch (Throwable $exception) {
+            $this->reportUserActionError($exception, 'sticker.customize_redesign', [
+                'asset_id' => $this->assetId,
+                'original' => $this->original,
+                'custom_prompt' => $this->customPrompt,
+            ]);
             Log::error('Sticker master customization failed unexpectedly.', [
                 'asset_id' => $this->assetId,
                 'message' => $exception->getMessage(),

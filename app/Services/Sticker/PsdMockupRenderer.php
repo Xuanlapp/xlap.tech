@@ -3,6 +3,9 @@
 namespace App\Services\Sticker;
 
 use App\Models\PsdMockupTemplate;
+use Closure;
+use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use JsonException;
@@ -17,6 +20,46 @@ class PsdMockupRenderer
      * @return array<int, string>
      */
     public function render(PsdMockupTemplate $template, string $masterImageUri, int $assetId): array
+    {
+        return $this->withRenderLock(
+            fn (): array => $this->renderUnlocked($template, $masterImageUri, $assetId),
+        );
+    }
+
+    /**
+     * Run one Sticker PSD render at a time so weak VPS instances do not render multiple PSDs in parallel.
+     *
+     * @param  Closure(): array<int, string>  $callback
+     * @return array<int, string>
+     */
+    private function withRenderLock(Closure $callback): array
+    {
+        $lock = Cache::lock(
+            $this->renderLockKey(),
+            (int) config('services.psd_mockup_renderer.lock_seconds', 900),
+        );
+
+        try {
+            return $lock->block(
+                (int) config('services.psd_mockup_renderer.wait_seconds', 1800),
+                $callback,
+            );
+        } catch (LockTimeoutException) {
+            throw new RuntimeException('Hang doi render PSD dang qua lau. Hay doi cac mockup dang tao xong roi thu lai.');
+        }
+    }
+
+    private function renderLockKey(): string
+    {
+        return 'sticker:psd-mockup-renderer:lock';
+    }
+
+    /**
+     * Render the PSD once the global Sticker render lock has been acquired.
+     *
+     * @return array<int, string>
+     */
+    private function renderUnlocked(PsdMockupTemplate $template, string $masterImageUri, int $assetId): array
     {
         $command = config('services.psd_mockup_renderer.command');
 

@@ -35,6 +35,13 @@ return [
         ],
     ],
 
+    'telegram_error_log' => [
+        'enabled' => env('TELEGRAM_ERROR_LOG_ENABLED', false),
+        'bot_token' => env('TELEGRAM_ERROR_LOG_BOT_TOKEN'),
+        'chat_id' => env('TELEGRAM_ERROR_LOG_CHAT_ID'),
+        'timeout' => env('TELEGRAM_ERROR_LOG_TIMEOUT', 5),
+    ],
+
     'turnstile' => [
         'enabled' => env('TURNSTILE_ENABLED', false),
         'site_key' => env('TURNSTILE_SITE_KEY'),
@@ -74,6 +81,8 @@ return [
 
     'psd_mockup_renderer' => [
         'command' => env('PSD_MOCKUP_RENDERER_COMMAND', 'node scripts/psd-renderer/render.js'),
+        'lock_seconds' => env('PSD_MOCKUP_RENDERER_LOCK_SECONDS', 900),
+        'wait_seconds' => env('PSD_MOCKUP_RENDERER_WAIT_SECONDS', 1800),
     ],
 
     'google_drive' => [

@@ -1,7 +1,27 @@
 <div>
     @if ($isOpen)
         <div
-            x-data
+            x-data="{
+                elapsed: 0,
+                timer: null,
+                startTimer(value) {
+                    if (! String(value || '').startsWith('http')) {
+                        return;
+                    }
+
+                    this.stopTimer();
+                    this.elapsed = 0;
+                    this.timer = setInterval(() => this.elapsed += 1, 1000);
+                },
+                stopTimer() {
+                    if (this.timer) {
+                        clearInterval(this.timer);
+                    }
+
+                    this.timer = null;
+                },
+            }"
+            x-on:ornament-competitor-scrape-finished.window="stopTimer()"
             x-on:keydown.escape.window="$wire.close()"
             tabindex="-1"
             aria-modal="true"
@@ -10,18 +30,18 @@
         >
             <button type="button" class="fixed inset-0 cursor-default" wire:click="close" aria-label="Close add ornament modal"></button>
 
-            <div class="relative z-10 max-h-full w-full max-w-2xl">
-                <form wire:submit.prevent="save" class="relative rounded-lg bg-white shadow-sm">
-                    <div class="flex items-center justify-between rounded-t border-b border-gray-200 p-4 md:p-5">
+            <div class="relative z-10 max-h-full w-full max-w-5xl">
+                <form wire:submit.prevent="save" class="relative overflow-hidden rounded-2xl bg-white shadow-2xl">
+                    <div class="flex items-center justify-between border-b border-gray-200 p-4 md:p-5">
                         <div>
-                            <h3 class="text-xl font-semibold text-gray-900">Add Items </h3>
-                            <p class="mt-1 text-sm text-gray-500">Nhập keyword và link ảnh nguồn.</p>
+                            <h3 class="text-xl font-semibold text-gray-900">Add Ornament</h3>
+                            <p class="mt-1 text-sm text-gray-500">Nhap URL doi thu Etsy/Amazon, he thong se lay title, noi dung va anh listing.</p>
                         </div>
 
                         <button
                             type="button"
                             wire:click="close"
-                            class="ms-auto inline-flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-sm text-gray-400 hover:bg-gray-200 hover:text-gray-900"
+                            class="ms-auto inline-flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-sm text-gray-400 hover:bg-gray-200 hover:text-gray-900"
                         >
                             <svg class="h-3 w-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
                                 <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6" />
@@ -30,62 +50,124 @@
                         </button>
                     </div>
 
-                    <div class="space-y-5 p-4 md:p-5">
+                    <div class="max-h-[75vh] space-y-5 overflow-y-auto p-4 md:p-5">
                         <div>
-                            <label for="ornament-keyword" class="mb-2 block text-sm font-medium text-gray-900">Keyword</label>
+                            <label for="ornament-competitor-url" class="mb-2 block text-sm font-medium text-gray-900">URL doi thu</label>
                             <x-input
-                                id="ornament-keyword"
-                                wire:model="keyword"
-                                type="text"
+                                id="ornament-competitor-url"
+                                wire:model.live.debounce.800ms="competitorUrl"
+                                x-on:input="startTimer($event.target.value)"
+                                type="url"
                                 class="block w-full"
-                                placeholder="Vui lòng có chữ sản phẩm ví vụ:Lap ornament"
+                                placeholder="https://www.etsy.com/listing/... hoac https://www.amazon.com/dp/..."
                                 autofocus
                             />
-                            @error('keyword') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                            @error('competitorUrl') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                         </div>
 
-                        <div>
-                            <label for="ornament-image-link" class="mb-2 block text-sm font-medium text-gray-900">Link ảnh</label>
-                            <div class="relative">
-                                <x-input
-                                    id="ornament-image-link"
-                                    wire:model.live.debounce.400ms="imageLink"
-                                    type="url"
-                                    class="block w-full pr-11 {{ $isImageLink === false ? 'border-red-500 bg-red-50 text-red-900 focus:border-red-500 focus:ring-red-200' : '' }} {{ $isImageLink === true ? 'border-emerald-500 bg-emerald-50 text-emerald-900 focus:border-emerald-500 focus:ring-emerald-200' : '' }}"
-                                    placeholder="https://...png"
-                                />
+                        <div
+                            wire:loading.flex
+                            wire:target="competitorUrl"
+                            class="items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700"
+                        >
+                            <svg class="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
+                            </svg>
+                            <span>Dang lay du lieu doi thu...</span>
+                            <span class="font-mono" x-text="`${elapsed}s`"></span>
+                        </div>
 
-                                @if ($isImageLink === true)
-                                    <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-emerald-600">
-                                        <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                            <path fill-rule="evenodd" d="M16.704 5.29a1 1 0 0 1 .006 1.414l-7.25 7.32a1 1 0 0 1-1.42.003L3.29 9.277a1 1 0 1 1 1.414-1.414l4.04 4.04 6.546-6.607a1 1 0 0 1 1.414-.006Z" clip-rule="evenodd" />
-                                        </svg>
-                                    </span>
-                                @elseif ($isImageLink === false)
-                                    <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-red-600">
-                                        <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                            <path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM8.28 7.22a.75.75 0 0 0-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 1 0 1.06 1.06L10 11.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L11.06 10l1.72-1.72a.75.75 0 0 0-1.06-1.06L10 8.94 8.28 7.22Z" clip-rule="evenodd" />
-                                        </svg>
-                                    </span>
-                                @endif
+                        @if ($scrapeError)
+                            <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                                {{ $scrapeError }}
                             </div>
-                            @if ($isImageLink === false)
-                                <p class="mt-2 text-sm text-red-600">Link phải là link ảnh trực tiếp hoặc link Drive/Dropbox public.</p>
-                            @elseif ($isImageLink === true)
-                                <p class="mt-2 text-sm text-emerald-600">Link ảnh hợp lệ.</p>
-                            @else
-                                <p class="mt-2 text-sm text-gray-500">Hỗ trợ JPG, PNG, WebP, Google Drive và Dropbox.</p>
-                            @endif
-                            @error('imageLink') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
-                        </div>
+                        @endif
+
+                        @if (! empty($competitorListing))
+                            <section class="rounded-xl border border-slate-200 bg-[#0f172a] p-3 text-white">
+                                <div class="mb-3 flex items-center gap-2">
+                                    <span class="text-xs font-bold uppercase text-gray-700">MAIN IMAGES</span>
+                                    <span class="text-xs text-slate-300">{{ count($competitorListing['images'] ?? []) }} imgs</span>
+                                </div>
+
+                                <div class="flex gap-2 overflow-x-auto pb-1">
+                                    @foreach (($competitorListing['images'] ?? []) as $image)
+                                        <a
+                                            href="{{ $image }}"
+                                            target="_blank"
+                                            rel="noopener"
+                                            title="Preview image"
+                                            class="shrink-0 rounded-md border border-slate-700 p-1 transition hover:border-violet-300"
+                                        >
+                                            <img src="{{ $image }}" alt="Listing image" class="h-16 w-16 rounded object-cover">
+                                        </a>
+                                    @endforeach
+                                </div>
+
+                                @error('imageLink') <p class="mt-2 text-sm text-red-300">{{ $message }}</p> @enderror
+                            </section>
+
+                            <section class="max-h-80 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                <div class="space-y-4">
+                                    <div>
+                                        <div class="text-xs font-bold uppercase text-slate-500">PRODUCT TITLE:</div>
+                                        <p class="mt-1 max-h-16 overflow-y-auto text-sm font-semibold leading-5 text-slate-950">{{ $competitorListing['productTitle'] ?? '-' }}</p>
+                                    </div>
+
+                                    <div class="space-y-4 pr-1">
+                                        <div>
+                                            <div class="text-xs font-bold uppercase text-slate-500">LINK:</div>
+                                            <a href="{{ $competitorListing['link'] ?? '#' }}" target="_blank" rel="noopener" class="mt-1 block break-all font-mono text-xs font-semibold text-blue-700 hover:text-blue-800">
+                                                {{ $competitorListing['link'] ?? '-' }}
+                                            </a>
+                                        </div>
+
+                                        @if (($competitorListing['platform'] ?? '') === 'amazon')
+                                            <div>
+                                                <div class="text-xs font-bold uppercase text-slate-500">BULLET POINTS:</div>
+                                                <ol class="mt-2 list-decimal space-y-1 pl-5 text-sm leading-6 text-slate-800">
+                                                    @forelse (($competitorListing['bulletPoints'] ?? []) as $bullet)
+                                                        <li>{{ $bullet }}</li>
+                                                    @empty
+                                                        <li>Khong doc duoc bullet points.</li>
+                                                    @endforelse
+                                                </ol>
+                                                @if (! empty($competitorListing['aplus_text'] ?? []))
+                                                    <div class="mt-4">
+                                                        <div class="text-xs font-bold uppercase text-slate-500">A+ / FAQ LIST:</div>
+                                                        <ul class="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-slate-800">
+                                                            @foreach (($competitorListing['aplus_text'] ?? []) as $text)
+                                                                <li>{{ $text }}</li>
+                                                            @endforeach
+                                                        </ul>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        @else
+                                            <div>
+                                                <div class="text-xs font-bold uppercase text-slate-500">PRODUCT DESCRIPTION:</div>
+                                                <p class="mt-2 whitespace-pre-line rounded-lg border border-slate-200 bg-white p-3 text-sm leading-6 text-slate-800">
+                                                    {{ $competitorListing['productDescription'] ?: 'Khong doc duoc description.' }}
+                                                </p>
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                            </section>
+
+                        @endif
+
+                        <input type="hidden" wire:model="keyword">
+                        <input type="hidden" wire:model="imageLink">
                     </div>
 
-                    <div class="flex items-center gap-3 rounded-b border-t border-gray-200 p-4 md:p-5">
-                        <x-ui.button color="blue" type="submit" wire:loading.attr="disabled">
-                            Thêm item
+                    <div class="flex items-center gap-3 border-t border-gray-200 p-4 md:p-5">
+                        <x-ui.button color="blue" type="submit" wire:loading.attr="disabled" wire:target="save,competitorUrl">
+                            Them item
                         </x-ui.button>
                         <x-ui.button color="light" type="button" wire:click="close">
-                            Hủy
+                            Huy
                         </x-ui.button>
                     </div>
                 </form>

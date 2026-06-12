@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Pages\Ornament;
 
+use App\Livewire\Concerns\ReportsUserActionErrors;
 use App\Livewire\Pages\Ornament\ListOrnament;
 use App\Models\ProductDesignAsset;
 use App\Services\Image\ImageLinkPreviewService;
@@ -17,6 +18,8 @@ use Throwable;
 
 class ProductDesignCard extends Component
 {
+    use ReportsUserActionErrors;
+
     public int $assetId;
 
     public ?string $activePsdTemplateName = null;
@@ -50,8 +53,10 @@ class ProductDesignCard extends Component
             $this->dispatch('ornament-product-design-workflow-updated')->to(OrnamentStatusPanel::class);
             $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da tao anh master.');
         } catch (RuntimeException $exception) {
+            $this->reportUserActionError($exception, 'ornament.generate_redesign', ['asset_id' => $this->assetId]);
             $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
         } catch (Throwable $exception) {
+            $this->reportUserActionError($exception, 'ornament.generate_redesign', ['asset_id' => $this->assetId]);
             Log::error('Ornament master generation failed unexpectedly.', [
                 'asset_id' => $this->assetId,
                 'message' => $exception->getMessage(),
@@ -76,8 +81,10 @@ class ProductDesignCard extends Component
 
             $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da tao anh lifestyle va mockup.');
         } catch (RuntimeException $exception) {
+            $this->reportUserActionError($exception, 'ornament.generate_final_images', ['asset_id' => $this->assetId]);
             $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
         } catch (Throwable $exception) {
+            $this->reportUserActionError($exception, 'ornament.generate_final_images', ['asset_id' => $this->assetId]);
             Log::error('Ornament final image generation failed unexpectedly.', [
                 'asset_id' => $this->assetId,
                 'message' => $exception->getMessage(),
@@ -102,8 +109,10 @@ class ProductDesignCard extends Component
 
             $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da render PSD mockup.');
         } catch (RuntimeException $exception) {
+            $this->reportUserActionError($exception, 'ornament.generate_psd_mockups', ['asset_id' => $this->assetId]);
             $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
         } catch (Throwable $exception) {
+            $this->reportUserActionError($exception, 'ornament.generate_psd_mockups', ['asset_id' => $this->assetId]);
             Log::error('Ornament PSD mockup generation failed unexpectedly.', [
                 'asset_id' => $this->assetId,
                 'message' => $exception->getMessage(),
@@ -131,6 +140,7 @@ class ProductDesignCard extends Component
             $this->dispatch('ornament-product-design-approval-updated')->to(OrnamentStatusPanel::class);
             $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: $message);
         } catch (RuntimeException $exception) {
+            $this->reportUserActionError($exception, 'ornament.toggle_approval', ['asset_id' => $this->assetId]);
             $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
         }
     }

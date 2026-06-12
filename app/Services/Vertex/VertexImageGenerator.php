@@ -721,8 +721,16 @@ class VertexImageGenerator
             $credentials = $credentials[0];
         }
 
-        $credentials['client_email'] ??= $this->plainOrEncryptedValue($credential->getRawOriginal('client_email'));
-        $credentials['private_key'] ??= $this->plainOrEncryptedValue($credential->getRawOriginal('private_key'));
+        $clientEmail = $this->plainOrEncryptedValue($credential->getRawOriginal('client_email'));
+        $privateKey = $this->plainOrEncryptedValue($credential->getRawOriginal('private_key'));
+
+        if (is_string($clientEmail) && $clientEmail !== '') {
+            $credentials['client_email'] = $clientEmail;
+        }
+
+        if (is_string($privateKey) && $privateKey !== '') {
+            $credentials['private_key'] = $privateKey;
+        }
 
         if (isset($credentials['private_key']) && is_string($credentials['private_key'])) {
             $credentials['private_key'] = str_replace('\\n', "\n", $credentials['private_key']);

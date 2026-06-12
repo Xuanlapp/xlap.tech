@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Repositories\Product\ProductRepository;
 use App\Repositories\User\UserRepository;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Hash;
 
 class UserAccessService
 {
@@ -36,11 +37,43 @@ class UserAccessService
     }
 
     /**
-     * @param  array{name: string, email: string, password: string, is_admin?: bool, can_generate_amazon_listing?: bool, can_generate_etsy_listing?: bool, selectedProducts?: array<int, int|string>}  $data
+     * @param  array{name: string, email: string, password: string, status?: string, is_admin?: bool, can_generate_amazon_listing?: bool, can_generate_etsy_listing?: bool, selectedProducts?: array<int, int|string>}  $data
      */
     public function createUser(array $data): User
     {
         return ($this->createUserWithProductAccess)($data);
+    }
+
+    /**
+     * Update account details and access for a managed user.
+     *
+     * @param  array{name: string, email: string, password?: string|null, status?: string, is_admin?: bool, can_generate_amazon_listing?: bool, can_generate_etsy_listing?: bool, selectedProducts?: array<int, int|string>}  $data
+     */
+    public function updateUser(User $targetUser, array $data): User
+    {
+        $payload = [
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'status' => $data['status'] ?? 'active',
+            'is_admin' => (bool) ($data['is_admin'] ?? false),
+            'can_generate_amazon_listing' => (bool) ($data['can_generate_amazon_listing'] ?? false),
+            'can_generate_etsy_listing' => (bool) ($data['can_generate_etsy_listing'] ?? false),
+        ];
+
+        if (! empty($data['password'])) {
+            $payload['password'] = Hash::make($data['password']);
+        }
+
+        $targetUser->update($payload);
+
+        $productIds = collect($data['selectedProducts'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->all();
+
+        $targetUser->products()->sync($productIds);
+
+        return $targetUser->refresh();
     }
 
     public function toggleProduct(int $userId, int $productId): bool
