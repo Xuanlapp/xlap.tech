@@ -245,19 +245,15 @@
                 </table>
             </div>
 
-        <div class="flex flex-col gap-3 px-5 py-4 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-            <div class="flex flex-wrap items-center gap-3">
-                <span>Showing {{ $assets->firstItem() ?? 0 }} to {{ $assets->lastItem() ?? 0 }} of {{ $assets->total() }}</span>
-                @if ($selectedCount > 0)
-                    <span class="inline-flex rounded-full bg-indigo-100 px-3 py-1 text-xs font-bold text-indigo-700">
-                        Da chon {{ $selectedCount }} item {{ $status === 'exported' ? 'da export' : 'chua export' }}
-                    </span>
-                @endif
+        @if ($selectedCount > 0)
+            <div class="border-t border-slate-200 bg-white px-5 py-3">
+                <span class="inline-flex rounded-full bg-indigo-100 px-3 py-1 text-xs font-bold text-indigo-700">
+                    Da chon {{ $selectedCount }} item {{ $status === 'exported' ? 'da export' : 'chua export' }}
+                </span>
             </div>
-            <div>
-                {{ $assets->links() }}
-            </div>
-        </div>
+        @endif
+
+        {{ $assets->links('vendor.pagination.idea-etsy') }}
         </div>
     </div>
 

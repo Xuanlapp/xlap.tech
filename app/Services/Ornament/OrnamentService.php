@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Repositories\Product\ProductDesignAssetRepository;
 use App\Repositories\Product\ProductRepository;
 use App\Repositories\Prompt\PromptRepository;
+use App\Services\Product\ProductDesignAssetFileCleanupService;
 use App\Services\Product\ProductDriveUploadQueueService;
 use App\Services\Vertex\VertexImageGenerator;
 use Illuminate\Database\Eloquent\Collection;
@@ -30,6 +31,7 @@ class OrnamentService
         private readonly PromptRepository $prompts,
         private readonly VertexImageGenerator $generator,
         private readonly ProductDriveUploadQueueService $driveUploadQueue,
+        private readonly ProductDesignAssetFileCleanupService $fileCleanup,
         private readonly PsdMockupTemplateService $psdTemplates,
         private readonly PsdMockupRenderer $psdRenderer,
     ) {}
@@ -232,6 +234,19 @@ class OrnamentService
         $asset = $this->assets->setApproval($asset, ! $asset->is_approved);
 
         $this->driveUploadQueue->syncForAsset($asset);
+
+        return $asset;
+    }
+
+    /**
+     * Delete one Ornament item owned by the user.
+     */
+    public function deleteAsset(User $user, int $assetId): ProductDesignAsset
+    {
+        $asset = $this->assetForUser($user, $assetId);
+
+        $this->fileCleanup->deleteLocalFiles($asset, 'ornament');
+        $this->assets->delete($asset);
 
         return $asset;
     }

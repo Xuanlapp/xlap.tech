@@ -169,7 +169,7 @@
             </div>
 
             <div class="border-t border-slate-200 bg-white px-4 py-3">
-                {{ $uploads->links() }}
+                {{ $uploads->links('vendor.pagination.idea-etsy') }}
             </div>
         </div>
     </div>

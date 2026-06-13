@@ -239,6 +239,14 @@ class ProductDesignAssetRepository
     }
 
     /**
+     * Delete one product design asset and let database cascades remove dependent rows.
+     */
+    public function delete(ProductDesignAsset $asset): void
+    {
+        $asset->delete();
+    }
+
+    /**
      * Update generated marketplace listing metadata for one product design asset.
      *
      * @param  array<string, string|null>  $fields

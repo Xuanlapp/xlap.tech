@@ -91,7 +91,7 @@
 
             @if ($logs->hasPages())
                 <div class="border-t border-white/10 px-4 py-3">
-                    {{ $logs->links() }}
+                    {{ $logs->links('vendor.pagination.idea-etsy') }}
                 </div>
             @endif
         </div>

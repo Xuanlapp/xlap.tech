@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Sticker;
+namespace App\Services\OrnamentEtsy;
 
 use App\Models\Product;
 use App\Models\ProductDesignAsset;
@@ -17,15 +17,13 @@ use Illuminate\Support\Str;
 use InvalidArgumentException;
 use RuntimeException;
 
-class StickerService
+class OrnamentEtsyService
 {
     private const MAX_KEYWORD_LENGTH = 255;
 
     private const MAX_IMAGE_LINK_LENGTH = 1000;
 
-    private const MAX_CUSTOM_PROMPT_LENGTH = 4000;
-
-    private ?Product $stickerProduct = null;
+    private ?Product $ornamentProduct = null;
 
     public function __construct(
         private readonly ProductRepository $products,
@@ -40,7 +38,7 @@ class StickerService
 
     public function product(): Product
     {
-        return $this->stickerProduct ??= $this->products->findActiveBySlug('sticker');
+        return $this->ornamentProduct ??= $this->products->findActiveBySlug('ornament-etsy');
     }
 
     /**
@@ -59,25 +57,17 @@ class StickerService
         int $perPage,
         string $status = 'all',
         string $pageName = 'page',
-        ?string $search = null,
     ): LengthAwarePaginator
     {
-        return $this->assets->paginateForUserAndProduct(
-            $user->id,
-            $this->product()->id,
-            $perPage,
-            $status,
-            $pageName,
-            $search,
-        );
+        return $this->assets->paginateForUserAndProduct($user->id, $this->product()->id, $perPage, $status, $pageName);
     }
 
     /**
      * @return array{all: int, unapproved: int, approved: int}
      */
-    public function statusCountsForUser(User $user, ?string $search = null): array
+    public function statusCountsForUser(User $user): array
     {
-        return $this->assets->statusCountsForUserAndProduct($user->id, $this->product()->id, $search);
+        return $this->assets->statusCountsForUserAndProduct($user->id, $this->product()->id);
     }
 
     public function createDraftAsset(User $user, string $keyword): ProductDesignAsset
@@ -86,7 +76,7 @@ class StickerService
     }
 
     /**
-     * Create one Sticker item with the user-provided keyword and source image URL.
+     * Create one Ornament Etsy item with the user-provided keyword and source image URL.
      */
     public function createAsset(User $user, string $keyword, string $imageLink): ProductDesignAsset
     {
@@ -131,7 +121,7 @@ class StickerService
     }
 
     /**
-     * Update editable source details for one Sticker item.
+     * Update editable source details for one Ornament Etsy item.
      */
     public function updateProductDetail(User $user, int $assetId, string $keyword, string $imageLink): ProductDesignAsset
     {
@@ -147,13 +137,12 @@ class StickerService
     }
 
     /**
-     * Generate the master redesign image for one Sticker item.
+     * Generate the master redesign image for one Ornament Etsy item.
      */
     public function generateRedesign(User $user, int $assetId): ProductDesignAsset
     {
         $asset = $this->assetForUser($user, $assetId);
         $this->ensureNotApproved($asset);
-        $this->ensureMasterEditable($asset);
 
         if (! $asset->image_link) {
             throw new RuntimeException('Dong nay chua co image_link.');
@@ -165,59 +154,14 @@ class StickerService
                 user: $user,
                 imageUri: $asset->image_link,
                 prompt: $this->promptContent($user, 1),
-                folder: 'generated/sticker/redesign',
+                folder: 'generated/ornament-etsy/redesign',
                 removeBackground: (bool) config('services.background_removal.enabled', false),
             ),
         );
     }
 
     /**
-     * Select an existing generated master image as the current Sticker redesign.
-     */
-    public function selectRedesign(User $user, int $assetId, string $redesign): ProductDesignAsset
-    {
-        $asset = $this->assetForUser($user, $assetId);
-        $this->ensureNotApproved($asset);
-        $this->ensureMasterEditable($asset);
-
-        return $this->assets->selectRedesign($asset, $this->normalizeImageLink($redesign));
-    }
-
-    /**
-     * Generate a new Sticker master image from the reviewed master image and a custom prompt.
-     */
-    public function customizeRedesign(User $user, int $assetId, string $imageLink, string $prompt): ProductDesignAsset
-    {
-        $asset = $this->assetForUser($user, $assetId);
-        $this->ensureNotApproved($asset);
-        $this->ensureMasterEditable($asset);
-
-        return $this->assets->updateRedesign(
-            $asset,
-            $this->generator->generate(
-                user: $user,
-                imageUri: $this->normalizeImageLink($imageLink),
-                prompt: $this->normalizeCustomPrompt($prompt),
-                folder: 'generated/sticker/redesign',
-                removeBackground: (bool) config('services.background_removal.enabled', false),
-                lockWaitSeconds: (int) config('services.vertex.priority_lock_wait_seconds', 600),
-                priority: true,
-            ),
-        );
-    }
-
-    /**
-     * Remove a generated master image from the candidate list after it becomes a new item.
-     */
-    public function removeRedesignCandidate(User $user, int $assetId, string $redesign): ProductDesignAsset
-    {
-        $asset = $this->assetForUser($user, $assetId);
-
-        return $this->assets->removeRedesignCandidate($asset, $this->normalizeImageLink($redesign));
-    }
-
-    /**
-     * Generate the two final Sticker images from the master redesign.
+     * Generate the two final Ornament Etsy images from the master redesign.
      */
     public function generateFinalImages(User $user, int $assetId): ProductDesignAsset
     {
@@ -232,21 +176,21 @@ class StickerService
             user: $user,
             imageUri: $asset->redesign,
             prompt: $this->promptContent($user, 2),
-            folder: 'generated/sticker/final',
+            folder: 'generated/ornament-etsy/final',
         );
 
         $lifestyle2 = $this->generator->generate(
             user: $user,
             imageUri: $asset->redesign,
             prompt: $this->promptContent($user, 3),
-            folder: 'generated/sticker/final',
+            folder: 'generated/ornament-etsy/final',
         );
 
         $lifestyle3 = $this->generator->generate(
             user: $user,
             imageUri: $asset->redesign,
             prompt: $this->promptContent($user, 4),
-            folder: 'generated/sticker/final',
+            folder: 'generated/ornament-etsy/final',
         );
 
         return $this->assets->updateLifestyleImages($asset, $lifestyle1, $lifestyle2, $lifestyle3);
@@ -264,7 +208,7 @@ class StickerService
             throw new RuntimeException('Can tao anh master truoc khi render PSD.');
         }
 
-        $template = $this->psdTemplates->activeStickerTemplateForUser($user);
+        $template = $this->psdTemplates->activeOrnamentTemplateForUser($user);
 
         if (! $template) {
             throw new RuntimeException('Chua chon PSD mockup cho chuc nang nay.');
@@ -295,13 +239,13 @@ class StickerService
     }
 
     /**
-     * Delete one Sticker item owned by the user.
+     * Delete one Ornament Etsy item owned by the user.
      */
     public function deleteAsset(User $user, int $assetId): ProductDesignAsset
     {
         $asset = $this->assetForUser($user, $assetId);
 
-        $this->fileCleanup->deleteLocalFiles($asset, 'sticker');
+        $this->fileCleanup->deleteLocalFiles($asset, 'ornament-etsy');
         $this->assets->delete($asset);
 
         return $asset;
@@ -323,13 +267,6 @@ class StickerService
         }
     }
 
-    private function ensureMasterEditable(ProductDesignAsset $asset): void
-    {
-        if ($asset->hasCustomMockupOutput()) {
-            throw new RuntimeException('Item da co Mockup Tu Chon nen khong the tao lai Create Master.');
-        }
-    }
-
     private function normalizeKeyword(string $keyword): string
     {
         $keyword = trim($keyword);
@@ -342,8 +279,8 @@ class StickerService
             throw new InvalidArgumentException('Keyword khong duoc qua '.self::MAX_KEYWORD_LENGTH.' ky tu.');
         }
 
-        if (! Str::contains(Str::lower($keyword), Str::lower($this->product()->slug))) {
-            throw new InvalidArgumentException("Keyword phai chua tu '{$this->product()->slug}' cho trang {$this->product()->name}.");
+        if (! Str::contains(Str::lower($keyword), 'ornament')) {
+            throw new InvalidArgumentException("Keyword phai chua tu 'ornament' cho trang {$this->product()->name}.");
         }
 
         return $keyword;
@@ -361,26 +298,11 @@ class StickerService
             throw new InvalidArgumentException('Link anh khong duoc qua '.self::MAX_IMAGE_LINK_LENGTH.' ky tu.');
         }
 
-        if (! str_starts_with($imageLink, '/storage/') && ! filter_var($imageLink, FILTER_VALIDATE_URL)) {
+        if (! filter_var($imageLink, FILTER_VALIDATE_URL)) {
             throw new InvalidArgumentException('Link anh khong hop le.');
         }
 
         return $imageLink;
-    }
-
-    private function normalizeCustomPrompt(string $prompt): string
-    {
-        $prompt = trim($prompt);
-
-        if ($prompt === '') {
-            throw new InvalidArgumentException('Noi dung custom khong duoc de trong.');
-        }
-
-        if (mb_strlen($prompt) > self::MAX_CUSTOM_PROMPT_LENGTH) {
-            throw new InvalidArgumentException('Noi dung custom khong duoc qua '.self::MAX_CUSTOM_PROMPT_LENGTH.' ky tu.');
-        }
-
-        return $prompt;
     }
 
     private function promptContent(User $user, int $promptNumber): string
@@ -388,7 +310,7 @@ class StickerService
         $content = $this->prompts->contentForUserProductAndNumber($user->id, $this->product()->id, $promptNumber);
 
         if (! $content) {
-            throw new RuntimeException("Chua co prompt so {$promptNumber} cho trang Sticker.");
+            throw new RuntimeException("Chua co prompt so {$promptNumber} cho trang Ornament Etsy.");
         }
 
         return $content;

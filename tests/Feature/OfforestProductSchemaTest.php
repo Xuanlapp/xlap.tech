@@ -7,6 +7,8 @@ use App\Livewire\Modals\Admin\EditUser;
 use App\Livewire\Modals\Sticker\AddProductDesign;
 use App\Livewire\Modals\Sticker\EditProductDetail;
 use App\Livewire\Modals\Ornament\AddProductDesign as OrnamentAddProductDesign;
+use App\Livewire\Modals\OrnamentEtsy\AddProductDesign as OrnamentEtsyAddProductDesign;
+use App\Livewire\Modals\ProductDesign\DeleteIdeaConfirm;
 use App\Livewire\Pages\Admin\ListUser;
 use App\Models\ActivityLog;
 use App\Models\Product;
@@ -17,6 +19,7 @@ use App\Models\User;
 use App\Models\VertexApiCredential;
 use App\Repositories\Product\ProductDesignAssetRepository;
 use App\Services\Ornament\OrnamentService;
+use App\Services\OrnamentEtsy\OrnamentEtsyService;
 use App\Services\Sticker\PsdMockupRenderer;
 use App\Services\Sticker\PsdMockupTemplateService;
 use App\Services\Sticker\StickerService;
@@ -99,6 +102,106 @@ class OfforestProductSchemaTest extends TestCase
         $this->assertSame(1, $secondUserSticker->item_number);
     }
 
+    public function test_sticker_card_confirm_delete_removes_the_idea(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create();
+        $product = Product::where('slug', 'sticker')->firstOrFail();
+        $user->products()->attach($product);
+
+        Storage::disk('public')->put('generated/sticker/source/source.png', 'source');
+        Storage::disk('public')->put('generated/sticker/redesign/master.png', 'master');
+        Storage::disk('public')->put('generated/sticker/redesign/candidate.png', 'candidate');
+        Storage::disk('public')->put('generated/sticker/mockups/999/old.png', 'old');
+
+        $asset = ProductDesignAsset::create([
+            'user_id' => $user->id,
+            'product_id' => $product->id,
+            'item_number' => 1,
+            'keyword' => 'ornament sticker',
+            'image_link' => '/storage/generated/sticker/source/source.png',
+            'redesign' => '/storage/generated/sticker/redesign/master.png',
+            'redesign_candidates' => ['/storage/generated/sticker/redesign/candidate.png'],
+            'mockup1' => '/storage/generated/sticker/mockups/999/old.png',
+        ]);
+        Storage::disk('public')->put("generated/sticker/mockups/{$asset->id}/extra.png", 'extra');
+
+        Livewire::actingAs($user)
+            ->test(DeleteIdeaConfirm::class)
+            ->call('openModal', 'modals.product-design.delete-idea-confirm', [
+                'productSlug' => 'sticker',
+                'assetId' => $asset->id,
+                'keyword' => $asset->keyword,
+            ])
+            ->assertSet('isOpen', true)
+            ->call('deleteAsset');
+
+        $this->assertDatabaseMissing('product_design_assets', ['id' => $asset->id]);
+        $this->assertDatabaseHas('activity_logs', ['event' => 'sticker.item_deleted']);
+        Storage::disk('public')->assertMissing('generated/sticker/source/source.png');
+        Storage::disk('public')->assertMissing('generated/sticker/redesign/master.png');
+        Storage::disk('public')->assertMissing('generated/sticker/redesign/candidate.png');
+        Storage::disk('public')->assertMissing('generated/sticker/mockups/999/old.png');
+        Storage::disk('public')->assertMissing("generated/sticker/mockups/{$asset->id}/extra.png");
+    }
+
+    public function test_ornament_card_confirm_delete_removes_the_idea(): void
+    {
+        $user = User::factory()->create();
+        $product = Product::where('slug', 'ornament')->firstOrFail();
+        $user->products()->attach($product);
+
+        $asset = ProductDesignAsset::create([
+            'user_id' => $user->id,
+            'product_id' => $product->id,
+            'item_number' => 1,
+            'keyword' => 'ornament amazon',
+            'image_link' => 'https://example.com/source.png',
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(DeleteIdeaConfirm::class)
+            ->call('openModal', 'modals.product-design.delete-idea-confirm', [
+                'productSlug' => 'ornament',
+                'assetId' => $asset->id,
+                'keyword' => $asset->keyword,
+            ])
+            ->assertSet('isOpen', true)
+            ->call('deleteAsset');
+
+        $this->assertDatabaseMissing('product_design_assets', ['id' => $asset->id]);
+        $this->assertDatabaseHas('activity_logs', ['event' => 'ornament.item_deleted']);
+    }
+
+    public function test_ornament_etsy_card_confirm_delete_removes_the_idea(): void
+    {
+        $user = User::factory()->create();
+        $product = Product::where('slug', 'ornament-etsy')->firstOrFail();
+        $user->products()->attach($product);
+
+        $asset = ProductDesignAsset::create([
+            'user_id' => $user->id,
+            'product_id' => $product->id,
+            'item_number' => 1,
+            'keyword' => 'ornament etsy',
+            'image_link' => 'https://example.com/source.png',
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(DeleteIdeaConfirm::class)
+            ->call('openModal', 'modals.product-design.delete-idea-confirm', [
+                'productSlug' => 'ornament-etsy',
+                'assetId' => $asset->id,
+                'keyword' => $asset->keyword,
+            ])
+            ->assertSet('isOpen', true)
+            ->call('deleteAsset');
+
+        $this->assertDatabaseMissing('product_design_assets', ['id' => $asset->id]);
+        $this->assertDatabaseHas('activity_logs', ['event' => 'ornament_etsy.item_deleted']);
+    }
+
     public function test_user_can_open_assigned_product_page(): void
     {
         $user = User::factory()->create();
@@ -122,7 +225,65 @@ class OfforestProductSchemaTest extends TestCase
         $this->actingAs($user)
             ->get(route('offorest.products.ornament'))
             ->assertOk()
-            ->assertSee('Ornament Workspace');
+            ->assertSee('Ornament Amazon');
+    }
+
+    public function test_user_can_open_assigned_ornament_etsy_page(): void
+    {
+        $user = User::factory()->create();
+        $product = Product::where('slug', 'ornament-etsy')->firstOrFail();
+
+        $user->products()->attach($product);
+
+        $this->actingAs($user)
+            ->get(route('offorest.products.ornament-etsy'))
+            ->assertOk()
+            ->assertSee('Ornament Etsy');
+    }
+
+    public function test_ornament_etsy_service_creates_assets_for_its_own_product(): void
+    {
+        $user = User::factory()->create();
+        $amazonProduct = Product::where('slug', 'ornament')->firstOrFail();
+        $etsyProduct = Product::where('slug', 'ornament-etsy')->firstOrFail();
+        $user->products()->attach($etsyProduct);
+
+        $asset = app(OrnamentEtsyService::class)->createAsset(
+            $user,
+            'cute cat ornament',
+            'https://example.com/source.png',
+        );
+
+        $this->assertSame($etsyProduct->id, $asset->product_id);
+        $this->assertNotSame($amazonProduct->id, $asset->product_id);
+    }
+
+    public function test_ornament_etsy_add_modal_uses_sticker_style_form_and_requires_ornament_keyword(): void
+    {
+        $user = User::factory()->create();
+        $etsyProduct = Product::where('slug', 'ornament-etsy')->firstOrFail();
+        $user->products()->attach($etsyProduct);
+
+        $this->actingAs($user);
+
+        Livewire::test(OrnamentEtsyAddProductDesign::class)
+            ->call('openModal', 'modals.ornament-etsy.add-product-design')
+            ->assertSet('isOpen', true)
+            ->set('keyword', 'cute cat')
+            ->set('imageLink', 'https://example.com/source.png')
+            ->call('save')
+            ->assertHasErrors(['keyword'])
+            ->set('keyword', 'cute cat ornament')
+            ->call('save')
+            ->assertHasNoErrors()
+            ->assertSet('isOpen', false);
+
+        $this->assertDatabaseHas('product_design_assets', [
+            'user_id' => $user->id,
+            'product_id' => $etsyProduct->id,
+            'keyword' => 'cute cat ornament',
+            'image_link' => 'https://example.com/source.png',
+        ]);
     }
 
     public function test_user_cannot_open_unassigned_product_page(): void

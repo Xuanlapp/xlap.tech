@@ -1,8 +1,8 @@
 <div
     x-data="{
-        activeTab: ['all', 'unapproved', 'approved'].includes(localStorage.getItem('ornament.status-filter'))
-            ? localStorage.getItem('ornament.status-filter')
-            : ['pending_review', 'not_started'].includes(localStorage.getItem('ornament.status-filter'))
+        activeTab: ['all', 'unapproved', 'approved'].includes(localStorage.getItem('ornament-etsy.status-filter'))
+            ? localStorage.getItem('ornament-etsy.status-filter')
+            : ['pending_review', 'not_started'].includes(localStorage.getItem('ornament-etsy.status-filter'))
                 ? 'unapproved'
             : 'all',
         setTab(tab) {
@@ -11,24 +11,24 @@
             }
 
             this.activeTab = tab;
-            localStorage.setItem('ornament.status-filter', tab);
+            localStorage.setItem('ornament-etsy.status-filter', tab);
         }
     }"
     x-init="
-        if (! window.__ornamentBeforeUnloadGuardInstalled) {
-            window.__ornamentBeforeUnloadGuardInstalled = true;
-            window.__ornamentGenerationCount = window.__ornamentGenerationCount || 0;
+        if (! window.__ornamentEtsyBeforeUnloadGuardInstalled) {
+            window.__ornamentEtsyBeforeUnloadGuardInstalled = true;
+            window.__ornamentEtsyGenerationCount = window.__ornamentEtsyGenerationCount || 0;
 
-            window.addEventListener('ornament-generation-started', () => {
-                window.__ornamentGenerationCount = (window.__ornamentGenerationCount || 0) + 1;
+            window.addEventListener('ornament-etsy-generation-started', () => {
+                window.__ornamentEtsyGenerationCount = (window.__ornamentEtsyGenerationCount || 0) + 1;
             });
 
-            window.addEventListener('ornament-generation-finished', () => {
-                window.__ornamentGenerationCount = Math.max(0, (window.__ornamentGenerationCount || 0) - 1);
+            window.addEventListener('ornament-etsy-generation-finished', () => {
+                window.__ornamentEtsyGenerationCount = Math.max(0, (window.__ornamentEtsyGenerationCount || 0) - 1);
             });
 
             window.addEventListener('beforeunload', (event) => {
-                if ((window.__ornamentGenerationCount || 0) <= 0) {
+                if ((window.__ornamentEtsyGenerationCount || 0) <= 0) {
                     return;
                 }
 
@@ -69,7 +69,7 @@
 
                     <button
                         type="button"
-                        wire:click="$dispatch('openModal', { component: 'modals.prompt.detail-prompt', arguments: { productSlug: 'ornament' } })"
+                        wire:click="$dispatch('openModal', { component: 'modals.prompt.detail-prompt', arguments: { productSlug: 'ornament-etsy' } })"
                         class="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
                     >
                         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
@@ -80,7 +80,7 @@
 
                     <button
                         type="button"
-                        wire:click="$dispatch('openModal', { component: 'modals.ornament.add-product-design' })"
+                        wire:click="$dispatch('openModal', { component: 'modals.ornament-etsy.add-product-design' })"
                         class="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-cyan-500 px-3 text-xs font-bold text-white shadow-sm transition hover:bg-cyan-600 focus:outline-none focus:ring-4 focus:ring-cyan-200"
                     >
                         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -99,12 +99,12 @@
                     x-transition.opacity.duration.150ms
                     x-cloak
                 >
-                    <livewire:pages.ornament.ornament-status-panel
+                    <livewire:pages.ornament-etsy.ornament-etsy-status-panel
                         :status="$status"
                         :per-page="$perPage"
                         :active-psd-template-name="$activePsdTemplateName"
                         :status-counts="$statusCounts"
-                        :key="'ornament-status-panel-'.$status.'-'.$perPage"
+                        :key="'ornament-etsy-status-panel-'.$status.'-'.$perPage"
                         lazy
                     />
                 </div>
@@ -112,9 +112,9 @@
         </div>
     </div>
 
-    <livewire:modals.ornament.add-product-design />
-    <livewire:modals.ornament.edit-product-detail />
-    <livewire:modals.ornament.psd-mockup-template />
+    <livewire:modals.ornament-etsy.add-product-design />
+    <livewire:modals.ornament-etsy.edit-product-detail />
+    <livewire:modals.ornament-etsy.psd-mockup-template />
     <livewire:modals.product-design.delete-idea-confirm />
     <livewire:modals.prompt.detail-prompt />
 

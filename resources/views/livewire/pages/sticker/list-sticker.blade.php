@@ -130,6 +130,7 @@
     <livewire:modals.sticker.add-product-design />
     <livewire:modals.sticker.edit-product-detail />
     <livewire:modals.sticker.psd-mockup-template />
+    <livewire:modals.product-design.delete-idea-confirm />
     <livewire:modals.prompt.detail-prompt />
 
 </div>

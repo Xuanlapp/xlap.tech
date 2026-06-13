@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Livewire\Pages\Mockup\Index as MockupPage;
 use App\Livewire\Pages\Ornament\ListOrnament;
+use App\Livewire\Pages\OrnamentEtsy\ListOrnamentEtsy;
 use App\Livewire\Pages\Poster\Index as PosterPage;
 use App\Livewire\Pages\Redesign\Index as RedesignPage;
 use App\Livewire\Pages\Sticker\ListSticker;
@@ -51,13 +52,23 @@ class ProductRegistry
                 'is_active' => true,
             ],
             [
-                'name' => 'Ornament',
+                'name' => 'Ornament Amazon',
                 'slug' => 'ornament',
-                'description' => 'Create ornament-ready artwork.',
+                'description' => 'Create Amazon ornament-ready artwork.',
                 'route_name' => 'offorest.products.ornament',
                 'path' => 'ornament',
                 'component' => ListOrnament::class,
                 'sort_order' => 35,
+                'is_active' => true,
+            ],
+            [
+                'name' => 'Ornament Etsy',
+                'slug' => 'ornament-etsy',
+                'description' => 'Create Etsy ornament-ready artwork.',
+                'route_name' => 'offorest.products.ornament-etsy',
+                'path' => 'ornament-etsy',
+                'component' => ListOrnamentEtsy::class,
+                'sort_order' => 36,
                 'is_active' => true,
             ],
             [

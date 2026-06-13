@@ -43,10 +43,13 @@
             @endif
         </div>
 
-        <x-label class="inline-flex items-center gap-2 text-xs font-semibold text-blue-600">
-            <input type="checkbox" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
-            Create
-        </x-label>
+        <button
+            type="button"
+            wire:click="$dispatch('openModal', { component: 'modals.product-design.delete-idea-confirm', arguments: { productSlug: 'sticker', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) } })"
+            class="inline-flex h-8 items-center rounded-lg border border-rose-200 bg-rose-50 px-3 text-xs font-bold text-rose-600 transition hover:border-rose-300 hover:bg-rose-100"
+        >
+            Delete
+        </button>
     </div>
 
     <div class="grid gap-5 lg:grid-cols-3">

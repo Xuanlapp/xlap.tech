@@ -6,7 +6,7 @@
             </span>
 
             <h2 class="min-w-0 truncate text-lg font-bold text-slate-950">
-                {{ $asset->keyword ?: 'Ornament item' }}
+                {{ $asset->keyword ?: 'Ornament Etsy item' }}
             </h2>
 
             @if (! $asset->is_approved && ! $asset->redesign)
@@ -15,7 +15,7 @@
                     variant="ghost"
                     size="xs"
                     type="button"
-                    wire:click="$dispatch('openModal', { component: 'modals.ornament.edit-product-detail', arguments: { assetId: {{ $asset->id }} } })"
+                    wire:click="$dispatch('openModal', { component: 'modals.ornament-etsy.edit-product-detail', arguments: { assetId: {{ $asset->id }} } })"
                 >
                     Edit item
                 </x-button>
@@ -45,7 +45,7 @@
 
         <button
             type="button"
-            wire:click="$dispatch('openModal', { component: 'modals.product-design.delete-idea-confirm', arguments: { productSlug: 'ornament', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) } })"
+            wire:click="$dispatch('openModal', { component: 'modals.product-design.delete-idea-confirm', arguments: { productSlug: 'ornament-etsy', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) } })"
             class="inline-flex h-8 items-center rounded-lg border border-rose-200 bg-rose-50 px-3 text-xs font-bold text-rose-600 transition hover:border-rose-300 hover:bg-rose-100"
         >
             Delete
@@ -58,7 +58,7 @@
                 <x-label class="truncate text-xs font-bold uppercase text-slate-600">1. Source Image</x-label>
             </div>
 
-            <x-image-preview reviewable class="aspect-[4/4.45] rounded-xl border border-slate-200 bg-slate-50" :src="$asset->image_preview_url" :original="$asset->image_link" alt="Source image" :asset-id="$asset->id" product-slug="ornament" :keyword="$asset->keyword">
+            <x-image-preview reviewable class="aspect-[4/4.45] rounded-xl border border-slate-200 bg-slate-50" :src="$asset->image_preview_url" :original="$asset->image_link" alt="Source image" :asset-id="$asset->id" product-slug="ornament-etsy" :keyword="$asset->keyword">
                 <span class="px-4 text-center text-sm font-medium text-slate-400">Dan link anh nguon vao day</span>
             </x-image-preview>
 
@@ -66,7 +66,7 @@
                 @if ($asset->image_link)
                     <button
                         type="button"
-                        wire:click="$dispatch('review-image', { src: @js($asset->image_preview_url), original: @js($asset->image_link), title: 'Source image', productSlug: 'ornament', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
+                        wire:click="$dispatch('review-image', { src: @js($asset->image_preview_url), original: @js($asset->image_link), title: 'Source image', productSlug: 'ornament-etsy', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
                         class="text-xs font-semibold text-blue-600 hover:text-blue-700"
                     >
                         Xem anh nguon
@@ -81,7 +81,7 @@
             <div class="mb-2 flex h-5 items-center justify-between gap-2">
                 <x-label class="truncate text-xs font-bold uppercase text-blue-600">2. Create Master</x-label>
                 @if ($asset->image_link && ! $asset->is_approved)
-                    <x-ui.button color="blue" variant="ghost" size="xs" type="button" x-on:click="window.dispatchEvent(new CustomEvent('ornament-generation-started'))" wire:click="generateRedesign" wire:loading.attr="disabled" wire:target="generateRedesign" class="shrink-0">
+                    <x-ui.button color="blue" variant="ghost" size="xs" type="button" x-on:click="window.dispatchEvent(new CustomEvent('ornament-etsy-generation-started'))" wire:click="generateRedesign" wire:loading.attr="disabled" wire:target="generateRedesign" class="shrink-0">
                         <span wire:loading.remove wire:target="generateRedesign">Create Master</span>
                         <span wire:loading wire:target="generateRedesign">Creating...</span>
                     </x-ui.button>
@@ -94,7 +94,7 @@
                 </div>
 
                 <div wire:loading.class="invisible" wire:target="generateRedesign" class="h-full w-full">
-                    <x-image-preview reviewable class="h-full w-full" :src="$asset->redesign_preview_url" :original="$asset->redesign" alt="Redesign image" :asset-id="$asset->id" product-slug="ornament" :keyword="$asset->keyword">
+                    <x-image-preview reviewable class="h-full w-full" :src="$asset->redesign_preview_url" :original="$asset->redesign" alt="Redesign image" :asset-id="$asset->id" product-slug="ornament-etsy" :keyword="$asset->keyword">
                         <span class="px-4 text-center text-sm font-medium text-slate-400">
                             {{ $asset->image_link ? 'Waiting for creation...' : 'Cho anh nguon' }}
                         </span>
@@ -107,7 +107,7 @@
             <div class="mb-2 flex h-5 items-center justify-between gap-2">
                 <x-label class="truncate text-xs font-bold uppercase text-emerald-700">3. Lifestyle Image</x-label>
                 @if ($asset->redesign && ! $asset->is_approved)
-                    <x-ui.button color="emerald" variant="ghost" size="xs" type="button" x-on:click="window.dispatchEvent(new CustomEvent('ornament-generation-started'))" wire:click="generateFinalImages" wire:loading.attr="disabled" wire:target="generateFinalImages" class="shrink-0">
+                    <x-ui.button color="emerald" variant="ghost" size="xs" type="button" x-on:click="window.dispatchEvent(new CustomEvent('ornament-etsy-generation-started'))" wire:click="generateFinalImages" wire:loading.attr="disabled" wire:target="generateFinalImages" class="shrink-0">
                         <span wire:loading.remove wire:target="generateFinalImages">Generate Lifestyle</span>
                         <span wire:loading wire:target="generateFinalImages">Generating...</span>
                     </x-ui.button>
@@ -133,7 +133,7 @@
                             @foreach ($lifestyleImages as $image)
                                 <button
                                     type="button"
-                                    wire:click="$dispatch('review-image', { src: @js($image['src']), original: @js($image['original']), title: @js($image['label']), productSlug: 'ornament', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
+                                    wire:click="$dispatch('review-image', { src: @js($image['src']), original: @js($image['original']), title: @js($image['label']), productSlug: 'ornament-etsy', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
                                     class="overflow-hidden rounded-lg border border-slate-100 bg-slate-50 shadow-sm transition hover:border-emerald-300 hover:ring-2 hover:ring-emerald-100"
                                 >
                                     <img src="{{ $image['src'] }}" alt="{{ $image['label'] }}" loading="lazy" decoding="async" fetchpriority="low" class="h-full w-full object-cover">
@@ -157,7 +157,7 @@
                 @if ($asset->redesign && ! $asset->is_approved)
                     <button
                         type="button"
-                        x-on:click="window.dispatchEvent(new CustomEvent('ornament-generation-started'))"
+                        x-on:click="window.dispatchEvent(new CustomEvent('ornament-etsy-generation-started'))"
                         wire:click="generatePsdMockups"
                         wire:loading.attr="disabled"
                         wire:target="generatePsdMockups"
@@ -202,7 +202,7 @@
                                 @foreach ($psdMockups as $mockup)
                                     <button
                                         type="button"
-                                        wire:click="$dispatch('review-image', { src: @js($mockup['src']), original: @js($mockup['original']), title: @js('MOCKUP '.$mockup['slot']), productSlug: 'ornament', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
+                                        wire:click="$dispatch('review-image', { src: @js($mockup['src']), original: @js($mockup['original']), title: @js('MOCKUP '.$mockup['slot']), productSlug: 'ornament-etsy', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
                                         class="aspect-[4/3] overflow-hidden rounded-lg border border-slate-100 bg-slate-50 shadow-sm transition hover:border-orange-300 hover:ring-2 hover:ring-orange-100"
                                     >
                                         <img src="{{ $mockup['src'] }}" alt="MOCKUP {{ $mockup['slot'] }}" loading="lazy" decoding="async" fetchpriority="low" class="h-full w-full object-cover">
@@ -225,7 +225,7 @@
                     </span>
                     <button
                         type="button"
-                        wire:click="$dispatch('openModal', { component: 'modals.ornament.psd-mockup-template' })"
+                        wire:click="$dispatch('openModal', { component: 'modals.ornament-etsy.psd-mockup-template' })"
                         class="shrink-0 font-semibold text-orange-600 hover:text-orange-700"
                     >
                         Chon PSD

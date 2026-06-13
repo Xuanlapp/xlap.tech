@@ -27,50 +27,11 @@
             @endforeach
         </div>
 
-        @if ($assets->hasPages())
-            @php
-                $firstPage = max(1, $assets->currentPage() - 1);
-                $lastPage = min($assets->lastPage(), $assets->currentPage() + 1);
-            @endphp
-
-            <nav class="inline-flex self-end overflow-hidden rounded-md border border-slate-200 bg-slate-900 text-xs font-semibold text-slate-300 shadow-sm sm:self-auto" aria-label="Phan trang Sticker">
-                <button
-                    type="button"
-                    wire:click="previousPage('{{ $pageName }}')"
-                    @disabled($assets->onFirstPage())
-                    class="inline-flex h-9 w-10 items-center justify-center border-r border-slate-700 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
-                    aria-label="Trang truoc"
-                >
-                    <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path fill-rule="evenodd" d="M12.79 5.23a.75.75 0 0 1-.02 1.06L9.06 10l3.71 3.71a.75.75 0 1 1-1.06 1.06l-4.24-4.24a.75.75 0 0 1 0-1.06l4.24-4.24a.75.75 0 0 1 1.08 0Z" clip-rule="evenodd" />
-                    </svg>
-                </button>
-
-                @foreach (range($firstPage, $lastPage) as $page)
-                    <button
-                        type="button"
-                        wire:click="gotoPage({{ $page }}, '{{ $pageName }}')"
-                        @disabled($page === $assets->currentPage())
-                        class="inline-flex h-9 min-w-10 items-center justify-center border-r border-slate-700 px-3 transition hover:bg-slate-800 disabled:cursor-default disabled:bg-slate-800 disabled:text-white"
-                        aria-label="Trang {{ $page }}"
-                    >
-                        {{ $page }}
-                    </button>
-                @endforeach
-
-                <button
-                    type="button"
-                    wire:click="nextPage('{{ $pageName }}')"
-                    @disabled(! $assets->hasMorePages())
-                    class="inline-flex h-9 w-10 items-center justify-center transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
-                    aria-label="Trang sau"
-                >
-                    <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 0 1 .02-1.06L10.94 10 7.23 6.29a.75.75 0 1 1 1.06-1.06l4.24 4.24a.75.75 0 0 1 0 1.06l-4.24 4.24a.75.75 0 0 1-1.08 0Z" clip-rule="evenodd" />
-                    </svg>
-                </button>
-            </nav>
-        @endif
+        <x-offorest.pagination
+            :paginator="$assets"
+            :page-name="$pageName"
+            class="border-t-0 p-0 sm:w-auto sm:min-w-[26rem]"
+        />
     </div>
 
     <div class="space-y-5">
@@ -87,45 +48,5 @@
         @endforelse
     </div>
 
-    @if ($assets->hasPages())
-        <div class="mt-6 flex justify-end">
-            <nav class="inline-flex overflow-hidden rounded-md border border-slate-200 bg-slate-900 text-xs font-semibold text-slate-300 shadow-sm" aria-label="Phan trang Sticker duoi">
-                <button
-                    type="button"
-                    wire:click="previousPage('{{ $pageName }}')"
-                    @disabled($assets->onFirstPage())
-                    class="inline-flex h-9 w-10 items-center justify-center border-r border-slate-700 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
-                    aria-label="Trang truoc"
-                >
-                    <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path fill-rule="evenodd" d="M12.79 5.23a.75.75 0 0 1-.02 1.06L9.06 10l3.71 3.71a.75.75 0 1 1-1.06 1.06l-4.24-4.24a.75.75 0 0 1 0-1.06l4.24-4.24a.75.75 0 0 1 1.08 0Z" clip-rule="evenodd" />
-                    </svg>
-                </button>
-
-                @foreach (range($firstPage, $lastPage) as $page)
-                    <button
-                        type="button"
-                        wire:click="gotoPage({{ $page }}, '{{ $pageName }}')"
-                        @disabled($page === $assets->currentPage())
-                        class="inline-flex h-9 min-w-10 items-center justify-center border-r border-slate-700 px-3 transition hover:bg-slate-800 disabled:cursor-default disabled:bg-slate-800 disabled:text-white"
-                        aria-label="Trang {{ $page }}"
-                    >
-                        {{ $page }}
-                    </button>
-                @endforeach
-
-                <button
-                    type="button"
-                    wire:click="nextPage('{{ $pageName }}')"
-                    @disabled(! $assets->hasMorePages())
-                    class="inline-flex h-9 w-10 items-center justify-center transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
-                    aria-label="Trang sau"
-                >
-                    <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 0 1 .02-1.06L10.94 10 7.23 6.29a.75.75 0 1 1 1.06-1.06l4.24 4.24a.75.75 0 0 1 0 1.06l-4.24 4.24a.75.75 0 0 1-1.08 0Z" clip-rule="evenodd" />
-                    </svg>
-                </button>
-            </nav>
-        </div>
-    @endif
+    <x-offorest.pagination :paginator="$assets" :page-name="$pageName" class="mt-6 rounded-lg border border-slate-200 shadow-sm" />
 </div>

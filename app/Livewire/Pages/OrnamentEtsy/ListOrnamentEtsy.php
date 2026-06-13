@@ -1,46 +1,46 @@
 <?php
 
-namespace App\Livewire\Pages\Ornament;
+namespace App\Livewire\Pages\OrnamentEtsy;
 
-use App\Services\Ornament\OrnamentService;
-use App\Services\Ornament\PsdMockupTemplateService;
+use App\Services\OrnamentEtsy\OrnamentEtsyService;
+use App\Services\OrnamentEtsy\PsdMockupTemplateService;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Session;
 use Livewire\Component;
 
-class ListOrnament extends Component
+class ListOrnamentEtsy extends Component
 {
     private const PER_PAGE_OPTIONS = [5, 10, 20, 50, 100, 200, 400];
 
-    public string $pageTitle = 'Ornament Amazon';
+    public string $pageTitle = 'Ornament Etsy';
 
-    public string $pageSubtitle = 'Quan ly quy trinh tao anh ornament Amazon';
+    public string $pageSubtitle = 'Quan ly quy trinh tao anh ornament Etsy';
 
-    public string $addButtonLabel = 'Them ornament';
+    public string $addButtonLabel = 'Them ornament Etsy';
 
-    #[Session(key: 'ornament.per-page')]
+    #[Session(key: 'ornament-etsy.per-page')]
     public int $perPage = 5;
 
-    #[On('product-design-created')]
+    #[On('ornament-etsy-product-design-created')]
     public function productDesignCreated(): void
     {
         //
     }
 
-    #[On('ornament-product-design-approval-updated')]
+    #[On('ornament-etsy-product-design-approval-updated')]
     public function productDesignApprovalUpdated(): void
     {
         //
     }
 
-    #[On('ornament-product-design-workflow-updated')]
+    #[On('ornament-etsy-product-design-workflow-updated')]
     public function productDesignWorkflowUpdated(): void
     {
         //
     }
 
-    #[On('psd-mockup-template-updated')]
+    #[On('ornament-etsy-psd-mockup-template-updated')]
     public function psdMockupTemplateUpdated(): void
     {
         //
@@ -58,10 +58,10 @@ class ListOrnament extends Component
 
     public function render(): View
     {
-        $service = app(OrnamentService::class);
+        $service = app(OrnamentEtsyService::class);
         $perPage = in_array($this->perPage, self::PER_PAGE_OPTIONS, true) ? $this->perPage : 5;
 
-        return view('livewire.pages.ornament.list-ornament', [
+        return view('livewire.pages.ornament-etsy.list-ornament-etsy', [
             'statusCounts' => $service->statusCountsForUser(auth()->user()),
             'activePsdTemplateName' => app(PsdMockupTemplateService::class)->activeOrnamentTemplateForUser(auth()->user())?->name,
             'perPageOptions' => self::PER_PAGE_OPTIONS,

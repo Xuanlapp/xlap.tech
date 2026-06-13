@@ -4,6 +4,7 @@ namespace App\Livewire\Pages\IdeaEtsy;
 
 use App\Services\Image\ImageLinkPreviewService;
 use App\Services\Ornament\OrnamentService;
+use App\Services\OrnamentEtsy\OrnamentEtsyService;
 use App\Services\Sticker\StickerService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Str;
@@ -27,7 +28,7 @@ class IdeaEtsy extends Component
             'imageLink' => $imageLink,
             'forceKeyword' => $forceKeyword,
         ], [
-            'productSlug' => ['required', 'string', Rule::in(['sticker', 'ornament'])],
+            'productSlug' => ['required', 'string', Rule::in(['sticker', 'ornament', 'ornament-etsy'])],
             'keyword' => ['required', 'string', 'max:255'],
             'imageLink' => ['required', 'string', 'max:1000'],
             'forceKeyword' => ['boolean'],
@@ -45,30 +46,32 @@ class IdeaEtsy extends Component
 
         $keyword = trim($validated['keyword']);
         $slug = $validated['productSlug'];
+        $requiredKeyword = $slug === 'ornament-etsy' ? 'ornament' : $slug;
 
-        if (! Str::contains(Str::lower($keyword), $slug)) {
+        if (! Str::contains(Str::lower($keyword), $requiredKeyword)) {
             if (! $validated['forceKeyword']) {
                 return [
                     'ok' => false,
                     'requiresConfirmation' => true,
-                    'message' => "Keyword khong chua tu '{$slug}'. Ban co muon van luu va tu them '{$slug}' vao keyword khong?",
+                    'message' => "Keyword khong chua tu '{$requiredKeyword}'. Ban co muon van luu va tu them '{$requiredKeyword}' vao keyword khong?",
                 ];
             }
 
-            $keyword = trim($keyword.' '.$slug);
+            $keyword = trim($keyword.' '.$requiredKeyword);
         }
 
         try {
             match ($validated['productSlug']) {
                 'sticker' => app(StickerService::class)->createAsset($user, $keyword, $validated['imageLink']),
                 'ornament' => app(OrnamentService::class)->createAsset($user, $keyword, $validated['imageLink']),
+                'ornament-etsy' => app(OrnamentEtsyService::class)->createAsset($user, $keyword, $validated['imageLink']),
             };
         } catch (InvalidArgumentException $exception) {
             if (! $validated['forceKeyword'] && Str::contains($exception->getMessage(), 'Keyword phai chua tu')) {
                 return [
                     'ok' => false,
                     'requiresConfirmation' => true,
-                    'message' => "Keyword khong dung voi trang {$slug}. Ban co muon van luu va tu them '{$slug}' vao keyword khong?",
+                    'message' => "Keyword khong dung voi trang {$slug}. Ban co muon van luu va tu them '{$requiredKeyword}' vao keyword khong?",
                 ];
             }
 
@@ -89,7 +92,7 @@ class IdeaEtsy extends Component
         $targetProducts = auth()->user()
             ? auth()->user()
                 ->products()
-                ->whereIn('slug', ['sticker', 'ornament'])
+                ->whereIn('slug', ['sticker', 'ornament', 'ornament-etsy'])
                 ->where('is_active', true)
                 ->orderBy('name')
                 ->get(['products.name', 'products.slug'])
