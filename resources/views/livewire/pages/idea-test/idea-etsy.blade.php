@@ -557,17 +557,43 @@
                 return false;
             }
 
+            const requiredKeyword = this.requiredKeywordForSlug(this.approvalTargetSlug);
+
             return !(product.title || this.keyword || '')
                 .toString()
                 .toLowerCase()
-                .includes(this.approvalTargetSlug.toLowerCase());
+                .includes(requiredKeyword.toLowerCase());
+        },
+
+        requiredKeywordForSlug(slug) {
+            return slug === 'ornament-etsy' ? 'ornament' : slug;
+        },
+
+        targetProductName(slug) {
+            const product = this.targetProducts.find((targetProduct) => targetProduct.slug === slug);
+
+            return product?.name || slug;
+        },
+
+        sameKeywordFamily(leftSlug, rightSlug) {
+            return this.requiredKeywordForSlug(leftSlug) === this.requiredKeywordForSlug(rightSlug);
         },
 
         productMismatchLabel(product) {
             const text = (product.title || this.keyword || '').toString().toLowerCase();
-            const matchedProduct = this.targetProducts.find((targetProduct) => text.includes(targetProduct.slug.toLowerCase()));
+            const targetKeyword = this.requiredKeywordForSlug(this.approvalTargetSlug).toLowerCase();
 
-            if (!matchedProduct || matchedProduct.slug === this.approvalTargetSlug) {
+            if (text.includes(targetKeyword)) {
+                return '';
+            }
+
+            const matchedProduct = this.targetProducts.find((targetProduct) => {
+                const requiredKeyword = this.requiredKeywordForSlug(targetProduct.slug).toLowerCase();
+
+                return requiredKeyword !== targetKeyword && text.includes(requiredKeyword);
+            });
+
+            if (!matchedProduct || this.sameKeywordFamily(matchedProduct.slug, this.approvalTargetSlug)) {
                 return '';
             }
 
@@ -609,8 +635,10 @@
                     const mismatchText = mismatchNames.length > 0
                         ? ` Mot so item co ve thuoc ${mismatchNames.join(', ')}.`
                         : '';
+                    const requiredKeyword = this.requiredKeywordForSlug(this.approvalTargetSlug);
+                    const targetName = this.targetProductName(this.approvalTargetSlug);
 
-                    this.approvalConfirmMessage = `${needConfirmationCount} item khong dung voi trang dang chon (${this.approvalTargetSlug}).${mismatchText} Bam Yes de van luu toan bo ${selectedProducts.length} item da chon va tu them '${this.approvalTargetSlug}' vao keyword khi can.`;
+                    this.approvalConfirmMessage = `${needConfirmationCount} item khong dung voi trang dang chon (${targetName}).${mismatchText} Bam Yes de van luu toan bo ${selectedProducts.length} item da chon va tu them '${requiredKeyword}' vao keyword khi can.`;
                     this.approvalConfirmOpen = true;
                     return;
                 }
@@ -639,7 +667,9 @@
                 const message = error.message || 'Co loi khi them item.';
 
                 if (!forceKeyword && message.toLowerCase().includes('keyword')) {
-                    this.approvalConfirmMessage = `${message} Bam Yes de van luu toan bo ${selectedProducts.length} item da chon va tu them '${this.approvalTargetSlug}' vao keyword khi can.`;
+                    const requiredKeyword = this.requiredKeywordForSlug(this.approvalTargetSlug);
+
+                    this.approvalConfirmMessage = `${message} Bam Yes de van luu toan bo ${selectedProducts.length} item da chon va tu them '${requiredKeyword}' vao keyword khi can.`;
                     this.approvalConfirmOpen = true;
                     this.approvalSaving = false;
                     return;
