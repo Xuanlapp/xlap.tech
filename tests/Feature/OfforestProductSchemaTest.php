@@ -8,6 +8,7 @@ use App\Livewire\Modals\Sticker\AddProductDesign;
 use App\Livewire\Modals\Sticker\EditProductDetail;
 use App\Livewire\Modals\Ornament\AddProductDesign as OrnamentAddProductDesign;
 use App\Livewire\Modals\OrnamentEtsy\AddProductDesign as OrnamentEtsyAddProductDesign;
+use App\Livewire\Modals\Admin\EditProductBackgroundRemoval;
 use App\Livewire\Modals\ProductDesign\DeleteIdeaConfirm;
 use App\Livewire\Pages\Admin\ListUser;
 use App\Models\ActivityLog;
@@ -20,6 +21,7 @@ use App\Models\VertexApiCredential;
 use App\Repositories\Product\ProductDesignAssetRepository;
 use App\Services\Ornament\OrnamentService;
 use App\Services\OrnamentEtsy\OrnamentEtsyService;
+use App\Services\Product\ProductBackgroundRemovalService;
 use App\Services\Sticker\PsdMockupRenderer;
 use App\Services\Sticker\PsdMockupTemplateService;
 use App\Services\Sticker\StickerService;
@@ -403,6 +405,45 @@ class OfforestProductSchemaTest extends TestCase
             ->assertHasNoErrors();
 
         $this->assertTrue($user->products()->whereKey($product->id)->exists());
+    }
+
+    public function test_admin_can_edit_product_background_removal_setting_from_modal(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $product = Product::where('slug', 'ornament')->firstOrFail();
+        $product->update(['auto_remove_background' => true]);
+
+        $this->actingAs($admin);
+
+        Livewire::test(EditProductBackgroundRemoval::class)
+            ->call('openModal', 'modals.admin.edit-product-background-removal', ['productId' => $product->id])
+            ->assertSet('isOpen', true)
+            ->assertSet('autoRemoveBackground', '1')
+            ->set('autoRemoveBackground', '0')
+            ->call('save')
+            ->assertDispatched('toast');
+
+        $this->assertFalse($product->refresh()->auto_remove_background);
+        $this->assertDatabaseHas('activity_logs', [
+            'event' => 'admin.product_background_removal_updated',
+        ]);
+    }
+
+    public function test_product_background_removal_requires_global_and_product_setting(): void
+    {
+        $product = Product::where('slug', 'sticker')->firstOrFail();
+        $service = app(ProductBackgroundRemovalService::class);
+
+        config(['services.background_removal.enabled' => true]);
+        $product->update(['auto_remove_background' => true]);
+        $this->assertTrue($service->enabledFor($product->refresh()));
+
+        $product->update(['auto_remove_background' => false]);
+        $this->assertFalse($service->enabledFor($product->refresh()));
+
+        config(['services.background_removal.enabled' => false]);
+        $product->update(['auto_remove_background' => true]);
+        $this->assertFalse($service->enabledFor($product->refresh()));
     }
 
     public function test_admin_can_create_user_by_copying_vertex_credential_from_another_user(): void

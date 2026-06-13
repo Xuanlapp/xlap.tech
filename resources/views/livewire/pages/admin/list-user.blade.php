@@ -140,6 +140,61 @@
             </x-ui.button>
         </form>
 
+        <div class="mt-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                    <h2 class="text-base font-bold text-slate-950">Tu dong tach nen theo trang</h2>
+                    <p class="mt-1 text-sm text-slate-500">Env OFFOREST_REMOVE_VERTEX_BACKGROUND van la cong tac tong. Khi env bat, admin co the chon trang nao tu dong tach nen.</p>
+                </div>
+
+                <span class="inline-flex w-fit rounded-full px-3 py-1 text-xs font-semibold {{ config('services.background_removal.enabled') ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">
+                    {{ config('services.background_removal.enabled') ? 'Global enabled' : 'Global disabled' }}
+                </span>
+            </div>
+
+            <div class="mt-4 overflow-hidden rounded-lg border border-slate-200">
+                <table class="min-w-full divide-y divide-slate-200 text-sm">
+                    <thead class="bg-slate-50 text-left text-slate-500">
+                        <tr>
+                            <th class="px-5 py-3 font-medium">Trang</th>
+                            <th class="px-5 py-3 text-center font-medium">Auto tach nen</th>
+                            <th class="px-5 py-3 text-right font-medium">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 bg-white">
+                        @foreach ($products as $product)
+                            <tr wire:key="background-removal-product-{{ $product->id }}" class="transition hover:bg-slate-50">
+                                <td class="px-5 py-4">
+                                    <p class="font-semibold text-slate-950">{{ $product->name }}</p>
+                                    <p class="mt-1 text-xs text-slate-400">{{ $product->slug }}</p>
+                                </td>
+                                <td class="px-5 py-4 text-center">
+                                    @if ($product->auto_remove_background)
+                                        <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                                <path fill-rule="evenodd" d="M16.704 5.29a1 1 0 0 1 .006 1.414l-7.25 7.32a1 1 0 0 1-1.421 0L3.29 9.23a1 1 0 1 1 1.42-1.408l4.04 4.08 6.54-6.606a1 1 0 0 1 1.414-.006Z" clip-rule="evenodd" />
+                                            </svg>
+                                        </span>
+                                    @else
+                                        <span class="text-gray-700">-</span>
+                                    @endif
+                                </td>
+                                <td class="px-5 py-4 text-right">
+                                    <button
+                                        type="button"
+                                        wire:click="$dispatch('openModal', { component: 'modals.admin.edit-product-background-removal', arguments: { productId: {{ $product->id }} } })"
+                                        class="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700"
+                                    >
+                                        Edit
+                                    </button>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <div class="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
             <div class="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -259,4 +314,5 @@
 
     <livewire:modals.admin.add-user />
     <livewire:modals.admin.edit-user />
+    <livewire:modals.admin.edit-product-background-removal />
 </section>

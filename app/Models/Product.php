@@ -13,12 +13,14 @@ class Product extends Model
         'slug',
         'description',
         'is_active',
+        'auto_remove_background',
     ];
 
     protected function casts(): array
     {
         return [
             'is_active' => 'boolean',
+            'auto_remove_background' => 'boolean',
         ];
     }
 

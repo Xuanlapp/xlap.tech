@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Repositories\Product\ProductDesignAssetRepository;
 use App\Repositories\Product\ProductRepository;
 use App\Repositories\Prompt\PromptRepository;
+use App\Services\Product\ProductBackgroundRemovalService;
 use App\Services\Product\ProductDesignAssetFileCleanupService;
 use App\Services\Product\ProductDriveUploadQueueService;
 use App\Services\Vertex\VertexImageGenerator;
@@ -32,6 +33,7 @@ class StickerService
         private readonly ProductDesignAssetRepository $assets,
         private readonly PromptRepository $prompts,
         private readonly VertexImageGenerator $generator,
+        private readonly ProductBackgroundRemovalService $backgroundRemoval,
         private readonly ProductDriveUploadQueueService $driveUploadQueue,
         private readonly ProductDesignAssetFileCleanupService $fileCleanup,
         private readonly PsdMockupTemplateService $psdTemplates,
@@ -166,7 +168,7 @@ class StickerService
                 imageUri: $asset->image_link,
                 prompt: $this->promptContent($user, 1),
                 folder: 'generated/sticker/redesign',
-                removeBackground: (bool) config('services.background_removal.enabled', false),
+                removeBackground: $this->backgroundRemoval->enabledFor($this->product()),
             ),
         );
     }
@@ -199,7 +201,7 @@ class StickerService
                 imageUri: $this->normalizeImageLink($imageLink),
                 prompt: $this->normalizeCustomPrompt($prompt),
                 folder: 'generated/sticker/redesign',
-                removeBackground: (bool) config('services.background_removal.enabled', false),
+                removeBackground: $this->backgroundRemoval->enabledFor($this->product()),
                 lockWaitSeconds: (int) config('services.vertex.priority_lock_wait_seconds', 600),
                 priority: true,
             ),

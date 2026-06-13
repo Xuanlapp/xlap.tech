@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Repositories\Product\ProductDesignAssetRepository;
 use App\Repositories\Product\ProductRepository;
 use App\Repositories\Prompt\PromptRepository;
+use App\Services\Product\ProductBackgroundRemovalService;
 use App\Services\Product\ProductDesignAssetFileCleanupService;
 use App\Services\Product\ProductDriveUploadQueueService;
 use App\Services\Vertex\VertexImageGenerator;
@@ -30,6 +31,7 @@ class OrnamentService
         private readonly ProductDesignAssetRepository $assets,
         private readonly PromptRepository $prompts,
         private readonly VertexImageGenerator $generator,
+        private readonly ProductBackgroundRemovalService $backgroundRemoval,
         private readonly ProductDriveUploadQueueService $driveUploadQueue,
         private readonly ProductDesignAssetFileCleanupService $fileCleanup,
         private readonly PsdMockupTemplateService $psdTemplates,
@@ -155,7 +157,7 @@ class OrnamentService
                 imageUri: $asset->image_link,
                 prompt: $this->promptContent($user, 1),
                 folder: 'generated/ornament/redesign',
-                removeBackground: (bool) config('services.background_removal.enabled', false),
+                removeBackground: $this->backgroundRemoval->enabledFor($this->product()),
             ),
         );
     }

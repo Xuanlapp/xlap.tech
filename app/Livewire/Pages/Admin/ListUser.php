@@ -27,6 +27,15 @@ class ListUser extends Component
     public ?string $driveUploadError = null;
 
     /**
+     * Re-render product settings after an admin modal saves changes.
+     */
+    #[On('product-background-removal-updated')]
+    public function refreshProductBackgroundRemoval(): void
+    {
+        //
+    }
+
+    /**
      * Re-render the users table after add/edit modals save changes.
      */
     #[On('users-updated')]
