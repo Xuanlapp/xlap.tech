@@ -1,15 +1,15 @@
 <?php
 
-namespace App\Livewire\Pages\Ornament;
+namespace App\Livewire\Pages\OrnamentAmazon;
 
-use App\Services\Ornament\OrnamentService;
-use App\Services\Ornament\PsdMockupTemplateService;
+use App\Services\OrnamentAmazon\OrnamentAmazonService;
+use App\Services\OrnamentAmazon\PsdMockupTemplateService;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Session;
 use Livewire\Component;
 
-class ListOrnament extends Component
+class ListOrnamentAmazon extends Component
 {
     private const PER_PAGE_OPTIONS = [5, 10, 20, 50, 100, 200, 400];
 
@@ -28,13 +28,13 @@ class ListOrnament extends Component
         //
     }
 
-    #[On('ornament-product-design-approval-updated')]
+    #[On('ornament-amazon-product-design-approval-updated')]
     public function productDesignApprovalUpdated(): void
     {
         //
     }
 
-    #[On('ornament-product-design-workflow-updated')]
+    #[On('ornament-amazon-product-design-workflow-updated')]
     public function productDesignWorkflowUpdated(): void
     {
         //
@@ -58,10 +58,10 @@ class ListOrnament extends Component
 
     public function render(): View
     {
-        $service = app(OrnamentService::class);
+        $service = app(OrnamentAmazonService::class);
         $perPage = in_array($this->perPage, self::PER_PAGE_OPTIONS, true) ? $this->perPage : 5;
 
-        return view('livewire.pages.ornament.list-ornament', [
+        return view('livewire.pages.ornament-amazon.list-ornament-amazon', [
             'statusCounts' => $service->statusCountsForUser(auth()->user()),
             'activePsdTemplateName' => app(PsdMockupTemplateService::class)->activeOrnamentTemplateForUser(auth()->user())?->name,
             'perPageOptions' => self::PER_PAGE_OPTIONS,

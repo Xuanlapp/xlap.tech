@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Livewire\Modals\Ornament;
+namespace App\Livewire\Modals\OrnamentAmazon;
 
-use App\Livewire\Pages\Ornament\ListOrnament;
-use App\Livewire\Pages\Ornament\OrnamentStatusPanel;
+use App\Livewire\Pages\OrnamentAmazon\ListOrnamentAmazon;
+use App\Livewire\Pages\OrnamentAmazon\OrnamentAmazonStatusPanel;
 use App\Services\Image\ImageLinkPreviewService;
-use App\Services\Ornament\CompetitorListingScraper;
-use App\Services\Ornament\OrnamentService;
+use App\Services\OrnamentAmazon\CompetitorListingScraper;
+use App\Services\OrnamentAmazon\OrnamentAmazonService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Str;
 use Livewire\Attributes\On;
@@ -39,7 +39,7 @@ class AddProductDesign extends Component
     #[On('openModal')]
     public function openModal(string $component, array $arguments = []): void
     {
-        if ($component !== 'modals.ornament.add-product-design') {
+        if ($component !== 'modals.ornament-amazon.add-product-design') {
             return;
         }
 
@@ -102,14 +102,14 @@ class AddProductDesign extends Component
 
         if (! filter_var($url, FILTER_VALIDATE_URL)) {
             $this->addError('competitorUrl', 'Link doi thu khong hop le.');
-            $this->dispatch('ornament-competitor-scrape-finished');
+            $this->dispatch('ornament-amazon-competitor-scrape-finished');
 
             return;
         }
 
         if (! $this->isSupportedCompetitorUrl($url)) {
             $this->addError('competitorUrl', 'Chi ho tro link Amazon hoac Etsy.');
-            $this->dispatch('ornament-competitor-scrape-finished');
+            $this->dispatch('ornament-amazon-competitor-scrape-finished');
 
             return;
         }
@@ -124,7 +124,7 @@ class AddProductDesign extends Component
             $this->scrapeError = $exception->getMessage();
         }
 
-        $this->dispatch('ornament-competitor-scrape-finished');
+        $this->dispatch('ornament-amazon-competitor-scrape-finished');
     }
 
     private function isSupportedCompetitorUrl(string $url): bool
@@ -147,6 +147,12 @@ class AddProductDesign extends Component
 
     public function save(): void
     {
+        if ($this->competitorListing === [] || $this->keyword === '' || $this->imageLink === '') {
+            $this->addError('competitorUrl', 'Hay cho he thong lay xong du lieu roi moi them item.');
+
+            return;
+        }
+
         $validated = $this->validate([
             'keyword' => ['required', 'string', 'max:255', function (string $attribute, mixed $value, \Closure $fail): void {
                 if (! is_string($value) || ! Str::contains(Str::lower($value), 'ornament')) {
@@ -160,17 +166,23 @@ class AddProductDesign extends Component
             }],
         ]);
 
-        app(OrnamentService::class)->createAsset(auth()->user(), $validated['keyword'], $validated['imageLink']);
+        app(OrnamentAmazonService::class)->createAsset(
+            auth()->user(),
+            $validated['keyword'],
+            $validated['imageLink'],
+            $this->secondaryImages($validated['imageLink']),
+            $this->competitorListing,
+        );
 
-        $this->dispatch('product-design-created')->to(ListOrnament::class);
-        $this->dispatch('product-design-created')->to(OrnamentStatusPanel::class);
+        $this->dispatch('product-design-created')->to(ListOrnamentAmazon::class);
+        $this->dispatch('product-design-created')->to(OrnamentAmazonStatusPanel::class);
         $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da them item Ornament moi.');
         $this->close();
     }
 
     public function render(): View
     {
-        return view('livewire.modals.ornament.add-product-design');
+        return view('livewire.modals.ornament-amazon.add-product-design');
     }
 
     private function looksLikeImageUrl(string $url): bool
@@ -191,5 +203,21 @@ class AddProductDesign extends Component
         }
 
         return Str::limit($keyword, 255, '');
+    }
+
+    /**
+     * Return all scraped source images except the primary image saved in image_link.
+     *
+     * @return array<int, string>
+     */
+    private function secondaryImages(string $primaryImageLink): array
+    {
+        return collect($this->competitorListing['images'] ?? [])
+            ->filter(fn (mixed $image): bool => is_string($image))
+            ->map(fn (string $image): string => trim($image))
+            ->filter(fn (string $image): bool => $image !== '' && $image !== $primaryImageLink)
+            ->unique()
+            ->values()
+            ->all();
     }
 }

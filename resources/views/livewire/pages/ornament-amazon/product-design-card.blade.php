@@ -15,7 +15,7 @@
                     variant="ghost"
                     size="xs"
                     type="button"
-                    wire:click="$dispatch('openModal', { component: 'modals.ornament.edit-product-detail', arguments: { assetId: {{ $asset->id }} } })"
+                    wire:click="$dispatch('openModal', { component: 'modals.ornament-amazon.edit-product-detail', arguments: { assetId: {{ $asset->id }} } })"
                 >
                     Edit item
                 </x-button>
@@ -62,26 +62,13 @@
                 <span class="px-4 text-center text-sm font-medium text-slate-400">Dan link anh nguon vao day</span>
             </x-image-preview>
 
-            <div class="mt-2 flex min-h-10 items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                @if ($asset->image_link)
-                    <button
-                        type="button"
-                        wire:click="$dispatch('review-image', { src: @js($asset->image_preview_url), original: @js($asset->image_link), title: 'Source image', productSlug: 'ornament', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
-                        class="text-xs font-semibold text-blue-600 hover:text-blue-700"
-                    >
-                        Xem anh nguon
-                    </button>
-                @else
-                    <span class="text-xs font-medium text-slate-400">Chua co anh nguon</span>
-                @endif
-            </div>
         </div>
 
         <div class="min-w-0 {{ $asset->image_link ? '' : 'opacity-55' }}">
             <div class="mb-2 flex h-5 items-center justify-between gap-2">
                 <x-label class="truncate text-xs font-bold uppercase text-blue-600">2. Create Master</x-label>
                 @if ($asset->image_link && ! $asset->is_approved)
-                    <x-ui.button color="blue" variant="ghost" size="xs" type="button" x-on:click="window.dispatchEvent(new CustomEvent('ornament-generation-started'))" wire:click="generateRedesign" wire:loading.attr="disabled" wire:target="generateRedesign" class="shrink-0">
+                    <x-ui.button color="blue" variant="ghost" size="xs" type="button" x-on:click="window.dispatchEvent(new CustomEvent('ornament-amazon-generation-started'))" wire:click="generateRedesign" wire:loading.attr="disabled" wire:target="generateRedesign" class="shrink-0">
                         <span wire:loading.remove wire:target="generateRedesign">Create Master</span>
                         <span wire:loading wire:target="generateRedesign">Creating...</span>
                     </x-ui.button>
@@ -107,7 +94,7 @@
             <div class="mb-2 flex h-5 items-center justify-between gap-2">
                 <x-label class="truncate text-xs font-bold uppercase text-emerald-700">3. Lifestyle Image</x-label>
                 @if ($asset->redesign && ! $asset->is_approved)
-                    <x-ui.button color="emerald" variant="ghost" size="xs" type="button" x-on:click="window.dispatchEvent(new CustomEvent('ornament-generation-started'))" wire:click="generateFinalImages" wire:loading.attr="disabled" wire:target="generateFinalImages" class="shrink-0">
+                    <x-ui.button color="emerald" variant="ghost" size="xs" type="button" x-on:click="window.dispatchEvent(new CustomEvent('ornament-amazon-generation-started'))" wire:click="generateFinalImages" wire:loading.attr="disabled" wire:target="generateFinalImages" class="shrink-0">
                         <span wire:loading.remove wire:target="generateFinalImages">Generate Lifestyle</span>
                         <span wire:loading wire:target="generateFinalImages">Generating...</span>
                     </x-ui.button>
@@ -148,7 +135,6 @@
                 </div>
             </div>
 
-            <p class="mt-2 text-xs italic text-slate-500">Lifestyle co the upload, khong co thi bo qua.</p>
         </div>
 
         <div class="min-w-0 {{ $asset->redesign ? '' : 'opacity-55' }}">
@@ -157,7 +143,7 @@
                 @if ($asset->redesign && ! $asset->is_approved)
                     <button
                         type="button"
-                        x-on:click="window.dispatchEvent(new CustomEvent('ornament-generation-started'))"
+                        x-on:click="window.dispatchEvent(new CustomEvent('ornament-amazon-generation-started'))"
                         wire:click="generatePsdMockups"
                         wire:loading.attr="disabled"
                         wire:target="generatePsdMockups"
@@ -218,20 +204,97 @@
                 </div>
             </div>
             
-            <div class="mt-2 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-xs text-slate-500">
-                <div class="flex items-center justify-between gap-2">
-                    <span class="min-w-0 truncate">
-                        PSD: {{ $activePsdTemplateName ?? 'Chua chon PSD' }}
-                    </span>
-                    <button
-                        type="button"
-                        wire:click="$dispatch('openModal', { component: 'modals.ornament.psd-mockup-template' })"
-                        class="shrink-0 font-semibold text-orange-600 hover:text-orange-700"
-                    >
-                        Chon PSD
-                    </button>
-                </div>
-            </div>
         </div>
     </div>
+
+    @php
+        $sourceImages = collect([
+            ['src' => $asset->image_preview_url, 'original' => $asset->image_link],
+        ])
+            ->merge(
+                collect($asset->image_sub ?: [])
+                    ->values()
+                    ->map(fn ($image, $index) => [
+                        'src' => $asset->image_sub_preview_urls[$index] ?? $image,
+                        'original' => $image,
+                    ])
+            )
+            ->filter(fn ($image) => filled($image['original']))
+            ->unique('original')
+            ->values();
+
+        $listingData = $asset->data_item_add ?: [];
+        $listingTitle = $listingData['productTitle'] ?? null;
+        $listingLink = $listingData['link'] ?? null;
+        $listingBullets = collect($listingData['bulletPoints'] ?? $listingData['bullets'] ?? [])->filter();
+        $listingAplus = collect($listingData['aplus_text'] ?? $listingData['aplusText'] ?? [])->filter();
+        $listingDescription = $listingData['productDescription'] ?? $listingData['description'] ?? null;
+    @endphp
+
+    @if ($sourceImages->count() > 1 || ! empty($listingData))
+        <div class="mx-4 mb-5 mt-2 grid gap-4 lg:grid-cols-2">
+            <section class="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div class="mb-1 flex items-baseline gap-3">
+                    <span class="text-xs font-extrabold leading-none text-slate-200">{{ $sourceImages->count() }} imgs</span>
+                </div>
+
+                <div class="flex h-16 gap-3 overflow-x-auto pb-2">
+                    @foreach ($sourceImages as $index => $image)
+                        <button
+                            type="button"
+                            wire:click="$dispatch('review-image', { src: @js($image['src']), original: @js($image['original']), title: @js('Main image '.($index + 1)), productSlug: 'ornament', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
+                            class="h-16 w-16 shrink-0 overflow-hidden rounded-lg border {{ $index === 0 ? 'border-slate-400 ring-2 ring-slate-100' : 'border-slate-300' }} bg-slate-50 shadow-sm transition hover:border-blue-400 hover:ring-2 hover:ring-blue-100"
+                        >
+                            <img src="{{ $image['src'] }}" alt="Main image {{ $index + 1 }}" loading="lazy" decoding="async" fetchpriority="low" class="h-full w-full object-cover">
+                        </button>
+                    @endforeach
+                </div>
+            </section>
+
+            <section class="h-28 min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div class="h-full overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 pr-2 text-xs leading-5 text-slate-700">
+                    <div>
+                        <div class="text-[10px] font-extrabold uppercase text-slate-500">PRODUCT TITLE:</div>
+                        <p class="mt-1 font-semibold text-slate-950">{{ $listingTitle ?: $asset->keyword }}</p>
+                    </div>
+
+                    @if ($listingLink)
+                        <div class="mt-3">
+                            <div class="text-[10px] font-extrabold uppercase text-slate-500">LINK:</div>
+                            <a href="{{ $listingLink }}" target="_blank" rel="noopener" class="mt-1 block break-all font-mono font-semibold text-blue-700 hover:text-blue-800">
+                                {{ $listingLink }}
+                            </a>
+                        </div>
+                    @endif
+
+                    @if ($listingBullets->isNotEmpty())
+                        <div class="mt-3">
+                            <div class="text-[10px] font-extrabold uppercase text-slate-500">BULLET POINTS:</div>
+                            <ol class="mt-1 list-decimal space-y-1 pl-4">
+                                @foreach ($listingBullets as $bullet)
+                                    <li>{{ $bullet }}</li>
+                                @endforeach
+                            </ol>
+                        </div>
+                    @elseif ($listingDescription)
+                        <div class="mt-3">
+                            <div class="text-[10px] font-extrabold uppercase text-slate-500">PRODUCT DESCRIPTION:</div>
+                            <p class="mt-1 whitespace-pre-line">{{ $listingDescription }}</p>
+                        </div>
+                    @endif
+
+                    @if ($listingAplus->isNotEmpty())
+                        <div class="mt-3">
+                            <div class="text-[10px] font-extrabold uppercase text-slate-500">A+ / FAQ LIST:</div>
+                            <ul class="mt-1 list-disc space-y-1 pl-4">
+                                @foreach ($listingAplus as $text)
+                                    <li>{{ $text }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+                </div>
+            </section>
+        </div>
+    @endif
 </article>

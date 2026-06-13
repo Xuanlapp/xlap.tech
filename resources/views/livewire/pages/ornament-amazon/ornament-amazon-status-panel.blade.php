@@ -36,7 +36,7 @@
 
     <div class="space-y-5">
         @forelse ($assets as $asset)
-            <livewire:pages.ornament.product-design-card
+            <livewire:pages.ornament-amazon.product-design-card
                 :asset-id="$asset->id"
                 :active-psd-template-name="$activePsdTemplateName"
                 :key="'ornament-'.$status.'-product-design-card-'.$asset->id"

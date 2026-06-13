@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Ornament;
+namespace App\Services\OrnamentAmazon;
 
 use App\Models\Product;
 use App\Models\PsdMockupTemplate;

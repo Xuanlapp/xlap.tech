@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Livewire\Modals\Ornament;
+namespace App\Livewire\Modals\OrnamentAmazon;
 
 use App\Services\Image\ImageLinkPreviewService;
-use App\Services\Ornament\OrnamentService;
+use App\Services\OrnamentAmazon\OrnamentAmazonService;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -35,7 +35,7 @@ class EditProductDetail extends Component
     #[On('openModal')]
     public function openModal(string $component, array $arguments = []): void
     {
-        if ($component !== 'modals.ornament.edit-product-detail') {
+        if ($component !== 'modals.ornament-amazon.edit-product-detail') {
             return;
         }
 
@@ -53,7 +53,7 @@ class EditProductDetail extends Component
     {
         $this->resetValidation();
 
-        $asset = app(OrnamentService::class)->assetForUser(auth()->user(), $assetId);
+        $asset = app(OrnamentAmazonService::class)->assetForUser(auth()->user(), $assetId);
         $preview = app(ImageLinkPreviewService::class);
 
         if ($asset->is_approved) {
@@ -125,20 +125,20 @@ class EditProductDetail extends Component
             return;
         }
 
-        app(OrnamentService::class)->updateProductDetail(
+        app(OrnamentAmazonService::class)->updateProductDetail(
             auth()->user(),
             $this->assetId,
             $validated['keyword'],
             $validated['imageLink'],
         );
 
-        $this->dispatch('ornament-product-design-updated', assetId: $this->assetId);
+        $this->dispatch('ornament-amazon-product-design-updated', assetId: $this->assetId);
         $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da cap nhat item Ornament.');
         $this->close();
     }
 
     public function render(): View
     {
-        return view('livewire.modals.ornament.edit-product-detail');
+        return view('livewire.modals.ornament-amazon.edit-product-detail');
     }
 }

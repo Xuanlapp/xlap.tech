@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Ornament;
+namespace App\Services\OrnamentAmazon;
 
 use DOMDocument;
 use DOMXPath;

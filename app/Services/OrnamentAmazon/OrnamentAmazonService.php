@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Ornament;
+namespace App\Services\OrnamentAmazon;
 
 use App\Models\Product;
 use App\Models\ProductDesignAsset;
@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
 use InvalidArgumentException;
 use RuntimeException;
 
-class OrnamentService
+class OrnamentAmazonService
 {
     private const MAX_KEYWORD_LENGTH = 255;
 
@@ -80,13 +80,15 @@ class OrnamentService
     /**
      * Create one Ornament item with the user-provided keyword and source image URL.
      */
-    public function createAsset(User $user, string $keyword, string $imageLink): ProductDesignAsset
+    public function createAsset(User $user, string $keyword, string $imageLink, array $imageSub = [], array $dataItemAdd = []): ProductDesignAsset
     {
-        return $this->assets->createWithSource(
+        return $this->assets->createWithSourceData(
             $user->id,
             $this->product()->id,
             $this->normalizeKeyword($keyword),
             $this->normalizeImageLink($imageLink),
+            $this->normalizeImageSub($imageSub, $imageLink),
+            $this->normalizeDataItemAdd($dataItemAdd),
         );
     }
 
@@ -305,6 +307,56 @@ class OrnamentService
         }
 
         return $imageLink;
+    }
+
+    /**
+     * Normalize secondary source image URLs and exclude the primary source image.
+     *
+     * @param  array<int, mixed>  $imageSub
+     * @return array<int, string>
+     */
+    private function normalizeImageSub(array $imageSub, string $primaryImageLink): array
+    {
+        $primaryImageLink = trim($primaryImageLink);
+
+        return collect($imageSub)
+            ->filter(fn (mixed $image): bool => is_string($image))
+            ->map(fn (string $image): string => trim($image))
+            ->filter(fn (string $image): bool => $image !== '' && $image !== $primaryImageLink)
+            ->filter(fn (string $image): bool => filter_var($image, FILTER_VALIDATE_URL) !== false)
+            ->unique()
+            ->take(30)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Keep only listing fields that are useful when reviewing an added item.
+     *
+     * @param  array<string, mixed>  $dataItemAdd
+     * @return array<string, mixed>
+     */
+    private function normalizeDataItemAdd(array $dataItemAdd): array
+    {
+        $allowed = [
+            'platform',
+            'productTitle',
+            'link',
+            'productDescription',
+            'description',
+            'bulletPoints',
+            'bullets',
+            'aplusText',
+            'aplus_text',
+            'aplusImages',
+            'aplus_images',
+            'images',
+        ];
+
+        return collect($dataItemAdd)
+            ->only($allowed)
+            ->filter(fn (mixed $value): bool => filled($value))
+            ->all();
     }
 
     private function promptContent(User $user, int $promptNumber): string

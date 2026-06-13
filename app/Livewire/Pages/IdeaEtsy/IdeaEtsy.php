@@ -3,7 +3,7 @@
 namespace App\Livewire\Pages\IdeaEtsy;
 
 use App\Services\Image\ImageLinkPreviewService;
-use App\Services\Ornament\OrnamentService;
+use App\Services\OrnamentAmazon\OrnamentAmazonService;
 use App\Services\OrnamentEtsy\OrnamentEtsyService;
 use App\Services\Sticker\StickerService;
 use Illuminate\Contracts\View\View;
@@ -63,7 +63,7 @@ class IdeaEtsy extends Component
         try {
             match ($validated['productSlug']) {
                 'sticker' => app(StickerService::class)->createAsset($user, $keyword, $validated['imageLink']),
-                'ornament' => app(OrnamentService::class)->createAsset($user, $keyword, $validated['imageLink']),
+                'ornament' => app(OrnamentAmazonService::class)->createAsset($user, $keyword, $validated['imageLink']),
                 'ornament-etsy' => app(OrnamentEtsyService::class)->createAsset($user, $keyword, $validated['imageLink']),
             };
         } catch (InvalidArgumentException $exception) {

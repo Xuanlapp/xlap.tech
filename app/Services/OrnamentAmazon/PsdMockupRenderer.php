@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Ornament;
+namespace App\Services\OrnamentAmazon;
 
 use App\Models\PsdMockupTemplate;
 use Illuminate\Support\Facades\File;

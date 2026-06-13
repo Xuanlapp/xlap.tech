@@ -14,6 +14,8 @@ class ProductDesignAsset extends Model
         'item_number',
         'keyword',
         'image_link',
+        'image_sub',
+        'data_item_add',
         'title',
         'description',
         'bullet_point_1',
@@ -56,6 +58,8 @@ class ProductDesignAsset extends Model
     {
         return [
             'is_approved' => 'boolean',
+            'image_sub' => 'array',
+            'data_item_add' => 'array',
             'redesign_candidates' => 'array',
             'approved_at' => 'datetime',
             'drive_uploaded_at' => 'datetime',

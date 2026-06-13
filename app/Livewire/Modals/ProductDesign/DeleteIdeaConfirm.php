@@ -3,15 +3,15 @@
 namespace App\Livewire\Modals\ProductDesign;
 
 use App\Livewire\Concerns\ReportsUserActionErrors;
-use App\Livewire\Pages\Ornament\ListOrnament;
-use App\Livewire\Pages\Ornament\OrnamentStatusPanel;
+use App\Livewire\Pages\OrnamentAmazon\ListOrnamentAmazon;
+use App\Livewire\Pages\OrnamentAmazon\OrnamentAmazonStatusPanel;
 use App\Livewire\Pages\OrnamentEtsy\ListOrnamentEtsy;
 use App\Livewire\Pages\OrnamentEtsy\OrnamentEtsyStatusPanel;
 use App\Livewire\Pages\Sticker\ListSticker;
 use App\Livewire\Pages\Sticker\StickerStatusPanel;
 use App\Models\ProductDesignAsset;
 use App\Services\Logging\ActivityLogService;
-use App\Services\Ornament\OrnamentService;
+use App\Services\OrnamentAmazon\OrnamentAmazonService;
 use App\Services\OrnamentEtsy\OrnamentEtsyService;
 use App\Services\Sticker\StickerService;
 use Illuminate\Contracts\View\View;
@@ -106,7 +106,7 @@ class DeleteIdeaConfirm extends Component
     {
         return match ($this->productSlug) {
             'sticker' => app(StickerService::class)->deleteAsset(auth()->user(), $this->assetId),
-            'ornament' => app(OrnamentService::class)->deleteAsset(auth()->user(), $this->assetId),
+            'ornament' => app(OrnamentAmazonService::class)->deleteAsset(auth()->user(), $this->assetId),
             'ornament-etsy' => app(OrnamentEtsyService::class)->deleteAsset(auth()->user(), $this->assetId),
             default => throw new RuntimeException('Product khong hop le.'),
         };
@@ -159,10 +159,10 @@ class DeleteIdeaConfirm extends Component
 
     private function dispatchOrnamentEvents(): void
     {
-        $this->dispatch('ornament-product-design-workflow-updated')->to(ListOrnament::class);
-        $this->dispatch('ornament-product-design-workflow-updated')->to(OrnamentStatusPanel::class);
-        $this->dispatch('ornament-product-design-approval-updated')->to(ListOrnament::class);
-        $this->dispatch('ornament-product-design-approval-updated')->to(OrnamentStatusPanel::class);
+        $this->dispatch('ornament-amazon-product-design-workflow-updated')->to(ListOrnamentAmazon::class);
+        $this->dispatch('ornament-amazon-product-design-workflow-updated')->to(OrnamentAmazonStatusPanel::class);
+        $this->dispatch('ornament-amazon-product-design-approval-updated')->to(ListOrnamentAmazon::class);
+        $this->dispatch('ornament-amazon-product-design-approval-updated')->to(OrnamentAmazonStatusPanel::class);
     }
 
     private function dispatchOrnamentEtsyEvents(): void

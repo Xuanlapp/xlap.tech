@@ -1,15 +1,15 @@
 <?php
 
-namespace App\Livewire\Pages\Ornament;
+namespace App\Livewire\Pages\OrnamentAmazon;
 
-use App\Services\Ornament\OrnamentService;
-use App\Services\Ornament\PsdMockupTemplateService;
+use App\Services\OrnamentAmazon\OrnamentAmazonService;
+use App\Services\OrnamentAmazon\PsdMockupTemplateService;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-class OrnamentStatusPanel extends Component
+class OrnamentAmazonStatusPanel extends Component
 {
     use WithPagination;
 
@@ -38,8 +38,8 @@ class OrnamentStatusPanel extends Component
     }
 
     #[On('product-design-created')]
-    #[On('ornament-product-design-approval-updated')]
-    #[On('ornament-product-design-workflow-updated')]
+    #[On('ornament-amazon-product-design-approval-updated')]
+    #[On('ornament-amazon-product-design-workflow-updated')]
     public function refreshAssets(): void
     {
         //
@@ -54,13 +54,13 @@ class OrnamentStatusPanel extends Component
 
     public function placeholder(): View
     {
-        return view('livewire.pages.ornament.ornament-status-panel-placeholder');
+        return view('livewire.pages.ornament-amazon.ornament-amazon-status-panel-placeholder');
     }
 
     public function render(): View
     {
-        return view('livewire.pages.ornament.ornament-status-panel', [
-            'assets' => app(OrnamentService::class)->paginatedAssetsForUser(
+        return view('livewire.pages.ornament-amazon.ornament-amazon-status-panel', [
+            'assets' => app(OrnamentAmazonService::class)->paginatedAssetsForUser(
                 auth()->user(),
                 $this->perPage,
                 $this->status,

@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Livewire\Modals\Ornament;
+namespace App\Livewire\Modals\OrnamentAmazon;
 
-use App\Services\Ornament\PsdMockupTemplateService;
+use App\Services\OrnamentAmazon\PsdMockupTemplateService;
 use Illuminate\Contracts\View\View;
 use InvalidArgumentException;
 use Livewire\Attributes\On;
@@ -27,7 +27,7 @@ class PsdMockupTemplate extends Component
     #[On('openModal')]
     public function openModal(string $component, array $arguments = []): void
     {
-        if ($component !== 'modals.ornament.psd-mockup-template') {
+        if ($component !== 'modals.ornament-amazon.psd-mockup-template') {
             return;
         }
 
@@ -79,7 +79,7 @@ class PsdMockupTemplate extends Component
 
     public function render(): View
     {
-        return view('livewire.modals.ornament.psd-mockup-template', [
+        return view('livewire.modals.ornament-amazon.psd-mockup-template', [
             'templates' => app(PsdMockupTemplateService::class)->ornamentTemplatesForUser(auth()->user()),
         ]);
     }

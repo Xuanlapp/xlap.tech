@@ -6,7 +6,7 @@ use App\Livewire\Modals\Admin\AddUser;
 use App\Livewire\Modals\Admin\EditUser;
 use App\Livewire\Modals\Sticker\AddProductDesign;
 use App\Livewire\Modals\Sticker\EditProductDetail;
-use App\Livewire\Modals\Ornament\AddProductDesign as OrnamentAddProductDesign;
+use App\Livewire\Modals\OrnamentAmazon\AddProductDesign as OrnamentAddProductDesign;
 use App\Livewire\Modals\OrnamentEtsy\AddProductDesign as OrnamentEtsyAddProductDesign;
 use App\Livewire\Modals\Admin\EditProductBackgroundRemoval;
 use App\Livewire\Modals\ProductDesign\DeleteIdeaConfirm;
@@ -19,7 +19,7 @@ use App\Models\Prompt;
 use App\Models\User;
 use App\Models\VertexApiCredential;
 use App\Repositories\Product\ProductDesignAssetRepository;
-use App\Services\Ornament\OrnamentService;
+use App\Services\OrnamentAmazon\OrnamentAmazonService;
 use App\Services\OrnamentEtsy\OrnamentEtsyService;
 use App\Services\Product\ProductBackgroundRemovalService;
 use App\Services\Sticker\PsdMockupRenderer;
@@ -586,11 +586,52 @@ class OfforestProductSchemaTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage("Keyword phai chua tu 'ornament'");
 
-        app(OrnamentService::class)->createAsset(
+        app(OrnamentAmazonService::class)->createAsset(
             $user,
             'cute cat',
             'https://example.com/source.png',
         );
+    }
+
+    public function test_ornament_service_stores_scraped_listing_images_and_data(): void
+    {
+        $user = User::factory()->create();
+        $product = Product::where('slug', 'ornament')->firstOrFail();
+        $user->products()->attach($product);
+
+        $asset = app(OrnamentAmazonService::class)->createAsset(
+            $user,
+            'Music Note Stained Glass Ornament',
+            'https://example.com/main.jpg',
+            [
+                'https://example.com/main.jpg',
+                'https://example.com/sub-1.jpg',
+                'https://example.com/sub-2.jpg',
+                'https://example.com/'.str_repeat('a', 1100).'/sub-3.jpg',
+            ],
+            [
+                'platform' => 'amazon',
+                'productTitle' => 'Music Note Stained Glass Ornament',
+                'link' => 'https://www.amazon.com/dp/example',
+                'bulletPoints' => ['First bullet', 'Second bullet'],
+                'aplusText' => ['A plus copy'],
+                'ignored' => 'not stored',
+            ],
+        );
+
+        $asset->refresh();
+
+        $this->assertSame('Music Note Stained Glass Ornament', $asset->keyword);
+        $this->assertSame('https://example.com/main.jpg', $asset->image_link);
+        $this->assertSame([
+            'https://example.com/sub-1.jpg',
+            'https://example.com/sub-2.jpg',
+            'https://example.com/'.str_repeat('a', 1100).'/sub-3.jpg',
+        ], $asset->image_sub);
+        $this->assertSame('Music Note Stained Glass Ornament', $asset->data_item_add['productTitle']);
+        $this->assertSame(['First bullet', 'Second bullet'], $asset->data_item_add['bulletPoints']);
+        $this->assertSame(['A plus copy'], $asset->data_item_add['aplusText']);
+        $this->assertArrayNotHasKey('ignored', $asset->data_item_add);
     }
 
     public function test_ornament_add_modal_shows_keyword_validation_error_without_server_error(): void
@@ -607,6 +648,45 @@ class OfforestProductSchemaTest extends TestCase
             ->set('imageLink', 'https://example.com/source.png')
             ->call('save')
             ->assertHasErrors(['keyword']);
+    }
+
+    public function test_ornament_add_modal_stores_scraped_listing_payload(): void
+    {
+        $user = User::factory()->create();
+        $product = Product::where('slug', 'ornament')->firstOrFail();
+        $user->products()->attach($product);
+
+        $this->actingAs($user);
+
+        Livewire::test(OrnamentAddProductDesign::class)
+            ->set('isOpen', true)
+            ->set('keyword', 'Music Note Ornament')
+            ->set('imageLink', 'https://example.com/main.jpg')
+            ->set('competitorListing', [
+                'platform' => 'amazon',
+                'productTitle' => 'Music Note Ornament',
+                'link' => 'https://www.amazon.com/dp/example',
+                'bulletPoints' => ['First bullet', 'Second bullet'],
+                'images' => [
+                    'https://example.com/main.jpg',
+                    'https://example.com/sub-1.jpg',
+                    'https://example.com/sub-2.jpg',
+                ],
+            ])
+            ->call('save')
+            ->assertSet('isOpen', false);
+
+        $asset = ProductDesignAsset::query()
+            ->where('user_id', $user->id)
+            ->where('product_id', $product->id)
+            ->firstOrFail();
+
+        $this->assertSame('https://example.com/main.jpg', $asset->image_link);
+        $this->assertSame([
+            'https://example.com/sub-1.jpg',
+            'https://example.com/sub-2.jpg',
+        ], $asset->image_sub);
+        $this->assertSame('Music Note Ornament', $asset->data_item_add['productTitle']);
     }
 
     public function test_sticker_source_details_cannot_be_edited_after_master_is_created(): void

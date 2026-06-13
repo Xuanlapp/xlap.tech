@@ -1,14 +1,14 @@
 <?php
 
-namespace App\Livewire\Pages\Ornament;
+namespace App\Livewire\Pages\OrnamentAmazon;
 
 use App\Livewire\Concerns\ReportsUserActionErrors;
-use App\Livewire\Pages\Ornament\ListOrnament;
+use App\Livewire\Pages\OrnamentAmazon\ListOrnamentAmazon;
 use App\Models\ProductDesignAsset;
 use App\Services\Image\ImageLinkPreviewService;
 use App\Services\Logging\ActivityLogService;
-use App\Services\Ornament\PsdMockupTemplateService;
-use App\Services\Ornament\OrnamentService;
+use App\Services\OrnamentAmazon\PsdMockupTemplateService;
+use App\Services\OrnamentAmazon\OrnamentAmazonService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\On;
@@ -30,7 +30,7 @@ class ProductDesignCard extends Component
         $this->activePsdTemplateName = $activePsdTemplateName;
     }
 
-    #[On('ornament-product-design-updated')]
+    #[On('ornament-amazon-product-design-updated')]
     public function refreshWhenUpdated(int $assetId): void
     {
         if ($assetId !== $this->assetId) {
@@ -41,7 +41,7 @@ class ProductDesignCard extends Component
     public function generateRedesign(): void
     {
         try {
-            $asset = app(OrnamentService::class)->generateRedesign(auth()->user(), $this->assetId);
+            $asset = app(OrnamentAmazonService::class)->generateRedesign(auth()->user(), $this->assetId);
             app(ActivityLogService::class)->record(
                 event: 'ornament.master_generated',
                 description: 'User generated Ornament master image.',
@@ -49,8 +49,8 @@ class ProductDesignCard extends Component
                 properties: ['item_number' => $asset->item_number, 'redesign' => $asset->redesign],
             );
 
-            $this->dispatch('ornament-product-design-workflow-updated')->to(ListOrnament::class);
-            $this->dispatch('ornament-product-design-workflow-updated')->to(OrnamentStatusPanel::class);
+            $this->dispatch('ornament-amazon-product-design-workflow-updated')->to(ListOrnamentAmazon::class);
+            $this->dispatch('ornament-amazon-product-design-workflow-updated')->to(OrnamentAmazonStatusPanel::class);
             $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da tao anh master.');
         } catch (RuntimeException $exception) {
             $this->reportUserActionError($exception, 'ornament.generate_redesign', ['asset_id' => $this->assetId]);
@@ -64,14 +64,14 @@ class ProductDesignCard extends Component
 
             $this->dispatch('toast', type: 'error', title: 'Action failed!', message: 'Loi he thong khi tao anh master. Hay xem log de biet chi tiet.');
         } finally {
-            $this->dispatch('ornament-generation-finished');
+            $this->dispatch('ornament-amazon-generation-finished');
         }
     }
 
     public function generateFinalImages(): void
     {
         try {
-            $asset = app(OrnamentService::class)->generateFinalImages(auth()->user(), $this->assetId);
+            $asset = app(OrnamentAmazonService::class)->generateFinalImages(auth()->user(), $this->assetId);
             app(ActivityLogService::class)->record(
                 event: 'ornament.lifestyle_generated',
                 description: 'User generated Ornament lifestyle images.',
@@ -92,14 +92,14 @@ class ProductDesignCard extends Component
 
             $this->dispatch('toast', type: 'error', title: 'Action failed!', message: 'Loi he thong khi tao anh lifestyle. Hay xem log de biet chi tiet.');
         } finally {
-            $this->dispatch('ornament-generation-finished');
+            $this->dispatch('ornament-amazon-generation-finished');
         }
     }
 
     public function generatePsdMockups(): void
     {
         try {
-            $asset = app(OrnamentService::class)->generatePsdMockups(auth()->user(), $this->assetId);
+            $asset = app(OrnamentAmazonService::class)->generatePsdMockups(auth()->user(), $this->assetId);
             app(ActivityLogService::class)->record(
                 event: 'ornament.psd_mockups_generated',
                 description: 'User rendered Ornament PSD mockups.',
@@ -120,14 +120,14 @@ class ProductDesignCard extends Component
 
             $this->dispatch('toast', type: 'error', title: 'Action failed!', message: 'Loi he thong khi render PSD mockup. Hay xem log de biet chi tiet.');
         } finally {
-            $this->dispatch('ornament-generation-finished');
+            $this->dispatch('ornament-amazon-generation-finished');
         }
     }
 
     public function toggleApproval(): void
     {
         try {
-            $asset = app(OrnamentService::class)->toggleApproval(auth()->user(), $this->assetId);
+            $asset = app(OrnamentAmazonService::class)->toggleApproval(auth()->user(), $this->assetId);
             $message = $asset->is_approved ? 'Da duyet item.' : 'Da bo duyet item.';
             app(ActivityLogService::class)->record(
                 event: $asset->is_approved ? 'ornament.item_approved' : 'ornament.item_unapproved',
@@ -136,8 +136,8 @@ class ProductDesignCard extends Component
                 properties: ['item_number' => $asset->item_number],
             );
 
-            $this->dispatch('ornament-product-design-approval-updated')->to(ListOrnament::class);
-            $this->dispatch('ornament-product-design-approval-updated')->to(OrnamentStatusPanel::class);
+            $this->dispatch('ornament-amazon-product-design-approval-updated')->to(ListOrnamentAmazon::class);
+            $this->dispatch('ornament-amazon-product-design-approval-updated')->to(OrnamentAmazonStatusPanel::class);
             $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: $message);
         } catch (RuntimeException $exception) {
             $this->reportUserActionError($exception, 'ornament.toggle_approval', ['asset_id' => $this->assetId]);
@@ -154,10 +154,10 @@ class ProductDesignCard extends Component
 
     public function render(): View
     {
-        $asset = app(OrnamentService::class)->assetForUser(auth()->user(), $this->assetId);
+        $asset = app(OrnamentAmazonService::class)->assetForUser(auth()->user(), $this->assetId);
         $this->appendPreviewUrls($asset);
 
-        return view('livewire.pages.ornament.product-design-card', [
+        return view('livewire.pages.ornament-amazon.product-design-card', [
             'asset' => $asset,
         ]);
     }
@@ -171,6 +171,14 @@ class ProductDesignCard extends Component
         $asset->setAttribute('lifestyle1_preview_url', $imagePreview->previewUrl($asset->lifestyle1));
         $asset->setAttribute('lifestyle2_preview_url', $imagePreview->previewUrl($asset->lifestyle2));
         $asset->setAttribute('lifestyle3_preview_url', $imagePreview->previewUrl($asset->lifestyle3));
+        $asset->setAttribute(
+            'image_sub_preview_urls',
+            collect($asset->image_sub ?: [])
+                ->filter(fn (mixed $image): bool => is_string($image))
+                ->map(fn (string $image): string => $imagePreview->previewUrl($image))
+                ->values()
+                ->all(),
+        );
 
         for ($slot = 1; $slot <= 11; $slot++) {
             $asset->setAttribute("mockup{$slot}_preview_url", $imagePreview->previewUrl($asset->{"mockup{$slot}"}));

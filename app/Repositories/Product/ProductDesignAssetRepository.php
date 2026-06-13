@@ -102,6 +102,39 @@ class ProductDesignAssetRepository
         });
     }
 
+    /**
+     * Create one asset with source image and scraped listing metadata.
+     *
+     * @param  array<int, string>  $imageSub
+     * @param  array<string, mixed>  $dataItemAdd
+     */
+    public function createWithSourceData(
+        int $userId,
+        int $productId,
+        string $keyword,
+        string $imageLink,
+        array $imageSub = [],
+        array $dataItemAdd = [],
+    ): ProductDesignAsset {
+        return DB::transaction(function () use ($userId, $productId, $keyword, $imageLink, $imageSub, $dataItemAdd): ProductDesignAsset {
+            $lastNumber = ProductDesignAsset::query()
+                ->where('user_id', $userId)
+                ->where('product_id', $productId)
+                ->lockForUpdate()
+                ->max('item_number');
+
+            return ProductDesignAsset::create([
+                'user_id' => $userId,
+                'product_id' => $productId,
+                'item_number' => ((int) $lastNumber) + 1,
+                'keyword' => $keyword,
+                'image_link' => $imageLink,
+                'image_sub' => $imageSub === [] ? null : $imageSub,
+                'data_item_add' => $dataItemAdd === [] ? null : $dataItemAdd,
+            ]);
+        });
+    }
+
     public function latestWithoutImageLink(int $userId, int $productId): ?ProductDesignAsset
     {
         return ProductDesignAsset::query()

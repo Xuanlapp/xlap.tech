@@ -3,7 +3,7 @@
 namespace App\Support;
 
 use App\Livewire\Pages\Mockup\Index as MockupPage;
-use App\Livewire\Pages\Ornament\ListOrnament;
+use App\Livewire\Pages\OrnamentAmazon\ListOrnamentAmazon;
 use App\Livewire\Pages\OrnamentEtsy\ListOrnamentEtsy;
 use App\Livewire\Pages\Poster\Index as PosterPage;
 use App\Livewire\Pages\Redesign\Index as RedesignPage;
@@ -57,7 +57,7 @@ class ProductRegistry
                 'description' => 'Create Amazon ornament-ready artwork.',
                 'route_name' => 'offorest.products.ornament',
                 'path' => 'ornament',
-                'component' => ListOrnament::class,
+                'component' => ListOrnamentAmazon::class,
                 'sort_order' => 35,
                 'is_active' => true,
             ],

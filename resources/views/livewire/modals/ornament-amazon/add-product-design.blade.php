@@ -21,7 +21,7 @@
                     this.timer = null;
                 },
             }"
-            x-on:ornament-competitor-scrape-finished.window="stopTimer()"
+            x-on:ornament-amazon-competitor-scrape-finished.window="stopTimer()"
             x-on:keydown.escape.window="$wire.close()"
             tabindex="-1"
             aria-modal="true"
@@ -52,9 +52,9 @@
 
                     <div class="max-h-[75vh] space-y-5 overflow-y-auto p-4 md:p-5">
                         <div>
-                            <label for="ornament-competitor-url" class="mb-2 block text-sm font-medium text-gray-900">URL doi thu</label>
+                            <label for="ornament-amazon-competitor-url" class="mb-2 block text-sm font-medium text-gray-900">URL doi thu</label>
                             <x-input
-                                id="ornament-competitor-url"
+                                id="ornament-amazon-competitor-url"
                                 wire:model.live.debounce.800ms="competitorUrl"
                                 x-on:input="startTimer($event.target.value)"
                                 type="url"
@@ -163,9 +163,12 @@
                     </div>
 
                     <div class="flex items-center gap-3 border-t border-gray-200 p-4 md:p-5">
-                        <x-ui.button color="blue" type="submit" wire:loading.attr="disabled" wire:target="save,competitorUrl">
-                            Them item
-                        </x-ui.button>
+                        @if (! empty($competitorListing) && filled($keyword) && filled($imageLink) && ! $scrapeError)
+                            <x-ui.button color="blue" type="submit" wire:loading.attr="disabled" wire:target="save,competitorUrl">
+                                <span wire:loading.remove wire:target="save,competitorUrl">Them item</span>
+                                <span wire:loading wire:target="save,competitorUrl">Dang luu...</span>
+                            </x-ui.button>
+                        @endif
                         <x-ui.button color="light" type="button" wire:click="close">
                             Huy
                         </x-ui.button>
