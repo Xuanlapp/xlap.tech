@@ -89,7 +89,7 @@ class AddProductDesign extends Component
         ]);
 
         if ($this->sku !== '' && app(SuncatcherService::class)->skuExistsForCurrentProduct(auth()->user(), $this->sku)) {
-            $this->addError('sku', 'Sku da ton tai trong Suncatcher cua user nay.');
+            $this->addError('sku', 'SKU da ton tai o mot trang khac cua user nay.');
         }
     }
 

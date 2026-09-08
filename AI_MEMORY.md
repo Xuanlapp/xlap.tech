@@ -8769,3 +8769,675 @@ umber_format(balance, 3, '.', '') de 0.995 hien dung thanh $0.995.
 
 **Follow-up notes:**
 - Graphiti lookup was attempted with group `xlap` but failed because the configured OpenAI provider has no credentials.
+## 2026-09-05 - Order-ready SKU and submitted-order history foundation
+
+**Root cause:**
+- Product assets had only per-product SKU uniqueness and no durable Drive-only mapping for ordering or per-user duplicate-order protection.
+
+**Files changed:**
+- `database/migrations/2026_09_05_000001_create_sku_order_items_table.php`
+- `database/migrations/2026_09_05_000002_create_history_order_reports_table.php`
+- `database/migrations/2026_09_05_000003_make_sku_unique_per_user.php`
+- `app/Models/SkuOrderItem.php`
+- `app/Models/HistoryOrderReport.php`
+- `app/Services/Order/SkuOrderItemService.php`
+- `app/Services/Order/HistoryOrderReportService.php`
+- `app/Models/ProductDesignAsset.php`
+- `app/Repositories/Product/ProductDesignAssetRepository.php`
+- SKU validation messages across product Add Item flows.
+- `AI_MEMORY.md`
+
+**Changes:**
+- Added `sku_order_items`, one order-ready row per product asset with foreign-key cascade, unique `user_id + sku`, and only an approved Create Master Google Drive link.
+- Asset saves remove the order SKU row when the item is unapproved, SKU/master is absent, or the master is not a Drive URL; Drive export updates create/update the row automatically.
+- Added `history_order_reports` with a database unique constraint on `user_id + order_id`; `HistoryOrderReportService::record()` refuses duplicate orders and stores submitted image links/report data.
+- Changed application SKU checks to user-wide rather than product-page-only. The migration refuses to enforce the database unique index until existing duplicate SKUs are renamed.
+
+**Affected modules:**
+- All product SKU creation/validation, approved Drive uploads, future order import/submission workflow.
+
+**Deploy/queue impact:**
+- Requires migration. Existing Drive export scheduler will populate `sku_order_items` when the approved Create Master is on Drive. No new queue/worker is introduced.
+
+**Validation:**
+- PHP lint passed for models, services, repository, and migrations.
+- `php artisan view:cache` passed.
+- Local migration/status checks could not run because local MySQL at `127.0.0.1:3306` refused the connection.
+
+**Follow-up notes:**
+- Before migrating on VPS, query and rename any duplicate non-empty SKU per user; migration intentionally stops with examples if duplicates remain.
+- Graphiti lookup was attempted with group `xlap` but failed because the configured OpenAI provider has no credentials.
+
+## 2026-09-05 - Harden order foundation before first page test
+
+**Changes:**
+- Made SKU order synchronization safe before its migration exists by skipping sync when `sku_order_items` is not yet created.
+- Added duplicate-key handling to `HistoryOrderReportService` so concurrent duplicate submissions return the same user-friendly duplicate-order error.
+- All changed PHP files lint successfully and Blade cache succeeds.
+## 2026-09-05 - Add Order workspace page
+
+**Root cause:**
+- Order-ready SKU and order history tables existed without a dedicated user-facing Order page.
+
+**Files changed:**
+- `app/Livewire/Pages/Order/Index.php`
+- `resources/views/livewire/pages/order/index.blade.php`
+- `routes/web.php`
+- `resources/views/livewire/layout/navigation.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Added `/offorest/order` Livewire page and separate Order navigation section.
+- Page lists the authenticated user's `sku_order_items`, allows selecting one or more Drive-backed SKU images, accepts an Order ID, and records the submission in `history_order_reports`.
+- Duplicate `user_id + order_id` submissions are rejected with a clear message; recent order history is displayed.
+
+**Affected modules:**
+- Order UI, SKU order item lookup, order report history.
+
+**Deploy/queue impact:**
+- Requires the previously added migrations for `sku_order_items` and `history_order_report` before opening the page. No queue change.
+
+**Validation:**
+- PHP lint passed for page, route, model, and service.
+- `php artisan view:cache` passed.
+- `php artisan route:list --name=offorest.order` shows `GET|HEAD offorest/order`.
+
+**Follow-up notes:**
+- The page records an order report/history entry; marketplace-specific order submission/import connectors can be attached to `HistoryOrderReportService::record()` later.
+- Graphiti lookup was attempted with group `xlap` but failed because the configured OpenAI provider has no credentials.
+## 2026-09-05 - Verify Order workspace implementation
+
+**Root cause:**
+- User requested a dedicated Order page in XLAP for selecting order-ready SKUs and recording submitted order history.
+
+**Files changed/verified:**
+- app/Livewire/Pages/Order/Index.php
+- resources/views/livewire/pages/order/index.blade.php
+- routes/web.php
+- resources/views/livewire/layout/navigation.blade.php
+- app/Models/SkuOrderItem.php
+- app/Models/HistoryOrderReport.php
+- app/Services/Order/SkuOrderItemService.php
+- app/Services/Order/HistoryOrderReportService.php
+
+**Changes:**
+- Order route and navigation are available at /offorest/order.
+- Authenticated users can select Drive-backed SKU items, enter an Order ID, reject duplicate orders, and save history with image links.
+
+**Affected modules:**
+- Order UI, SKU-to-asset mapping, order history.
+
+**Deploy/queue impact:**
+- Run the three order migrations on VPS before use; no queue change.
+
+**Validation:**
+- PHP lint passed, Blade view cache passed, and git diff check passed.
+
+**Follow-up notes:**
+- Marketplace submission/import connectors can be added later on top of HistoryOrderReportService.
+## 2026-09-05 - Add Order reload items action
+
+**Root cause:**
+- Existing approved Drive-backed assets created before synchronization could be missing from sku_order_items.
+
+**Files changed:**
+- app/Livewire/Pages/Order/Index.php
+- resources/views/livewire/pages/order/index.blade.php
+- AI_MEMORY.md
+
+**Changes:**
+- Added Reload items action to scan the authenticated user's approved assets with non-empty SKU and Google Drive redesign links.
+- Only assets without an existing sku_order_items relation are synchronized; existing rows are not duplicated.
+- UI shows loading state and result message.
+
+**Affected modules:**
+- Order page and SKU order item synchronization.
+
+**Deploy/queue impact:**
+- No migration or queue impact; deploy PHP/Blade changes and clear view cache if needed.
+
+**Validation:**
+- PHP lint, Blade view cache, and git diff check passed.
+## 2026-09-05 - Display Order items as table
+
+**Changes:**
+- Replaced Order SKU cards with a responsive table showing checkbox, SKU, Product, thumbnail preview, and clickable Drive image link.
+- Added ImageLinkPreviewService conversion in the Livewire render path so Drive links render through the existing secure preview endpoint.
+
+**Files:**
+- app/Livewire/Pages/Order/Index.php
+- resources/views/livewire/pages/order/index.blade.php
+
+**Validation:** PHP lint, Blade cache, and git diff check passed. No migration or queue impact.
+## 2026-09-05 - Remove manual order submission panel
+
+**Changes:**
+- Removed Order ID input, submit button, and order history display from the Order page because orders will be created through report import later.
+- Kept SKU table, Drive image preview/link, selection checkboxes, and Reload items action.
+
+**Files:**
+- app/Livewire/Pages/Order/Index.php
+- resources/views/livewire/pages/order/index.blade.php
+
+**Validation:** PHP lint and Blade view cache passed. Existing history_order_report model/service remain available for the future import flow.
+## 2026-09-05 - Add Order image preview modal
+
+**Changes:**
+- Order table thumbnails now open the shared ReviewImage modal on click.
+- Modal receives both preview URL and original Drive link, plus SKU/product context.
+
+**Files:** resources/views/livewire/pages/order/index.blade.php, AI_MEMORY.md
+**Validation:** Blade view cache and diff check passed. No migration or queue impact.
+## 2026-09-05 - Restrict Reload items to admin-wide sync
+
+**Changes:**
+- Reload items button is visible and executable only for admin users.
+- Admin reload scans all users, not only the current user, and excludes product slugs suncatcher and ornament-amazon-2.
+- Existing sku_order_items rows remain untouched; only missing mappings are synchronized.
+
+**Files:** app/Livewire/Pages/Order/Index.php, resources/views/livewire/pages/order/index.blade.php
+**Validation:** PHP lint, Blade cache, and git diff check passed. No migration or queue impact.
+## 2026-09-05 - Show admin-wide Order items
+
+**Root cause:**
+- Admin Reload items synchronized assets for all users, but the Order table still filtered rows to the logged-in admin user, so newly created rows appeared missing.
+
+**Changes:**
+- Admin now sees all sku_order_items; non-admin users remain restricted to their own user_id.
+
+**Files:** app/Livewire/Pages/Order/Index.php, AI_MEMORY.md
+**Validation:** PHP lint and Blade view cache passed. No migration or queue impact.
+## 2026-09-05 - Paginate Order SKU table
+
+**Changes:**
+- Added Livewire WithPagination to Order page with 20 items per page.
+- Admin pagination covers all users; regular users remain scoped to their own rows.
+- Preview URLs are generated for only the current page collection, and Reload items resets pagination to page one.
+
+**Files:** app/Livewire/Pages/Order/Index.php, resources/views/livewire/pages/order/index.blade.php
+**Validation:** PHP lint and Blade view cache passed. No migration or queue impact.
+## 2026-09-05 - Order image-only preview modal
+
+**Changes:**
+- Added imageOnly option to shared ReviewImage modal.
+- Order thumbnails open the modal in image-only mode, hiding right-side image/listing details and using a full-width preview canvas.
+- Other product pages keep the existing detailed modal behavior.
+
+**Files:** app/Livewire/Modals/Image/ReviewImage.php, resources/views/livewire/modals/image/review-image.blade.php, resources/views/livewire/pages/order/index.blade.php
+**Validation:** PHP lint and Blade cache passed. No migration or queue impact.
+## 2026-09-05 - Add Order table filters and page size
+
+**Changes:**
+- Order table now scopes regular users to their own items and lets admins view all rows.
+- Added SKU-only search, product-page filter, and page-size options 5/10/20/50/100.
+- Removed the unused selection column and updated the page description for future import-based ordering.
+- Pagination resets when search, product filter, or page size changes.
+
+**Files:** app/Livewire/Pages/Order/Index.php, resources/views/livewire/pages/order/index.blade.php
+**Validation:** PHP lint, Blade cache, and diff check passed. No migration or queue impact.
+## 2026-09-05 - Set Order default page size to 5
+
+**Changes:**
+- Changed Order table default perPage from 20 to 5.
+- Invalid page-size values now fall back to 5; available options remain 5/10/20/50/100.
+
+**File:** app/Livewire/Pages/Order/Index.php
+**Validation:** PHP lint, Blade cache, and diff check passed.
+## 2026-09-05 - Add admin Order Item import
+
+**Root cause:**
+- Admin needs to import external SKU and Drive image mappings for a selected regular user, without requiring a product asset.
+
+**Changes:**
+- Added admin-only Import Order Item button/modal with regular-user selector and CSV/XLSX upload (SKU, IMAGES_LINK).
+- Validates Drive URLs, creates imported rows with nullable product_design_asset_id, and updates image link when the user's SKU already exists.
+- Added migration 2026_09_05_000004 to make product_design_asset_id nullable with null-on-delete FK.
+
+**Affected modules:** Order page and sku_order_items schema.
+**Deploy/queue impact:** Run the new migration on VPS; no queue change.
+**Validation:** PHP lint, Blade cache, and diff check passed.
+## 2026-09-05 - Add Order Item import preview
+
+**Changes:**
+- Uploading an Order Item CSV/XLSX now parses rows immediately and shows a preview table with SKU and IMAGES_LINK before import.
+- Import is blocked until preview rows exist; Admin still selects the target non-admin user before writing.
+
+**Files:** app/Livewire/Pages/Order/Index.php, resources/views/livewire/pages/order/index.blade.php
+**Validation:** PHP lint, Blade cache, and diff check passed.
+## 2026-09-05 - Fix Order import modal update
+
+Replaced inline modal close bindings with explicit closeImportModal action to reset upload state safely. PHP lint and Blade cache passed.
+
+## 2026-09-05 - Mark imported Order Items
+
+Added source column to sku_order_items: asset_sync for approved asset mappings and manual_import for Admin file imports. Imported rows explicitly keep product_design_asset_id NULL and table displays source label. Added migration 000005; run migrations in order.
+
+## 2026-09-07 - Attach Product to Order Items
+
+Added nullable product_id to sku_order_items. Asset-synced rows inherit product_id from product_design_assets; manual import now requires Admin to select an eligible order product (Sticker, Glass, or Ornament Etsy). The table and product filter use this explicit product relation, preventing imported rows from showing the Product placeholder. Migration 2026_09_07_000001 backfills existing asset-linked rows. PHP lint and Blade cache passed.
+
+### 2026-09-07 - Add external order product catalog table
+
+**Root cause / Muc tieu:**
+- Excel catalog QLST_Products_2026-09-05.xlsx contains fulfillment product identifiers that should be preserved separately from XLAP UI products.
+
+**Files changed:**
+- database/migrations/2026_09_07_000002_create_order_product_table.php
+- app/Models/OrderProduct.php
+- AI_MEMORY.md
+
+**Changes:**
+- Added order_product with internal id, Excel source_id, fulfillment_type (FBM/FBA), order_product_id, product_name, timestamps, and lookup indexes.
+- Kept Excel ID as source_id to avoid colliding with Laravel internal primary key.
+
+**Affected modules:**
+- Future order import/product resolution. Existing products, sku_order_items, and order UI are unchanged.
+
+**Deploy / queue impact:**
+- Run the new migration on local/VPS. No queue or scheduler changes.
+
+**Follow-up notes:**
+- Import UI/command and an optional nullable relation from sku_order_items can be added when the order creation flow is implemented.
+- Graphiti lookup with group xlap was attempted but unavailable because the configured OpenAI provider has no credentials.
+### 2026-09-07 - Add order_product CSV/XLSX import command
+
+**Root cause / Muc tieu:**
+- The external order product catalog needed a repeatable import path instead of manual database inserts.
+
+**Files changed:**
+- app/Console/Commands/ImportOrderProducts.php
+- AI_MEMORY.md
+
+**Changes:**
+- Added `order-product:import {file}` for CSV and XLSX files with headers `ID`, `FBM/FBA`, `order_product_id`, and `Product_Name`.
+- Validates rows, skips invalid rows with line warnings, and uses source_id upsert behavior so reruns do not duplicate catalog records.
+
+**Affected modules:**
+- order_product catalog and future order import resolution.
+
+**Deploy / queue impact:**
+- No queue changes. Deploy command code and run migration first.
+
+**Follow-up notes:**
+- A future Admin upload/preview UI can call the same import logic if desired.
+### 2026-09-07 - Add Order Products table and import UI
+
+**Changes:**
+- Extended `app/Livewire/Pages/Order/Index.php` with an admin-only Order Product upload, preview, validation, and upsert action.
+- Added an Order Products table below SKU Order Items with ID, FBM/FBA, Order Product ID, Product Name, and independent pagination.
+- Existing SKU Order Items behavior remains unchanged.
+
+**Deploy / queue impact:**
+- No queue changes. Requires the order_product migration before opening the page.
+
+**Validation:**
+- PHP lint passed and `php artisan view:cache` passed.
+### 2026-09-07 - Enable local PHP ZipArchive for XLSX imports
+
+**Root cause:**
+- Local Laragon PHP 8.3 had `;extension=zip` disabled, so Order Product XLSX preview reported that PHP ZipArchive was missing.
+
+**Files changed:**
+- C:/laragon/bin/php/php-8.3.30-Win32-vs16-x64/php.ini
+- AI_MEMORY.md
+
+**Changes:**
+- Enabled the existing `zip` extension. Verified `php -m` shows `zip` and `class_exists('ZipArchive')` returns true.
+
+**Affected modules:**
+- Order Product XLSX import and any existing XLSX import screens using ZipArchive.
+
+**Deploy / queue impact:**
+- Local PHP/Laragon restart may be needed for the web process. No application migration or queue change.
+### 2026-09-07 - Fix Order Product XLSX header parsing
+
+**Root cause:**
+- The Order page XLSX reader cast shared-string XML nodes directly to text. Excel rich-text/shared-string nodes then became empty, so the valid `ID` header was incorrectly reported missing.
+
+**Files changed:**
+- app/Livewire/Pages/Order/Index.php
+- AI_MEMORY.md
+
+**Changes:**
+- Shared strings now use `strip_tags($node->asXML())`, correctly preserving both plain and rich-text cell contents. Verified the supplied QLST workbook contains headers ID, FBM/FBA, order_product_id, Product_Name.
+
+**Deploy / queue impact:**
+- No migration or queue changes. Refresh the local app after deployment.
+
+**Validation:**
+- PHP lint and Blade view cache passed.
+### 2026-09-07 - Keep Order pagination at the current table
+
+**Root cause:**
+- Livewire pagination defaults to scrolling to the page top after changing pages.
+
+**Files changed:**
+- resources/views/livewire/pages/order/index.blade.php
+- AI_MEMORY.md
+
+**Changes:**
+- Disabled Livewire automatic scrolling for SKU Order Items and Order Products pagination links.
+
+**Deploy / queue impact:**
+- No migration or queue changes.
+
+**Validation:**
+- `php artisan view:cache` passed.
+### 2026-09-07 - Add History Orders display table
+
+**Changes:**
+- Added History Orders table to the Order page below SKU Order Items, showing saved order ID, image count, order time, recorded time, and user for admins.
+- Regular users see only their own history; admins see all history. Pagination keeps the current scroll position.
+
+**Affected modules:**
+- app/Livewire/Pages/Order/Index.php
+- resources/views/livewire/pages/order/index.blade.php
+
+**Deploy / queue impact:**
+- No migration or queue changes. This display reads existing history_order_report data.
+
+**Validation:**
+- PHP lint and Blade view cache passed.
+
+**Follow-up notes:**
+- FF Excel report import must support both Amazon and Etsy. Etsy Net will be computed from Buyer Fee, Fee, Marketing, Refund, Sale, Tax, VAT and Deposit read from Title. Reimport must update rather than duplicate.
+## 2026-09-07 - Allow FF Excel import for Amazon and Etsy
+
+Root cause: FF Excel import was blocked for non-Amazon accounts and always stored USD/AMZ references.
+
+Files changed:
+- app/Livewire/Pages/AccountManager/Notes.php
+- AI_MEMORY.md
+
+Changes:
+- FF XLSX imports now work for both Amazon and Etsy accounts.
+- Cashflow reference and currency derive from the selected platform (AMZ-FF-IMPORT/USD or ETSY-FF-IMPORT/VND), preserving monthly reimport updates without duplicates.
+
+Affected modules: Account Manager Financial Management and FF cost summaries.
+Deploy / queue impact: PHP change only; no migration or queue changes.
+Follow-up notes: The import modal copy may still mention platform-specific CSV wording, but FF XLSX routing is shared.
+### 2026-09-08 - Add Order Report upload preview
+
+**Root cause / Muc tieu:**
+- Admin needs to upload and inspect raw order reports before business rules for creating orders are defined.
+
+**Files changed:**
+- app/Livewire/Pages/Order/Index.php
+- resources/views/livewire/pages/order/index.blade.php
+- AI_MEMORY.md
+
+**Changes:**
+- Added admin-only `Import Order Report` next to Import Order Item.
+- Supports TXT and CSV reports, automatically recognizes tab-separated TXT, requires `order-id`, and previews the first 50 rows with original columns.
+- The preview intentionally does not persist, map SKUs, or create orders yet.
+
+**Affected modules:**
+- Order page report-import preparation only.
+
+**Deploy / queue impact:**
+- No migration or queue changes.
+
+**Validation:**
+- PHP lint and Blade view cache passed.
+
+**Follow-up notes:**
+- The supplied file is an Amazon tab-separated order report. Define marketplace-specific processing rules before enabling a save/process action.
+### 2026-09-08 - Add admin SKU Order Item editor
+
+**Changes:**
+- Admin can click a SKU in the SKU Order Items table to open an edit modal.
+- The modal permits updating Product and Link Images, saving directly to sku_order_items.
+- Non-admin users see an ordinary non-clickable SKU and cannot invoke the action server-side.
+
+**Files changed:**
+- app/Livewire/Pages/Order/Index.php
+- resources/views/livewire/pages/order/index.blade.php
+- AI_MEMORY.md
+
+**Deploy / queue impact:**
+- No migration or queue change.
+
+**Validation:**
+- PHP lint and Blade view cache passed.
+### 2026-09-08 - Allow all users to preview Order Reports
+
+**Changes:**
+- Made `Import Order Report` visible and callable for every authenticated user.
+- It remains preview-only and does not persist or process orders, while Admin-only Order Item import and SKU edit permissions remain unchanged.
+
+**Files changed:**
+- app/Livewire/Pages/Order/Index.php
+- resources/views/livewire/pages/order/index.blade.php
+- AI_MEMORY.md
+
+**Validation:**
+- PHP lint and Blade view cache passed.
+### 2026-09-08 - Add Amazon fulfillment-template preview from order report
+
+**Root cause / Muc tieu:**
+- Users need to verify the order-upload template before orders are persisted or sent to fulfillment.
+
+**Files changed:**
+- app/Livewire/Pages/Order/Index.php
+- resources/views/livewire/pages/order/index.blade.php
+- AI_MEMORY.md
+
+**Changes:**
+- Import Order Report now builds a second Amazon fulfillment preview under the raw source preview.
+- Maps ID ORDER, Quantity, Link Design, recipient/address fields, and Product ID.
+- Matches report SKU with exact case-insensitive SKU first; otherwise chooses the longest stored SKU prefix. This makes `CTFBM123B` prefer `CTFBM123` over `CTFBM12`.
+- Adds FBM/FBA selector. Product ID lookup requires the matched XLAP product name and the size parsed from product-name such as 3 inches to match order_product catalog names such as 3in.
+- Missing SKU or missing catalog Product ID is marked per row in red; preview-only, no order persistence yet.
+
+**Deploy / queue impact:**
+- No migration or queue changes.
+
+**Validation:**
+- PHP lint and Blade view cache passed.
+
+**Follow-up notes:**
+- Etsy mapping and the final persist/export action remain intentionally unimplemented until the user defines their rules.
+## 2026-09-08 - Make Amazon report SKU matching explicitly longest-prefix
+
+**Root cause:**
+- The Amazon fulfillment preview had exact-then-prefix behavior inline, but prefix normalization and tie handling were implicit, making the intended `CFBA76CB` -> `CFBA76C` -> `CFBA76` -> `CFBA7` priority difficult to verify and vulnerable to whitespace/duplicate-order ambiguity.
+
+**Files changed:**
+- `app/Livewire/Pages/Order/Index.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Extracted SKU resolution into `matchOrderItemSku()`.
+- Trims and compares case-insensitively; returns an exact match immediately.
+- Falls back to the longest stored SKU prefix only, with item ID as deterministic tie-breaker.
+
+**Affected modules:**
+- Order report Amazon fulfillment preview and Product ID/link-design resolution.
+
+**Deploy / queue impact:**
+- PHP/Livewire change only; no migration or queue impact.
+
+**Validation:**
+- `php -l app/Livewire/Pages/Order/Index.php`
+- `php artisan view:cache`
+
+**Follow-up notes:**
+- Report preview remains non-persistent. If matching still fails for a row, inspect whether the report's `sku` value differs from the stored user's SKU beyond case/outer whitespace.
+## 2026-09-08 - Remove internal Matched SKU preview column
+
+**Changes:**
+- Removed the `Matched SKU` header and cell from the Amazon fulfillment preview.
+- Kept internal SKU matching so `Link Design`, Product, Product ID, and status still resolve correctly.
+- Removed the unused `matched_sku` preview payload field and reduced table minimum width.
+
+**Files changed:**
+- `resources/views/livewire/pages/order/index.blade.php`
+- `app/Livewire/Pages/Order/Index.php`
+- `AI_MEMORY.md`
+
+**Affected modules:** Order report Amazon preview.
+**Deploy / queue impact:** PHP/Blade only; no migration or queue impact.
+**Follow-up notes:** None.
+## 2026-09-08 - Confirm Amazon order report, export valid rows, and detect duplicates
+
+**Root cause / request:**
+- The raw source preview was unnecessary; confirmation needs to save history and download only valid fulfillment rows.
+
+**Files changed:**
+- `app/Livewire/Pages/Order/Index.php`
+- `resources/views/livewire/pages/order/index.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Removed raw report table from the modal while retaining report parsing/validation.
+- Added `confirmOrderReport()` on OK: saves each valid row to `history_order_report` with `firstOrCreate`, then downloads an Excel-compatible `.xls` table.
+- Duplicate `ID ORDER` for the current user is marked `Don nay da len roi, vui long kiem tra lai.` during preview.
+- Download excludes all error rows; errors render in a compact separate summary panel.
+
+**Affected modules:** Order report preview, history order display, Amazon export.
+**Deploy / queue impact:** PHP/Blade only; no migration or queue impact.
+**Follow-up notes:** Export currently uses Excel-compatible HTML (`.xls`) to avoid adding a spreadsheet package; change to true `.xlsx` if strict XLSX output is required.
+## 2026-09-08 - Expand Order Report modal for full-screen viewing
+
+**Changes:**
+- Expanded the report modal to 98vw with a 95vh max height.
+- Made modal content vertically scrollable and expanded the fulfillment table height based on viewport size.
+
+**Files changed:**
+- `resources/views/livewire/pages/order/index.blade.php`
+- `AI_MEMORY.md`
+
+**Affected modules:** Order report preview UI.
+**Deploy / queue impact:** Blade-only; no migration or queue impact.
+**Follow-up notes:** Horizontal scrolling remains available on narrow screens because the fulfillment table has many required columns.
+## 2026-09-08 - Rename report modal close button and preserve FBM/FBA catalog filtering
+
+**Changes:**
+- Renamed the Order Report modal button from `Dong` to `Close`.
+- Confirmed fulfillment selection filters `order_product` by `fulfillment_type`, so `Len FBA` searches only FBA catalog rows and `Len FBM` only FBM rows.
+
+**Files changed:**
+- `resources/views/livewire/pages/order/index.blade.php`
+- `AI_MEMORY.md`
+
+**Affected modules:** Amazon order report preview and Order Product lookup.
+**Deploy / queue impact:** Blade-only; no migration or queue impact.
+**Follow-up notes:** None.
+## 2026-09-08 - Slightly reduce Order Report modal width
+
+**Changes:**
+- Reduced the Order Report modal max width from `98vw` to `92vw` while preserving the 95vh height and scrolling behavior.
+
+**Files changed:**
+- `resources/views/livewire/pages/order/index.blade.php`
+- `AI_MEMORY.md`
+
+**Affected modules:** Order report preview UI.
+**Deploy / queue impact:** Blade-only; no migration or queue impact.
+## 2026-09-08 - Add blank company and phone columns to Amazon export
+
+**Changes:**
+- Added `TO_COMPANY` and `TO_PHONE` columns immediately after `TO NAME` in the downloaded Amazon Excel-compatible file.
+- Both values intentionally remain blank, matching the supplied Excel sample.
+
+**Files changed:**
+- `app/Livewire/Pages/Order/Index.php`
+- `AI_MEMORY.md`
+
+**Affected modules:** Amazon order export.
+**Deploy / queue impact:** PHP only; no migration or queue impact.
+## 2026-09-08 - Fix report SKU prefix lookup scope and hidden characters
+
+**Root cause:**
+- Report rows such as `CTFBM123B` should match stored `CTFBM123`, but lookup could be limited to the current user and values could contain BOM/whitespace artifacts.
+
+**Changes:**
+- Admin preview now searches all SKU Order Items; regular users remain scoped to their own user_id.
+- Centralized SKU normalization to trim, remove UTF-8 BOM, and compare uppercase before exact/longest-prefix matching.
+
+**Files changed:**
+- `app/Livewire/Pages/Order/Index.php`
+- `AI_MEMORY.md`
+
+**Deploy / queue impact:** PHP only; no migration or queue impact. Clear Laravel caches/redeploy on the server before retesting.
+## 2026-09-08 - Close Order Report modal after export
+
+**Changes:**
+- `confirmOrderReport()` now resets/closes the Order Report modal after valid rows are saved and before returning the download response.
+
+**Files changed:**
+- `app/Livewire/Pages/Order/Index.php`
+- `AI_MEMORY.md`
+
+**Affected modules:** Order report export modal.
+**Deploy / queue impact:** PHP only; no migration or queue impact.
+## 2026-09-08 - Enrich History Orders with quantity, size, and image preview
+
+**Changes:**
+- History Orders table now displays Qty, parsed Size, and a clickable thumbnail preview that opens the shared image viewer.
+- The report preview persists parsed `size` into each new history record's `report_data`.
+- Added preview URLs for the current History Orders page through `ImageLinkPreviewService`.
+
+**Files changed:**
+- `app/Livewire/Pages/Order/Index.php`
+- `resources/views/livewire/pages/order/index.blade.php`
+- `AI_MEMORY.md`
+
+**Affected modules:** History Orders display and future order-history records.
+**Deploy / queue impact:** PHP/Blade only; no migration or queue impact.
+**Follow-up notes:** Existing history rows created before this change have no stored size and will show `-`; newly exported orders store and show sizes such as `3in` and `4in`.
+## 2026-09-08 - Hide export button when no valid order rows exist
+
+**Changes:**
+- The Order Report modal now calculates valid rows separately and displays `OK & Tai Excel` only when at least one row has no error.
+- When every row is invalid/duplicate, only `Close` remains visible.
+
+**Files changed:**
+- `resources/views/livewire/pages/order/index.blade.php`
+- `AI_MEMORY.md`
+
+**Affected modules:** Order report preview UI.
+**Deploy / queue impact:** Blade-only; no migration or queue impact.
+## 2026-09-08 - Persist History Order size as database column
+
+**Changes:**
+- Added nullable `size` column to `history_order_report` via migration.
+- Added `size` to `HistoryOrderReport` fillable fields.
+- Confirmation now saves parsed size (`3in`, `4in`, etc.) directly to the column.
+- History UI prefers the database column and falls back to legacy `report_data.size`.
+
+**Files changed:**
+- `database/migrations/2026_09_08_000001_add_size_to_history_order_report.php`
+- `app/Models/HistoryOrderReport.php`
+- `app/Livewire/Pages/Order/Index.php`
+- `resources/views/livewire/pages/order/index.blade.php`
+- `AI_MEMORY.md`
+
+**Deploy / queue impact:** Run `php artisan migrate`; no queue change.
+## 2026-09-08 - Add History Orders search, selection, and re-export
+
+**Changes:**
+- Added `historyOrderSearch` filtering by `order_id`.
+- Added row checkboxes and conditional `Export (N)` button when orders are selected.
+- Added `exportSelectedHistoryOrders()` to download selected history rows as Excel-compatible `.xls`, scoped to the current user unless admin.
+
+**Files changed:**
+- `app/Livewire/Pages/Order/Index.php`
+- `resources/views/livewire/pages/order/index.blade.php`
+- `AI_MEMORY.md`
+
+**Affected modules:** History Orders UI and export.
+**Deploy / queue impact:** PHP/Blade only; no migration or queue impact.
+## 2026-09-08 - Diagnose missing size column after History Order migration
+
+**Root cause:**
+- Application code now inserts `history_order_report.size`, but the database used by the running app has not run migration `2026_09_08_000001_add_size_to_history_order_report.php`.
+
+**Evidence:**
+- SQLSTATE 42S22 reports `Unknown column 'size' in 'field list'` during `HistoryOrderReport::firstOrCreate()`.
+
+**Resolution:**
+- Deploy the migration and run `php artisan migrate`; then clear config/cache if needed and retry.
+
+**Affected modules:** History Order save and Order report confirmation.
+**Deploy / queue impact:** Migration required; no queue impact.

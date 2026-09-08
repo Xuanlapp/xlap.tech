@@ -521,7 +521,7 @@ class OrnamentEtsyService
         }
 
         if ($this->assets->skuExistsForUserAndProduct($user->id, $this->product()->id, $sku, $asset->id)) {
-            throw new RuntimeException('SKU nay da ton tai trong trang Ornament Etsy cua ban. Hay nhap SKU khac.');
+            throw new RuntimeException('SKU nay da ton tai o mot trang khac cua ban. Hay nhap SKU khac.');
         }
 
         $asset->update(['sku' => $sku]);

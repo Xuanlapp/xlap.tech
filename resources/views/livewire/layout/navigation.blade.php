@@ -301,6 +301,17 @@ new class extends Component
 
                 @if (! $isWaliUser)
                 <div class="mt-6">
+                    <p class="px-3 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Order</p>
+                    <div class="mt-2 space-y-1">
+                        <a href="{{ route('offorest.order') }}" wire:navigate class="{{ $navItemClass }} {{ request()->routeIs('offorest.order') ? $activeClass : $inactiveClass }}">
+                            <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.order') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                                <path d="M4 5h16v14H4z" /><path d="M8 9h8" /><path d="M8 13h5" /><path d="m15 16 2 2 3-3" />
+                            </svg>
+                            <span>Order</span>
+                        </a>
+                    </div>
+                </div>
+                <div class="mt-6">
                     <p class="px-3 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Catalog</p>
                     <div class="mt-2 space-y-1">
                         <a href="{{ route('offorest.listing-metadata') }}" wire:navigate class="{{ $navItemClass }} {{ request()->routeIs('offorest.listing-metadata') ? $activeClass : $inactiveClass }}">
@@ -509,6 +520,12 @@ new class extends Component
                         </div>
                     @endif
                     @if (! $isWaliUser)
+                    <div class="mt-6 border-t border-slate-200 pt-3">
+                        <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Order</p>
+                        <div class="mt-3 space-y-3">
+                            <a href="{{ route('offorest.order') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Order</a>
+                        </div>
+                    </div>
                     <div class="mt-6 border-t border-slate-200 pt-3">
                         <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Catalog</p>
                         <div class="mt-3 space-y-3">

@@ -91,7 +91,7 @@ class AddProductDesign extends Component
         ]);
 
         if ($this->sku !== '' && app(GlassService::class)->skuExistsForCurrentProduct(auth()->user(), $this->sku)) {
-            $this->addError('sku', 'Sku da ton tai trong Glass cua user nay.');
+            $this->addError('sku', 'SKU da ton tai o mot trang khac cua user nay.');
         }
     }
 

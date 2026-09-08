@@ -120,7 +120,7 @@
                         </svg>
                     </button>
 
-                    <div class="grid gap-5 p-5 lg:grid-cols-[minmax(0,3fr)_minmax(360px,2fr)]">
+                    <div class="grid gap-5 p-5 {{ $imageOnly ? 'grid-cols-1' : 'lg:grid-cols-[minmax(0,3fr)_minmax(360px,2fr)]' }}">
                         <section class="min-w-0">
                             <div class="relative flex h-[min(76vh,820px)] min-h-[460px] items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-gray-400 shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
                                 @if (count($gallery) > 1)
@@ -240,6 +240,7 @@
                             </div>
                         </section>
 
+                        @unless ($imageOnly)
                         <aside class="flex max-h-[76vh] min-h-[460px] min-w-0 flex-col gap-4 overflow-y-auto pr-1">
                             <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                                 <div class="mb-4 flex items-center gap-3">
@@ -650,6 +651,7 @@
                                 </div>
                             </div>
                         </aside>
+                        @endunless
                     </div>
                 </div>
             </div>

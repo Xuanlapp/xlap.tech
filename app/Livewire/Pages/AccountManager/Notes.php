@@ -246,7 +246,7 @@ class Notes extends Component
         $validated = $this->validate(['statementFile' => ['required', 'file', 'mimes:csv,txt,xlsx', 'max:51200']]);
         $account = $this->selectedAccount() ?? abort(404);
         if (strtolower($validated['statementFile']->getClientOriginalExtension()) === 'xlsx') {
-            $this->importAmazonFfSpreadsheet($account, $validated['statementFile']->getRealPath());
+            $this->importFfSpreadsheet($account, $validated['statementFile']->getRealPath());
 
             return;
         }
@@ -588,14 +588,8 @@ class Notes extends Component
         $this->financialDateTo = $month->endOfMonth()->format('Y-m-d');
     }
 
-    private function importAmazonFfSpreadsheet(Account $account, string $path): void
+    private function importFfSpreadsheet(Account $account, string $path): void
     {
-        if ($account->platform !== 'amazon') {
-            $this->addError('statementFile', 'File FF Excel chỉ dùng cho account Amazon.');
-
-            return;
-        }
-
         $rows = $this->xlsxRows($path);
         if ($rows === []) {
             $this->addError('statementFile', 'Không thể đọc dữ liệu từ file Excel FF.');
@@ -628,14 +622,16 @@ class Notes extends Component
 
         foreach ($groups as $month => $group) {
             [$year, $monthNumber] = array_map('intval', explode('-', $month));
+            $reference = strtoupper($account->platform).'-FF-IMPORT';
+            $currency = $account->platform === 'amazon' ? 'USD' : 'VND';
             AccountCashflow::query()->where('account_id', $account->id)
-                ->where('reference', 'AMZ-FF-IMPORT')
+                ->where('reference', $reference)
                 ->whereYear('transaction_date', $year)
                 ->whereMonth('transaction_date', $monthNumber)
                 ->delete();
             AccountCashflow::query()->updateOrCreate(
-                ['account_id' => $account->id, 'source_key' => sha1('amazon|ff|'.$month)],
-                ['flow_type' => 'out', 'amount' => $group['amount'], 'currency' => 'USD', 'transaction_date' => $group['last_date'], 'reference' => 'AMZ-FF-IMPORT', 'description' => 'FF cost', 'created_by' => auth()->id()],
+                ['account_id' => $account->id, 'source_key' => sha1($account->platform.'|ff|'.$month)],
+                ['flow_type' => 'out', 'amount' => $group['amount'], 'currency' => $currency, 'transaction_date' => $group['last_date'], 'reference' => $reference, 'description' => 'FF cost', 'created_by' => auth()->id()],
             );
         }
 

@@ -76,7 +76,6 @@ class ProductDesignAssetRepository
 
         $query = ProductDesignAsset::query()
             ->where('user_id', $userId)
-            ->where('product_id', $productId)
             ->where('sku', $sku);
 
         if ($ignoreAssetId !== null) {
@@ -84,7 +83,7 @@ class ProductDesignAssetRepository
         }
 
         if ($query->exists()) {
-            throw new RuntimeException('Sku da ton tai trong san pham nay cua user nay. Hay dung sku khac.');
+            throw new RuntimeException('SKU da ton tai o mot trang khac cua user nay. Hay dung SKU khac.');
         }
     }
 
@@ -98,7 +97,6 @@ class ProductDesignAssetRepository
 
         $query = ProductDesignAsset::query()
             ->where('user_id', $userId)
-            ->where('product_id', $productId)
             ->where('sku', $sku);
 
         if ($ignoreAssetId !== null) {

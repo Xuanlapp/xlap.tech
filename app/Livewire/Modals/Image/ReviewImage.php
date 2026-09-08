@@ -33,6 +33,8 @@ class ReviewImage extends Component
 
     public bool $isOpen = false;
 
+    public bool $imageOnly = false;
+
     public ?string $src = null;
 
     public ?string $original = null;
@@ -96,6 +98,7 @@ class ReviewImage extends Component
         ?string $providerKey = null,
         ?string $imageModel = null,
         ?string $imagePrompt = null,
+        bool $imageOnly = false,
     ): void
     {
         $this->gallery = $gallery ?: [[
@@ -113,6 +116,7 @@ class ReviewImage extends Component
         $this->modalProviderKey = $providerKey;
         $this->modalImageModel = $imageModel;
         $this->imagePrompt = $imagePrompt;
+        $this->imageOnly = $imageOnly;
         $this->assetApproved = false;
         $this->customPrompt = '';
         $this->setCurrentFromGallery();
@@ -607,7 +611,7 @@ class ReviewImage extends Component
 
     public function close(): void
     {
-        $this->reset(['isOpen', 'src', 'original', 'gallery', 'currentIndex', 'action', 'productSlug', 'assetId', 'keyword', 'customPrompt', 'editTarget', 'imagePrompt', 'modalProviderKey', 'modalImageModel', 'currentMockupSlotGenerating', 'listingInfo', 'sourcePreviewImages', 'sourceListingFields']);
+        $this->reset(['isOpen', 'src', 'original', 'gallery', 'currentIndex', 'action', 'productSlug', 'assetId', 'keyword', 'customPrompt', 'editTarget', 'imagePrompt', 'modalProviderKey', 'modalImageModel', 'currentMockupSlotGenerating', 'listingInfo', 'sourcePreviewImages', 'sourceListingFields', 'imageOnly']);
         $this->title = 'Review image';
     }
 

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use App\Services\Order\SkuOrderItemService;
 
 class ProductDesignAsset extends Model
 {
@@ -72,6 +73,13 @@ class ProductDesignAsset extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::saved(function (self $asset): void {
+            app(SkuOrderItemService::class)->syncForAsset($asset);
+        });
+    }
+
     /**
      * Determine whether the item is ready for approval.
      */
@@ -118,6 +126,11 @@ class ProductDesignAsset extends Model
     public function driveUpload(): HasOne
     {
         return $this->hasOne(ProductDriveUpload::class);
+    }
+
+    public function skuOrderItem(): HasOne
+    {
+        return $this->hasOne(SkuOrderItem::class);
     }
 
     public function ornamentAmazonTwoWorkflow(): HasOne

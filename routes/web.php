@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\Storage;
 use App\Livewire\Pages\Financial\FinancialManagement as UserFinancialManagement;
 use App\Livewire\Pages\Marketplace\MarketplaceExports;
 use App\Livewire\Pages\Marketplace\ListingMetadataStatus;
+use App\Livewire\Pages\Order\Index as OrderIndex;
 use App\Livewire\Pages\Suncatcher\AutomationCatalog;
 use App\Livewire\Pages\Salary\Wali;
 use App\Livewire\Modals\Salary\MonthSummary;
@@ -112,6 +113,9 @@ Route::middleware(['auth', 'verified'])->prefix('offorest')->group(function (): 
 
     Route::get('listing-metadata', ListingMetadataStatus::class)
         ->name('offorest.listing-metadata');
+
+    Route::get('order', OrderIndex::class)
+        ->name('offorest.order');
 
 
     Route::post('admin/debug/listing-metadata/{asset}/retry', function (App\Models\ProductDesignAsset $asset) {
