@@ -206,8 +206,8 @@ class Index extends Component
 
         foreach ($validRows as $row) {
             HistoryOrderReport::firstOrCreate(
-                ['user_id' => auth()->id(), 'order_id' => $row['id_order']],
-                ['size' => (string) ($row['size'] ?? ''), 'images_link' => array_values(array_filter([(string) $row['link_design']])),'report_data' => $row, 'ordered_at' => now()],
+                ['user_id' => auth()->id(), 'order_id' => $row['id_order'], 'sku' => (string) ($row['sku'] ?? ''), 'size' => (string) ($row['size'] ?? ''), 'quantity' => (string) ($row['quantity'] ?? '')],
+                ['images_link' => array_values(array_filter([(string) $row['link_design']])),'report_data' => $row, 'ordered_at' => now()],
             );
         }
 
@@ -240,10 +240,11 @@ class Index extends Component
                 return $productKeyword !== '' && str_contains($name, $productKeyword) && ($size === null || str_contains($name, strtolower($size)));
             }) : null;
             $orderId = trim((string) ($source['order-id'] ?? ''));
-            $duplicate = $orderId !== '' && HistoryOrderReport::query()->where('user_id', auth()->id())->where('order_id', $orderId)->exists();
+            $historyVariant = ['user_id' => auth()->id(), 'order_id' => $orderId, 'sku' => $this->normalizeSku($incomingSku), 'size' => (string) ($size ?? ''), 'quantity' => (string) ($source['quantity-purchased'] ?? '')];
+            $duplicate = $orderId !== '' && HistoryOrderReport::query()->where($historyVariant)->exists();
             $error = $duplicate ? 'Don nay da len roi, vui long kiem tra lai.' : ($matched ? ($catalogMatch ? '' : 'Khong tim thay Order Product dung Product/size.') : "SKU {$incomingSku} khong co trong SKU Order Items.");
             $this->orderFulfillmentPreviewRows[] = [
-                'id_order' => $orderId, 'product_id' => (string) ($catalogMatch?->order_product_id ?? ''),
+                'id_order' => $orderId, 'sku' => $historyVariant['sku'], 'product_id' => (string) ($catalogMatch?->order_product_id ?? ''),
                 'quantity' => $source['quantity-purchased'] ?? '', 'link_design' => (string) ($matched?->image_link ?? ''),
                 'size' => $size ?? '',
                 'to_name' => $source['recipient-name'] ?? '', 'to_address_1' => $source['ship-address-1'] ?? '', 'to_address_2' => $source['ship-address-2'] ?? '',

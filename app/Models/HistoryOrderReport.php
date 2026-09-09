@@ -12,7 +12,9 @@ class HistoryOrderReport extends Model
     protected $fillable = [
         'user_id',
         'order_id',
+        'sku',
         'size',
+        'quantity',
         'images_link',
         'report_data',
         'ordered_at',

@@ -9441,3 +9441,21 @@ Follow-up notes: The import modal copy may still mention platform-specific CSV w
 
 **Affected modules:** History Order save and Order report confirmation.
 **Deploy / queue impact:** Migration required; no queue impact.
+## 2026-09-09 - Allow History Orders with the same Order ID when the variant differs
+
+**Root cause / request:**
+- The previous unique constraint treated every repeated Order ID for a user as a duplicate, even when SKU, size, or quantity represented a different order line.
+
+**Changes:**
+- Added `sku` and `quantity` columns to `history_order_report`.
+- Replaced unique `user_id + order_id` with `user_id + order_id + sku + size + quantity`.
+- Duplicate validation now uses that complete variant identity; the same Order ID is accepted when any of SKU, Size, or Qty differs.
+- Saved history rows now persist SKU, Size, and Qty directly.
+
+**Files changed:**
+- `database/migrations/2026_09_09_000001_allow_history_order_variants.php`
+- `app/Models/HistoryOrderReport.php`
+- `app/Livewire/Pages/Order/Index.php`
+- `AI_MEMORY.md`
+
+**Deploy / queue impact:** Migration ran locally: `2026_09_09_000001_allow_history_order_variants`; deploy and run `php artisan migrate` on other environments. No queue impact.
