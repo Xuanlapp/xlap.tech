@@ -9472,3 +9472,98 @@ Follow-up notes: The import modal copy may still mention platform-specific CSV w
 - `AI_MEMORY.md`
 
 **Deploy / queue impact:** Deploy PHP file and clear cache; no migration or queue impact.
+## 2026-09-09 - Add Holo filter to Amazon Order Product matching
+
+**Root cause / request:**
+- Holo and non-Holo Order Products could share Product and Size, causing the fulfillment lookup to select the wrong catalog item.
+
+**Changes:**
+- Added `orderReportHolo` checkbox to the Amazon preview.
+- When checked, catalog lookup requires `OrderProduct.product_name` to contain `holo`.
+- When unchecked, lookup requires the product name not to contain `holo`.
+- Changing the checkbox rebuilds the preview immediately.
+
+**Files changed:**
+- `app/Livewire/Pages/Order/Index.php`
+- `resources/views/livewire/pages/order/index.blade.php`
+- `AI_MEMORY.md`
+
+**Deploy / queue impact:** PHP/Blade only; no migration or queue impact.
+**Follow-up notes:** The checkbox applies to all rows in the current report preview; split mixed Holo/non-Holo reports into separate previews if needed.
+## 2026-09-09 - Add configurable Product tag filter for Amazon lookup
+
+**Changes:**
+- Replaced the Holo-only checkbox with a free-text `Product tag` input.
+- Users can enter tags such as `#HBGS`, `#ST`, `#HDS`, or `#AC`.
+- Catalog matching requires the entered tag to appear in `OrderProduct.product_name`; blank means no tag restriction.
+- Preview rebuilds whenever the tag changes.
+
+**Files changed:**
+- `app/Livewire/Pages/Order/Index.php`
+- `resources/views/livewire/pages/order/index.blade.php`
+- `AI_MEMORY.md`
+
+**Affected modules:** Amazon Order Product lookup.
+**Deploy / queue impact:** PHP/Blade only; no migration or queue impact.
+## 2026-09-09 - Support Holo checkbox and custom Product tag together
+
+**Changes:**
+- Restored the Holo checkbox alongside the Product tag input.
+- Holo checked requires `holo` in Product Name; an entered tag adds a second optional contains filter.
+- Either, both, or neither filter can be used; changing either rebuilds the preview.
+
+**Files changed:**
+- `app/Livewire/Pages/Order/Index.php`
+- `resources/views/livewire/pages/order/index.blade.php`
+- `AI_MEMORY.md`
+
+**Affected modules:** Amazon Order Product lookup.
+**Deploy / queue impact:** PHP/Blade only; no migration or queue impact.
+## 2026-09-09 - Shorten Amazon preview table height
+
+**Changes:**
+- Reduced fulfillment preview table max height to 360px so the modal takes less vertical space and longer reports scroll inside the table.
+
+**Files changed:**
+- `resources/views/livewire/pages/order/index.blade.php`
+- `AI_MEMORY.md`
+
+**Affected modules:** Amazon order report preview UI.
+**Deploy / queue impact:** Blade-only; no migration or queue impact.
+## 2026-09-09 - Keep order report modal open after download request
+
+**Changes:**
+- Removed automatic modal reset/close from `confirmOrderReport()`.
+- Modal now remains open after the download response starts, allowing the user to verify the file and close manually; cancelling the browser download no longer closes the modal.
+
+**Files changed:**
+- `app/Livewire/Pages/Order/Index.php`
+- `AI_MEMORY.md`
+
+**Affected modules:** Order report export modal.
+**Deploy / queue impact:** PHP only; no migration or queue impact.
+## 2026-09-09 - Replace History Orders timestamps with Order Product ID
+
+**Changes:**
+- Removed Ordered At and Recorded At columns from History Orders.
+- Added Order Product ID column sourced from saved `report_data.product_id`.
+
+**Files changed:**
+- `resources/views/livewire/pages/order/index.blade.php`
+- `AI_MEMORY.md`
+
+**Affected modules:** History Orders display.
+**Deploy / queue impact:** Blade-only; no migration or queue impact.
+## 2026-09-09 - Audit Order actions with ActivityLogService
+
+**Changes:**
+- Added activity logs for Order report preview/confirmation, History Order export, SKU Order Item import/update/reload, and Order Product import.
+- Logs capture actor automatically as user/admin, event name, action description, and safe metadata such as counts, fulfillment, target user, and selected order IDs.
+
+**Files changed:**
+- `app/Livewire/Pages/Order/Index.php`
+- `AI_MEMORY.md`
+
+**Affected modules:** Order workspace audit trail.
+**Deploy / queue impact:** PHP only; no migration or queue impact.
+**Follow-up notes:** Existing ActivityLogService already covers many other modules. A truly universal audit trail for every read-only UI interaction would require a separate global middleware/Livewire audit policy.

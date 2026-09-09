@@ -10,6 +10,7 @@ use App\Models\OrderProduct;
 use App\Models\HistoryOrderReport;
 use App\Services\Order\SkuOrderItemService;
 use App\Services\Image\ImageLinkPreviewService;
+use App\Services\Logging\ActivityLogService;
 use Illuminate\Contracts\View\View;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -70,6 +71,10 @@ class Index extends Component
 
     public string $orderReportFulfillment = 'FBM';
 
+    public string $orderReportProductTag = '';
+
+    public bool $orderReportHolo = false;
+
     /** @var array<int, array<string, string>> */
     public array $orderFulfillmentPreviewRows = [];
 
@@ -83,6 +88,7 @@ class Index extends Component
         $orders = HistoryOrderReport::query()->whereIn('id', $this->selectedHistoryOrderIds)
             ->when(! auth()->user()?->is_admin, fn ($query) => $query->where('user_id', auth()->id()))->get();
         if ($orders->isEmpty()) return null;
+        app(ActivityLogService::class)->record('order.history_exported', 'Exported selected history orders.', properties: ['count' => $orders->count(), 'order_ids' => $orders->pluck('order_id')->values()->all()]);
         $keys = ['id_order','product_id','quantity','link_design','to_name','to_company','to_phone','to_address_1','to_address_2','to_city','to_state','to_postcode','to_country'];
         $headers = ['ID ORDER','Product ID','Quantity','Link Design','TO NAME','TO_COMPANY','TO_PHONE','TO ADDRESS 1','TO ADDRESS 2','TO CITY','TO STATE','TO POSTCODE','TO COUNTRY'];
         $html = '<table><thead><tr>'.implode('', array_map(fn ($h) => '<th>'.htmlspecialchars($h, ENT_QUOTES, 'UTF-8').'</th>', $headers)).'</tr></thead><tbody>';
@@ -126,6 +132,8 @@ class Index extends Component
         abort_unless(auth()->check(), 403);
         $this->reset(['orderReportFile', 'orderReportPreviewRows', 'orderReportHeaders', 'orderFulfillmentPreviewRows']);
         $this->orderReportFulfillment = 'FBM';
+        $this->orderReportProductTag = '';
+        $this->orderReportHolo = false;
         $this->resetValidation();
         $this->showOrderReportImportModal = true;
     }
@@ -165,6 +173,7 @@ class Index extends Component
         ]);
         $item = SkuOrderItem::query()->findOrFail($data['editingOrderItemId']);
         $item->update(['product_id' => (int) $data['editingOrderItemProductId'], 'image_link' => trim($data['editingOrderItemImageLink'])]);
+        app(ActivityLogService::class)->record('order.sku_item_updated', "Updated SKU Order Item {$item->sku}.", $item, ['product_id' => (int) $data['editingOrderItemProductId']]);
         $this->message = "Da cap nhat SKU {$item->sku}.";
         $this->closeEditOrderItemModal();
     }
@@ -187,10 +196,21 @@ class Index extends Component
             }
             if ($this->orderReportPreviewRows === []) throw new \RuntimeException('File khong co dong du lieu.');
             $this->buildAmazonOrderPreview();
+            app(ActivityLogService::class)->record('order.report_previewed', 'Previewed an Amazon order report.', properties: ['rows' => count($this->orderReportPreviewRows), 'filename' => $this->orderReportFile->getClientOriginalName()]);
         } catch (Throwable $exception) { $this->addError('orderReportFile', $exception->getMessage()); }
     }
 
     public function updatedOrderReportFulfillment(): void
+    {
+        $this->buildAmazonOrderPreview();
+    }
+
+    public function updatedOrderReportProductTag(): void
+    {
+        $this->buildAmazonOrderPreview();
+    }
+
+    public function updatedOrderReportHolo(): void
     {
         $this->buildAmazonOrderPreview();
     }
@@ -210,6 +230,7 @@ class Index extends Component
                 ['images_link' => array_values(array_filter([(string) $row['link_design']])),'report_data' => $row, 'ordered_at' => now()],
             );
         }
+        app(ActivityLogService::class)->record('order.report_confirmed', 'Confirmed Amazon order report and exported valid rows.', properties: ['count' => $validRows->count(), 'fulfillment' => $this->orderReportFulfillment, 'holo' => $this->orderReportHolo, 'product_tag' => trim($this->orderReportProductTag)]);
 
         $headers = ['ID ORDER', 'Product ID', 'Quantity', 'Link Design', 'TO NAME', 'TO_COMPANY', 'TO_PHONE', 'TO ADDRESS 1', 'TO ADDRESS 2', 'TO CITY', 'TO STATE', 'TO POSTCODE', 'TO COUNTRY'];
         $filename = 'amazon-orders-'.now()->format('Ymd-His').'.xls';
@@ -218,8 +239,6 @@ class Index extends Component
             $html .= '<tr>'.implode('', array_map(fn (string $key): string => '<td>'.htmlspecialchars((string) ($row[$key] ?? ''), ENT_QUOTES, 'UTF-8').'</td>', ['id_order', 'product_id', 'quantity', 'link_design', 'to_name', 'to_company', 'to_phone', 'to_address_1', 'to_address_2', 'to_city', 'to_state', 'to_postcode', 'to_country'])).'</tr>';
         }
         $html .= '</tbody></table>';
-        // Reset the modal state so it closes after the download response is handled.
-        $this->closeOrderReportImportModal();
         return response()->streamDownload(fn () => print $html, $filename, ['Content-Type' => 'application/vnd.ms-excel']);
     }
 
@@ -237,7 +256,12 @@ class Index extends Component
             $productKeyword = strtolower((string) ($matched?->product?->name ?? ''));
             $catalogMatch = $matched ? $catalog->first(function (OrderProduct $product) use ($productKeyword, $size): bool {
                 $name = strtolower($product->product_name);
-                return $productKeyword !== '' && str_contains($name, $productKeyword) && ($size === null || str_contains($name, strtolower($size)));
+                $tag = strtolower(trim($this->orderReportProductTag));
+                $isHoloProduct = str_contains($name, 'holo');
+                return $productKeyword !== '' && str_contains($name, $productKeyword)
+                    && (! $this->orderReportHolo || $isHoloProduct)
+                    && ($tag === '' || str_contains($name, $tag))
+                    && ($size === null || str_contains($name, strtolower($size)));
             }) : null;
             $orderId = trim((string) ($source['order-id'] ?? ''));
             $historyVariant = ['user_id' => auth()->id(), 'order_id' => $orderId, 'sku' => $this->normalizeSku($incomingSku), 'size' => (string) ($size ?? ''), 'quantity' => (string) ($source['quantity-purchased'] ?? '')];
@@ -329,6 +353,7 @@ class Index extends Component
             $count++;
         }
         $this->message = "Da import/cap nhat {$count} order product.";
+        app(ActivityLogService::class)->record('order.products_imported', 'Imported or updated Order Products.', properties: ['count' => $count]);
         $this->closeOrderProductImportModal();
         $this->resetPage('orderProductsPage');
     }
@@ -382,6 +407,7 @@ class Index extends Component
             $count++;
         }
         $this->message = "Da import/cap nhat {$count} Order Item cho {$user->name}.";
+        app(ActivityLogService::class)->record('order.sku_items_imported', "Imported or updated SKU Order Items for {$user->name}.", properties: ['count' => $count, 'target_user_id' => $user->id, 'product_id' => $product->id]);
         $this->closeImportModal();
         $this->resetPage();
     }
@@ -430,6 +456,7 @@ class Index extends Component
         $this->message = $created > 0
             ? "Da nap {$created} SKU vao danh sach Order."
             : 'Khong co item moi can nap.';
+        app(ActivityLogService::class)->record('order.sku_items_reloaded', 'Reloaded approved asset SKU Order Items.', properties: ['created' => $created]);
     }
 
     public function render(): View
