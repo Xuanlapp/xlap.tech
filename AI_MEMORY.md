@@ -9459,3 +9459,16 @@ Follow-up notes: The import modal copy may still mention platform-specific CSV w
 - `AI_MEMORY.md`
 
 **Deploy / queue impact:** Migration ran locally: `2026_09_09_000001_allow_history_order_variants`; deploy and run `php artisan migrate` on other environments. No queue impact.
+## 2026-09-09 - Restore missing SKU normalization helper
+
+**Root cause:**
+- History variant matching called `normalizeSku()` before the helper was present in `Order\\Index`, causing `Method ...::normalizeSku does not exist` during report upload.
+
+**Changes:**
+- Added `normalizeSku()` to trim, remove UTF-8 BOM, and uppercase SKU values.
+
+**Files changed:**
+- `app/Livewire/Pages/Order/Index.php`
+- `AI_MEMORY.md`
+
+**Deploy / queue impact:** Deploy PHP file and clear cache; no migration or queue impact.

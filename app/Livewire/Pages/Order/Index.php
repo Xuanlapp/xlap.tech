@@ -280,6 +280,11 @@ class Index extends Component
             ->first();
     }
 
+    private function normalizeSku(string $sku): string
+    {
+        return strtoupper(trim(str_replace("\xEF\xBB\xBF", '', $sku)));
+    }
+
     private function reportRows(TemporaryUploadedFile $file): array
     {
         $handle = fopen($file->getRealPath(), 'rb');
