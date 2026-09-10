@@ -118,12 +118,14 @@ class Index extends Component
             ->with('product')->get();
         $this->manualFbaPreviewRows = $items->map(fn (SkuOrderItem $item): array => [
             'sku' => $item->sku, 'product_name' => (string) ($item->product?->name ?? ''), 'link_design' => (string) $item->image_link,
-            'quantity' => '1', 'product_id' => '', 'error' => '',
+            'quantity' => '1', 'product_id' => '', 'order_product_name' => '', 'error' => '',
         ])->all();
         $this->manualFbaPack = '3';
         $this->manualFbaSize = '3';
         $this->manualFbaQuantity = '1';
-        $this->manualFbaBatchId = 'FBA-MANUAL-'.now()->format('Ymd-His').'-'.auth()->id();
+        $lastBatch = HistoryOrderReport::query()->where('order_id', 'like', 'FBA-%')->orderByDesc('id')->value('order_id');
+        $lastNumber = is_string($lastBatch) && preg_match('/^FBA-(\d+)$/', $lastBatch, $matches) ? (int) $matches[1] : 0;
+        $this->manualFbaBatchId = 'FBA-'.($lastNumber + 1);
         $this->buildManualFbaPreview();
         $this->showManualFbaModal = true;
     }
@@ -166,8 +168,14 @@ class Index extends Component
                     && $size !== '' && (str_contains($name, strtolower($size).'in') || str_contains($name, strtolower($size).' in'));
             });
             $this->manualFbaPreviewRows[$index]['product_id'] = (string) ($product?->order_product_id ?? '');
+            $this->manualFbaPreviewRows[$index]['order_product_name'] = $product ? $this->manualFbaProductName($product->product_name) : '';
             $this->manualFbaPreviewRows[$index]['error'] = $pack === '' || $size === '' ? 'Vui long nhap Size (in) va Pack.' : ($product ? '' : 'Khong tim thay Order Product FBA dung Product/Size/Pack.');
         }
+    }
+
+    private function manualFbaProductName(string $name): string
+    {
+        return trim(preg_replace('/\s*(?:\d+(?:\.\d+)?\s*in|pack\s*\d+)\b/i', '', $name) ?? $name);
     }
 
     public function exportManualFbaOrders(): mixed
@@ -179,6 +187,7 @@ class Index extends Component
                 'id_order' => $this->manualFbaBatchId,
                 'sku' => $this->normalizeSku($row['sku']),
                 'product_id' => $row['product_id'],
+                'product_name' => $row['order_product_name'],
                 'quantity' => (string) $row['quantity'],
                 'size' => $this->manualFbaSize.'in',
                 'pack' => $this->manualFbaPack,
@@ -191,8 +200,8 @@ class Index extends Component
             );
         }
         app(ActivityLogService::class)->record('order.manual_fba_exported', 'Exported manually selected FBA SKU Order Items.', properties: ['count' => $validRows->count(), 'pack' => $this->manualFbaPack]);
-        $html = '<table><thead><tr><th>Product ID</th><th>Quantity</th><th>Link Design</th></tr></thead><tbody>';
-        foreach ($validRows as $row) $html .= '<tr><td>'.htmlspecialchars($row['product_id'], ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($row['quantity'], ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($row['link_design'], ENT_QUOTES, 'UTF-8').'</td></tr>';
+        $html = '<table><thead><tr><th>Product ID</th><th>Product Name</th><th>Pack</th><th>Quantity</th><th>Link Design</th></tr></thead><tbody>';
+        foreach ($validRows as $row) $html .= '<tr><td>'.htmlspecialchars($row['product_id'], ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($row['order_product_name'], ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($this->manualFbaPack, ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($row['quantity'], ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($row['link_design'], ENT_QUOTES, 'UTF-8').'</td></tr>';
         $html .= '</tbody></table>';
         return response()->streamDownload(fn () => print $html, 'manual-fba-orders-'.now()->format('Ymd-His').'.xls', ['Content-Type' => 'application/vnd.ms-excel']);
     }

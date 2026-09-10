@@ -9706,3 +9706,31 @@ Follow-up notes: The import modal copy may still mention platform-specific CSV w
 
 **Affected modules:** Manual FBA export and History Orders.
 **Deploy / queue impact:** PHP only; no migration or queue impact.
+## 2026-09-10 - Add Pack and full Product Name to manual FBA preview/export
+
+**Changes:**
+- Manual FBA lookup now retains the matched `OrderProduct.product_name`.
+- FBA preview displays Product Name and Pack.
+- Excel export now includes Product ID, full Product Name, Pack, Quantity, and Link Design.
+- Saved FBA history data also records the full matched Product Name.
+
+**Files changed:**
+- `app/Livewire/Pages/Order/Index.php`
+- `resources/views/livewire/pages/order/index.blade.php`
+- `AI_MEMORY.md`
+
+**Affected modules:** Manual FBA preview/export and history metadata.
+**Deploy / queue impact:** PHP/Blade only; no migration or queue impact.
+## 2026-09-10 - Simplify manual FBA Product Name and use global batch IDs
+
+**Changes:**
+- Manual FBA Product Name now strips size and Pack fragments, e.g. `Sticker Vinyl 3in Pack 3` exports as `Sticker Vinyl`.
+- Manual FBA batch IDs are now global History-based sequence values: `FBA-1`, `FBA-2`, etc., rather than timestamp/user IDs.
+- All rows exported from one manual FBA modal share the same batch ID.
+
+**Files changed:**
+- `app/Livewire/Pages/Order/Index.php`
+- `AI_MEMORY.md`
+
+**Affected modules:** Manual FBA preview, export, and History Orders.
+**Deploy / queue impact:** PHP only; no migration or queue impact.
