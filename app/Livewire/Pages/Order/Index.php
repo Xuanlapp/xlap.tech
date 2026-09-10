@@ -175,7 +175,8 @@ class Index extends Component
 
     private function manualFbaProductName(string $name): string
     {
-        return trim(preg_replace('/\s*(?:\d+(?:\.\d+)?\s*in|pack\s*\d+)\b/i', '', $name) ?? $name);
+        $cleaned = preg_replace('/\s*(?:\d+(?:\.\d+)?\s*in|pack\s*\d+|#\S+)\b/i', '', $name) ?? $name;
+        return trim($cleaned, " \t\n\r\0\x0B-");
     }
 
     public function exportManualFbaOrders(): mixed
@@ -200,8 +201,8 @@ class Index extends Component
             );
         }
         app(ActivityLogService::class)->record('order.manual_fba_exported', 'Exported manually selected FBA SKU Order Items.', properties: ['count' => $validRows->count(), 'pack' => $this->manualFbaPack]);
-        $html = '<table><thead><tr><th>Product ID</th><th>Product Name</th><th>Pack</th><th>Quantity</th><th>Link Design</th></tr></thead><tbody>';
-        foreach ($validRows as $row) $html .= '<tr><td>'.htmlspecialchars($row['product_id'], ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($row['order_product_name'], ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($this->manualFbaPack, ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($row['quantity'], ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($row['link_design'], ENT_QUOTES, 'UTF-8').'</td></tr>';
+        $html = '<table><thead><tr><th>Product Name</th><th>Product ID</th><th>Quantity</th><th>Pack</th><th>Link Design</th></tr></thead><tbody>';
+        foreach ($validRows as $row) $html .= '<tr><td>'.htmlspecialchars($row['order_product_name'], ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($row['product_id'], ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($row['quantity'], ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($this->manualFbaPack, ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($row['link_design'], ENT_QUOTES, 'UTF-8').'</td></tr>';
         $html .= '</tbody></table>';
         return response()->streamDownload(fn () => print $html, 'manual-fba-orders-'.now()->format('Ymd-His').'.xls', ['Content-Type' => 'application/vnd.ms-excel']);
     }

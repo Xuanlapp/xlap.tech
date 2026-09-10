@@ -9734,3 +9734,27 @@ Follow-up notes: The import modal copy may still mention platform-specific CSV w
 
 **Affected modules:** Manual FBA preview, export, and History Orders.
 **Deploy / queue impact:** PHP only; no migration or queue impact.
+## 2026-09-10 - Reorder manual FBA export columns and remove product tags
+
+**Changes:**
+- FBA export order is now Product Name, Product ID, Quantity, Pack, Link Design.
+- Product-name cleanup now removes `#...` tags such as `#ST`, as well as size and Pack fragments.
+
+**Files changed:**
+- `app/Livewire/Pages/Order/Index.php`
+- `AI_MEMORY.md`
+
+**Affected modules:** Manual FBA Excel export.
+**Deploy / queue impact:** PHP only; no migration or queue impact.
+## 2026-09-10 - Trim trailing separator from manual FBA Product Name
+
+**Changes:**
+- After stripping Size, Pack, and tags, Product Name now trims trailing/leading hyphens and whitespace.
+- Example: `Sticker Vinyl 3in Pack 3 - #ST` exports as `Sticker Vinyl`.
+
+**Files changed:**
+- `app/Livewire/Pages/Order/Index.php`
+- `AI_MEMORY.md`
+
+**Affected modules:** Manual FBA Excel export Product Name cleanup.
+**Deploy / queue impact:** PHP only; no migration or queue impact.
