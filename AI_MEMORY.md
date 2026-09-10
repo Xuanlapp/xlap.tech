@@ -9783,3 +9783,20 @@ Follow-up notes: The import modal copy may still mention platform-specific CSV w
 
 **Affected modules:** Order page table pagination.
 **Deploy / queue impact:** PHP only; no migration or queue impact.
+## 2026-09-10 - Use numeric global FBA Order IDs and export History row IDs
+
+**Root cause / request:**
+- Manual FBA batches used labels such as `FBA-1`, while the required Order ID is a global numeric sequence starting at 1. The export also lacked the individual History row ID.
+
+**Changes:**
+- Manual FBA Order ID now uses the next numeric value among prior FBA history batches: `1`, `2`, `3`, etc., independent of user.
+- Export adds `STT` from the actual `history_order_report.id` for each item and adds the numeric `Order ID` shared by the batch.
+- Export column order now starts with STT, Order ID, FBM/FBA.
+
+**Files changed:**
+- `app/Livewire/Pages/Order/Index.php`
+- `AI_MEMORY.md`
+
+**Affected modules:** Manual FBA History save and Excel export.
+**Deploy / queue impact:** PHP only; no migration or queue impact.
+**Follow-up notes:** Existing historical `FBA-*` records remain unchanged; new manual FBA batches start from numeric 1 unless numeric FBA history already exists.
