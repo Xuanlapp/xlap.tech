@@ -9677,3 +9677,16 @@ Follow-up notes: The import modal copy may still mention platform-specific CSV w
 
 **Affected modules:** Manual FBA order preview and export.
 **Deploy / queue impact:** PHP/Blade only; no migration or queue impact.
+## 2026-09-10 - Make FBA report quantities editable only in FBA mode
+
+**Changes:**
+- FBM Import Order Report quantity stays read-only and comes directly from the uploaded Amazon file.
+- When `Len FBA` is selected, Quantity becomes an editable per-row numeric input; export uses the edited values.
+- Manual FBA quantity controls remain available for SKU-selected manual orders.
+
+**Files changed:**
+- `resources/views/livewire/pages/order/index.blade.php`
+- `AI_MEMORY.md`
+
+**Affected modules:** Amazon report FBA preview/export quantities.
+**Deploy / queue impact:** Blade-only; no migration or queue impact.
