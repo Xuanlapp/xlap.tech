@@ -9800,3 +9800,14 @@ Follow-up notes: The import modal copy may still mention platform-specific CSV w
 **Affected modules:** Manual FBA History save and Excel export.
 **Deploy / queue impact:** PHP only; no migration or queue impact.
 **Follow-up notes:** Existing historical `FBA-*` records remain unchanged; new manual FBA batches start from numeric 1 unless numeric FBA history already exists.
+## 2026-09-10 - Use History row ID in the Order ID export column
+
+**Root cause / request:** Manual FBA export needed to keep the `Order ID` header but use the per-row History ID (the former STT value), not the batch sequence.
+
+**Changes:** `exportManualFbaOrders()` captures each `HistoryOrderReport::firstOrCreate()` result and writes its `id` into the `Order ID` cell. `Size` remains first and no separate STT column is exported.
+
+**Files changed:** `app/Livewire/Pages/Order/Index.php`, `AI_MEMORY.md`.
+
+**Affected modules:** Manual FBA History save and Excel export.
+**Deploy / queue impact:** PHP only; no migration or queue impact.
+**Follow-up:** Existing History data is unchanged; duplicate variants resolved by `firstOrCreate()` reuse the existing History row ID.

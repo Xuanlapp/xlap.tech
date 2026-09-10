@@ -189,6 +189,7 @@ class Index extends Component
     {
         $validRows = collect($this->manualFbaPreviewRows)->filter(fn (array $row): bool => $row['error'] === '')->values();
         if ($validRows->isEmpty()) return null;
+        $historyRows = [];
         foreach ($validRows as $row) {
             $historyData = [
                 'id_order' => $this->manualFbaBatchId,
@@ -201,14 +202,14 @@ class Index extends Component
                 'link_design' => $row['link_design'],
                 'fulfillment' => 'FBA',
             ];
-            HistoryOrderReport::firstOrCreate(
+            $historyRows[] = HistoryOrderReport::firstOrCreate(
                 ['user_id' => auth()->id(), 'order_id' => $this->manualFbaBatchId, 'sku' => $historyData['sku'], 'size' => $historyData['size'], 'quantity' => $historyData['quantity']],
                 ['images_link' => array_values(array_filter([$historyData['link_design']])), 'report_data' => $historyData, 'ordered_at' => now()],
             );
         }
         app(ActivityLogService::class)->record('order.manual_fba_exported', 'Exported manually selected FBA SKU Order Items.', properties: ['count' => $validRows->count(), 'pack' => $this->manualFbaPack]);
         $html = '<table><thead><tr><th>Size</th><th>Order ID</th><th>FBM/FBA</th><th>Product Name</th><th>Product ID</th><th>Quantity</th><th>Pack</th><th>Link Design</th></tr></thead><tbody>';
-        foreach ($validRows as $row) $html .= '<tr><td>'.htmlspecialchars(trim($this->manualFbaSize).'in', ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($this->manualFbaBatchId, ENT_QUOTES, 'UTF-8').'</td><td>FBA</td><td>'.htmlspecialchars($row['order_product_name'], ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($row['product_id'], ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($row['quantity'], ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($this->manualFbaPack, ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($row['link_design'], ENT_QUOTES, 'UTF-8').'</td></tr>';
+        foreach ($validRows as $index => $row) $html .= '<tr><td>'.htmlspecialchars(trim($this->manualFbaSize).'in', ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars((string) $historyRows[$index]->id, ENT_QUOTES, 'UTF-8').'</td><td>FBA</td><td>'.htmlspecialchars($row['order_product_name'], ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($row['product_id'], ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($row['quantity'], ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($this->manualFbaPack, ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($row['link_design'], ENT_QUOTES, 'UTF-8').'</td></tr>';
         $html .= '</tbody></table>';
         return response()->streamDownload(fn () => print $html, 'manual-fba-orders-'.now()->format('Ymd-His').'.xls', ['Content-Type' => 'application/vnd.ms-excel']);
     }
