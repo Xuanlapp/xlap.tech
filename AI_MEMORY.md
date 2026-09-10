@@ -9567,3 +9567,99 @@ Follow-up notes: The import modal copy may still mention platform-specific CSV w
 **Affected modules:** Order workspace audit trail.
 **Deploy / queue impact:** PHP only; no migration or queue impact.
 **Follow-up notes:** Existing ActivityLogService already covers many other modules. A truly universal audit trail for every read-only UI interaction would require a separate global middleware/Livewire audit policy.
+## 2026-09-10 - Add FBA Pack filter and compact FBA export
+
+**Changes:**
+- Added FBA-only numeric Pack input. Entering `3` requires Order Product Name to contain `Pack 3`.
+- FBA preview marks rows invalid until a Pack value is supplied and requires Product/size/Pack matching.
+- FBA exports only ID ORDER, Product ID, Quantity, and Link Design; recipient and shipping-address columns remain in FBM exports only.
+
+**Files changed:**
+- `app/Livewire/Pages/Order/Index.php`
+- `resources/views/livewire/pages/order/index.blade.php`
+- `AI_MEMORY.md`
+
+**Affected modules:** FBA order report preview and Excel export.
+**Deploy / queue impact:** PHP/Blade only; no migration or queue impact.
+## 2026-09-10 - Add cross-page SKU selection and manual FBA modal
+
+**Changes:**
+- Added SKU Order Item row checkboxes and a dynamic select/deselect-current-page button using the actual visible item count.
+- Selections persist across pagination and page-size changes; header shows `Len don FBA (N)` when any SKU is selected.
+- Added manual FBA modal listing selected current records as the next step for Pack/Quantity entry.
+
+**Files changed:**
+- `app/Livewire/Pages/Order/Index.php`
+- `resources/views/livewire/pages/order/index.blade.php`
+- `AI_MEMORY.md`
+
+**Affected modules:** SKU Order Items selection and FBA manual-order preparation.
+**Deploy / queue impact:** PHP/Blade only; no migration or queue impact.
+**Follow-up notes:** The modal currently displays selected SKU/Product/Link Image; actual FBA creation/export fields can be added once Pack/Quantity entry rules are finalized.
+## 2026-09-10 - Make selected SKU FBA manual order export match report flow
+
+**Changes:**
+- `Len don FBA (N)` now opens an FBA preview modal rather than a read-only list.
+- Modal accepts Pack, resolves each selected SKU's FBA Order Product ID, and marks unmatched rows in red.
+- `OK & Tai Excel` appears only when at least one row is valid and exports Product ID, Quantity, and Link Design only.
+- Added audit event `order.manual_fba_exported`.
+
+**Files changed:**
+- `app/Livewire/Pages/Order/Index.php`
+- `resources/views/livewire/pages/order/index.blade.php`
+- `AI_MEMORY.md`
+
+**Affected modules:** SKU Order Items manual FBA workflow and Excel export.
+**Deploy / queue impact:** PHP/Blade only; no migration or queue impact.
+**Follow-up notes:** Manual FBA starts Quantity at 1 for each selected SKU; add per-row quantity editing if manual batches can require different quantities.
+## 2026-09-10 - Add Size and Pack inputs to manual FBA Product ID lookup
+
+**Changes:**
+- Manual FBA modal now requires both Size (in) and Pack.
+- Entering Size `4` and Pack `3` resolves only FBA Order Products matching product, `4in` (or `4 in`), and `Pack 3`.
+- Preview updates after either input changes and reports a clear error until both values are supplied.
+
+**Files changed:**
+- `app/Livewire/Pages/Order/Index.php`
+- `resources/views/livewire/pages/order/index.blade.php`
+- `AI_MEMORY.md`
+
+**Affected modules:** Manual FBA Product ID resolution.
+**Deploy / queue impact:** PHP/Blade only; no migration or queue impact.
+## 2026-09-10 - Label manual FBA filters and show selected Products
+
+**Changes:**
+- Added explicit labels above manual FBA Size (in) and Pack inputs.
+- Added read-only Product field showing unique product names for selected SKU items, so users can verify what the Product ID lookup will use.
+
+**Files changed:**
+- `resources/views/livewire/pages/order/index.blade.php`
+- `AI_MEMORY.md`
+
+**Affected modules:** Manual FBA modal UI.
+**Deploy / queue impact:** Blade-only; no migration or queue impact.
+## 2026-09-10 - Default manual FBA Size and Pack to 3
+
+**Changes:**
+- Manual FBA modal now opens with Size (in) `3` and Pack `3` by default.
+- Closing/reopening restores these defaults; users can still edit either value.
+
+**Files changed:**
+- `app/Livewire/Pages/Order/Index.php`
+- `AI_MEMORY.md`
+
+**Affected modules:** Manual FBA order modal.
+**Deploy / queue impact:** PHP only; no migration or queue impact.
+## 2026-09-10 - Resolve manual FBA Product ID on modal open
+
+**Root cause:**
+- Manual FBA defaults Size/Pack to 3, but lookup only ran after editing an input, leaving Product ID blank while status showed Ready on initial open.
+
+**Changes:**
+- `openManualFbaModal()` now immediately runs `buildManualFbaPreview()` after loading selected items, so default Size 3 / Pack 3 resolves Product IDs or displays a real error.
+
+**Files changed:**
+- `app/Livewire/Pages/Order/Index.php`
+- `AI_MEMORY.md`
+
+**Deploy / queue impact:** PHP only; no migration or queue impact.

@@ -33,6 +33,18 @@ class Index extends Component
     /** @var array<int, int> */
     public array $selectedHistoryOrderIds = [];
 
+    /** @var array<int, int> */
+    public array $selectedSkuOrderItemIds = [];
+
+    public bool $showManualFbaModal = false;
+
+    public string $manualFbaPack = '3';
+
+    public string $manualFbaSize = '3';
+
+    /** @var array<int, array<string, string>> */
+    public array $manualFbaPreviewRows = [];
+
     public bool $showImportModal = false;
 
     public bool $showOrderProductImportModal = false;
@@ -73,6 +85,8 @@ class Index extends Component
 
     public string $orderReportProductTag = '';
 
+    public string $orderReportPack = '';
+
     public bool $orderReportHolo = false;
 
     /** @var array<int, array<string, string>> */
@@ -81,6 +95,76 @@ class Index extends Component
     public ?string $message = null;
 
     public ?string $error = null;
+
+    public function toggleCurrentSkuPageSelection(array $ids): void
+    {
+        $ids = array_values(array_map('intval', $ids));
+        $selected = array_map('intval', $this->selectedSkuOrderItemIds);
+        $allSelected = $ids !== [] && count(array_intersect($ids, $selected)) === count($ids);
+        $this->selectedSkuOrderItemIds = $allSelected
+            ? array_values(array_diff($selected, $ids))
+            : array_values(array_unique(array_merge($selected, $ids)));
+    }
+
+    public function openManualFbaModal(): void
+    {
+        if ($this->selectedSkuOrderItemIds === []) return;
+        $items = SkuOrderItem::query()->whereIn('id', $this->selectedSkuOrderItemIds)
+            ->when(! auth()->user()?->is_admin, fn ($query) => $query->where('user_id', auth()->id()))
+            ->with('product')->get();
+        $this->manualFbaPreviewRows = $items->map(fn (SkuOrderItem $item): array => [
+            'sku' => $item->sku, 'product_name' => (string) ($item->product?->name ?? ''), 'link_design' => (string) $item->image_link,
+            'quantity' => '1', 'product_id' => '', 'error' => '',
+        ])->all();
+        $this->manualFbaPack = '3';
+        $this->manualFbaSize = '3';
+        $this->buildManualFbaPreview();
+        $this->showManualFbaModal = true;
+    }
+
+    public function closeManualFbaModal(): void
+    {
+        $this->showManualFbaModal = false;
+        $this->reset(['manualFbaPack', 'manualFbaSize', 'manualFbaPreviewRows']);
+    }
+
+    public function updatedManualFbaPack(): void
+    {
+        $this->buildManualFbaPreview();
+    }
+
+    public function updatedManualFbaSize(): void
+    {
+        $this->buildManualFbaPreview();
+    }
+
+    private function buildManualFbaPreview(): void
+    {
+        $catalog = OrderProduct::query()->where('fulfillment_type', 'FBA')->get();
+        $pack = trim($this->manualFbaPack);
+        $size = trim($this->manualFbaSize);
+        foreach ($this->manualFbaPreviewRows as $index => $row) {
+            $product = $catalog->first(function (OrderProduct $product) use ($row, $pack, $size): bool {
+                $name = strtolower($product->product_name);
+                return str_contains($name, strtolower($row['product_name']))
+                    && $pack !== '' && str_contains($name, 'pack '.strtolower($pack))
+                    && $size !== '' && (str_contains($name, strtolower($size).'in') || str_contains($name, strtolower($size).' in'));
+            });
+            $this->manualFbaPreviewRows[$index]['product_id'] = (string) ($product?->order_product_id ?? '');
+            $this->manualFbaPreviewRows[$index]['error'] = $pack === '' || $size === '' ? 'Vui long nhap Size (in) va Pack.' : ($product ? '' : 'Khong tim thay Order Product FBA dung Product/Size/Pack.');
+        }
+    }
+
+    public function exportManualFbaOrders(): mixed
+    {
+        $validRows = collect($this->manualFbaPreviewRows)->filter(fn (array $row): bool => $row['error'] === '');
+        if ($validRows->isEmpty()) return null;
+        app(ActivityLogService::class)->record('order.manual_fba_exported', 'Exported manually selected FBA SKU Order Items.', properties: ['count' => $validRows->count(), 'pack' => $this->manualFbaPack]);
+        $html = '<table><thead><tr><th>Product ID</th><th>Quantity</th><th>Link Design</th></tr></thead><tbody>';
+        foreach ($validRows as $row) $html .= '<tr><td>'.htmlspecialchars($row['product_id'], ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($row['quantity'], ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($row['link_design'], ENT_QUOTES, 'UTF-8').'</td></tr>';
+        $html .= '</tbody></table>';
+        return response()->streamDownload(fn () => print $html, 'manual-fba-orders-'.now()->format('Ymd-His').'.xls', ['Content-Type' => 'application/vnd.ms-excel']);
+    }
 
     public function exportSelectedHistoryOrders(): mixed
     {
@@ -133,6 +217,7 @@ class Index extends Component
         $this->reset(['orderReportFile', 'orderReportPreviewRows', 'orderReportHeaders', 'orderFulfillmentPreviewRows']);
         $this->orderReportFulfillment = 'FBM';
         $this->orderReportProductTag = '';
+        $this->orderReportPack = '';
         $this->orderReportHolo = false;
         $this->resetValidation();
         $this->showOrderReportImportModal = true;
@@ -210,6 +295,11 @@ class Index extends Component
         $this->buildAmazonOrderPreview();
     }
 
+    public function updatedOrderReportPack(): void
+    {
+        $this->buildAmazonOrderPreview();
+    }
+
     public function updatedOrderReportHolo(): void
     {
         $this->buildAmazonOrderPreview();
@@ -232,11 +322,13 @@ class Index extends Component
         }
         app(ActivityLogService::class)->record('order.report_confirmed', 'Confirmed Amazon order report and exported valid rows.', properties: ['count' => $validRows->count(), 'fulfillment' => $this->orderReportFulfillment, 'holo' => $this->orderReportHolo, 'product_tag' => trim($this->orderReportProductTag)]);
 
-        $headers = ['ID ORDER', 'Product ID', 'Quantity', 'Link Design', 'TO NAME', 'TO_COMPANY', 'TO_PHONE', 'TO ADDRESS 1', 'TO ADDRESS 2', 'TO CITY', 'TO STATE', 'TO POSTCODE', 'TO COUNTRY'];
+        $isFba = $this->orderReportFulfillment === 'FBA';
+        $headers = $isFba ? ['ID ORDER', 'Product ID', 'Quantity', 'Link Design'] : ['ID ORDER', 'Product ID', 'Quantity', 'Link Design', 'TO NAME', 'TO_COMPANY', 'TO_PHONE', 'TO ADDRESS 1', 'TO ADDRESS 2', 'TO CITY', 'TO STATE', 'TO POSTCODE', 'TO COUNTRY'];
         $filename = 'amazon-orders-'.now()->format('Ymd-His').'.xls';
         $html = '<table><thead><tr>'.implode('', array_map(fn (string $header): string => '<th>'.htmlspecialchars($header, ENT_QUOTES, 'UTF-8').'</th>', $headers)).'</tr></thead><tbody>';
         foreach ($validRows as $row) {
-            $html .= '<tr>'.implode('', array_map(fn (string $key): string => '<td>'.htmlspecialchars((string) ($row[$key] ?? ''), ENT_QUOTES, 'UTF-8').'</td>', ['id_order', 'product_id', 'quantity', 'link_design', 'to_name', 'to_company', 'to_phone', 'to_address_1', 'to_address_2', 'to_city', 'to_state', 'to_postcode', 'to_country'])).'</tr>';
+            $keys = $isFba ? ['id_order', 'product_id', 'quantity', 'link_design'] : ['id_order', 'product_id', 'quantity', 'link_design', 'to_name', 'to_company', 'to_phone', 'to_address_1', 'to_address_2', 'to_city', 'to_state', 'to_postcode', 'to_country'];
+            $html .= '<tr>'.implode('', array_map(fn (string $key): string => '<td>'.htmlspecialchars((string) ($row[$key] ?? ''), ENT_QUOTES, 'UTF-8').'</td>', $keys)).'</tr>';
         }
         $html .= '</tbody></table>';
         return response()->streamDownload(fn () => print $html, $filename, ['Content-Type' => 'application/vnd.ms-excel']);
@@ -257,16 +349,18 @@ class Index extends Component
             $catalogMatch = $matched ? $catalog->first(function (OrderProduct $product) use ($productKeyword, $size): bool {
                 $name = strtolower($product->product_name);
                 $tag = strtolower(trim($this->orderReportProductTag));
+                $pack = trim($this->orderReportPack);
                 $isHoloProduct = str_contains($name, 'holo');
                 return $productKeyword !== '' && str_contains($name, $productKeyword)
                     && (! $this->orderReportHolo || $isHoloProduct)
                     && ($tag === '' || str_contains($name, $tag))
+                    && ($this->orderReportFulfillment !== 'FBA' || ($pack !== '' && str_contains($name, 'pack '.strtolower($pack))))
                     && ($size === null || str_contains($name, strtolower($size)));
             }) : null;
             $orderId = trim((string) ($source['order-id'] ?? ''));
             $historyVariant = ['user_id' => auth()->id(), 'order_id' => $orderId, 'sku' => $this->normalizeSku($incomingSku), 'size' => (string) ($size ?? ''), 'quantity' => (string) ($source['quantity-purchased'] ?? '')];
             $duplicate = $orderId !== '' && HistoryOrderReport::query()->where($historyVariant)->exists();
-            $error = $duplicate ? 'Don nay da len roi, vui long kiem tra lai.' : ($matched ? ($catalogMatch ? '' : 'Khong tim thay Order Product dung Product/size.') : "SKU {$incomingSku} khong co trong SKU Order Items.");
+            $error = $duplicate ? 'Don nay da len roi, vui long kiem tra lai.' : ($this->orderReportFulfillment === 'FBA' && trim($this->orderReportPack) === '' ? 'FBA vui long nhap Pack (vi du: 3).' : ($matched ? ($catalogMatch ? '' : 'Khong tim thay Order Product dung Product/size/Pack.') : "SKU {$incomingSku} khong co trong SKU Order Items."));
             $this->orderFulfillmentPreviewRows[] = [
                 'id_order' => $orderId, 'sku' => $historyVariant['sku'], 'product_id' => (string) ($catalogMatch?->order_product_id ?? ''),
                 'quantity' => $source['quantity-purchased'] ?? '', 'link_design' => (string) ($matched?->image_link ?? ''),
