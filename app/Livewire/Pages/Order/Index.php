@@ -42,6 +42,8 @@ class Index extends Component
 
     public string $manualFbaSize = '3';
 
+    public string $manualFbaQuantity = '1';
+
     /** @var array<int, array<string, string>> */
     public array $manualFbaPreviewRows = [];
 
@@ -118,6 +120,7 @@ class Index extends Component
         ])->all();
         $this->manualFbaPack = '3';
         $this->manualFbaSize = '3';
+        $this->manualFbaQuantity = '1';
         $this->buildManualFbaPreview();
         $this->showManualFbaModal = true;
     }
@@ -125,7 +128,7 @@ class Index extends Component
     public function closeManualFbaModal(): void
     {
         $this->showManualFbaModal = false;
-        $this->reset(['manualFbaPack', 'manualFbaSize', 'manualFbaPreviewRows']);
+        $this->reset(['manualFbaPack', 'manualFbaSize', 'manualFbaQuantity', 'manualFbaPreviewRows']);
     }
 
     public function updatedManualFbaPack(): void
@@ -136,6 +139,15 @@ class Index extends Component
     public function updatedManualFbaSize(): void
     {
         $this->buildManualFbaPreview();
+    }
+
+    public function updatedManualFbaQuantity(): void
+    {
+        $quantity = max(1, (int) $this->manualFbaQuantity);
+        $this->manualFbaQuantity = (string) $quantity;
+        foreach ($this->manualFbaPreviewRows as $index => $row) {
+            $this->manualFbaPreviewRows[$index]['quantity'] = (string) $quantity;
+        }
     }
 
     private function buildManualFbaPreview(): void

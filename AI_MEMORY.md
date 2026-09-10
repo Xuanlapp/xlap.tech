@@ -9663,3 +9663,17 @@ Follow-up notes: The import modal copy may still mention platform-specific CSV w
 - `AI_MEMORY.md`
 
 **Deploy / queue impact:** PHP only; no migration or queue impact.
+## 2026-09-10 - Add editable FBA quantities
+
+**Changes:**
+- Added `Quantity mac dinh` (default 1) to manual FBA modal; updating it applies the value to every selected row.
+- Added editable Quantity input per preview row, allowing individual SKU quantities to differ before export.
+- Excel export uses the current per-row quantity values.
+
+**Files changed:**
+- `app/Livewire/Pages/Order/Index.php`
+- `resources/views/livewire/pages/order/index.blade.php`
+- `AI_MEMORY.md`
+
+**Affected modules:** Manual FBA order preview and export.
+**Deploy / queue impact:** PHP/Blade only; no migration or queue impact.
