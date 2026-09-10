@@ -24,6 +24,8 @@ class Index extends Component
 
     public int $perPage = 5;
 
+    private const AUXILIARY_TABLE_PER_PAGE = 5;
+
     public string $search = '';
 
     public string $productFilter = '';
@@ -201,8 +203,8 @@ class Index extends Component
             );
         }
         app(ActivityLogService::class)->record('order.manual_fba_exported', 'Exported manually selected FBA SKU Order Items.', properties: ['count' => $validRows->count(), 'pack' => $this->manualFbaPack]);
-        $html = '<table><thead><tr><th>Product Name</th><th>Product ID</th><th>Quantity</th><th>Pack</th><th>Link Design</th></tr></thead><tbody>';
-        foreach ($validRows as $row) $html .= '<tr><td>'.htmlspecialchars($row['order_product_name'], ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($row['product_id'], ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($row['quantity'], ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($this->manualFbaPack, ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($row['link_design'], ENT_QUOTES, 'UTF-8').'</td></tr>';
+        $html = '<table><thead><tr><th>FBM/FBA</th><th>Product Name</th><th>Product ID</th><th>Quantity</th><th>Pack</th><th>Link Design</th></tr></thead><tbody>';
+        foreach ($validRows as $row) $html .= '<tr><td>FBA</td><td>'.htmlspecialchars($row['order_product_name'], ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($row['product_id'], ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($row['quantity'], ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($this->manualFbaPack, ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($row['link_design'], ENT_QUOTES, 'UTF-8').'</td></tr>';
         $html .= '</tbody></table>';
         return response()->streamDownload(fn () => print $html, 'manual-fba-orders-'.now()->format('Ymd-His').'.xls', ['Content-Type' => 'application/vnd.ms-excel']);
     }
@@ -556,7 +558,6 @@ class Index extends Component
         $value = (int) $value;
         $this->perPage = in_array($value, [5, 10, 20, 50, 100], true) ? $value : 5;
         $this->resetPage();
-        $this->resetPage('orderProductsPage');
     }
 
     public function reloadItems(): void
@@ -608,14 +609,14 @@ class Index extends Component
 
         $items->getCollection()->each(fn (SkuOrderItem $item) => $item->setAttribute('image_preview_url', $preview->previewUrl($item->image_link)));
 
-        $orderProducts = OrderProduct::query()->orderBy('product_name')->paginate($this->perPage, ['*'], 'orderProductsPage');
+        $orderProducts = OrderProduct::query()->orderBy('product_name')->paginate(self::AUXILIARY_TABLE_PER_PAGE, ['*'], 'orderProductsPage');
         $historyOrders = HistoryOrderReport::query()
             ->when(! auth()->user()?->is_admin, fn ($query) => $query->where('user_id', auth()->id()))
             ->when(trim($this->historyOrderSearch) !== '', fn ($query) => $query->where('order_id', 'like', '%'.trim($this->historyOrderSearch).'%'))
             ->with('user')
             ->latest('ordered_at')
             ->latest('id')
-            ->paginate($this->perPage, ['*'], 'historyOrdersPage');
+            ->paginate(self::AUXILIARY_TABLE_PER_PAGE, ['*'], 'historyOrdersPage');
         $historyOrders->getCollection()->each(function (HistoryOrderReport $order) use ($preview): void {
             $image = (string) (($order->images_link ?? [])[0] ?? '');
             $order->setAttribute('image_preview_url', $image !== '' ? $preview->previewUrl($image) : '');

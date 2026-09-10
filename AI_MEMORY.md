@@ -9758,3 +9758,28 @@ Follow-up notes: The import modal copy may still mention platform-specific CSV w
 
 **Affected modules:** Manual FBA Excel export Product Name cleanup.
 **Deploy / queue impact:** PHP only; no migration or queue impact.
+## 2026-09-10 - Add fulfillment column to manual FBA preview/export
+
+**Changes:**
+- Added `FBM/FBA` column to manual FBA preview and exported Excel.
+- Manual FBA rows write `FBA` in this column.
+
+**Files changed:**
+- `app/Livewire/Pages/Order/Index.php`
+- `resources/views/livewire/pages/order/index.blade.php`
+- `AI_MEMORY.md`
+
+**Affected modules:** Manual FBA preview and Excel export.
+**Deploy / queue impact:** PHP/Blade only; no migration or queue impact.
+## 2026-09-10 - Scope page-size selector to SKU Order Items only
+
+**Changes:**
+- Kept `5/10/20/50/100 per page` selector for SKU Order Items only.
+- History Orders and Order Products now use independent fixed 5-row pagination and no longer change when SKU page size changes.
+
+**Files changed:**
+- `app/Livewire/Pages/Order/Index.php`
+- `AI_MEMORY.md`
+
+**Affected modules:** Order page table pagination.
+**Deploy / queue impact:** PHP only; no migration or queue impact.
