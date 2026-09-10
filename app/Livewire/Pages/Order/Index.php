@@ -203,8 +203,8 @@ class Index extends Component
             );
         }
         app(ActivityLogService::class)->record('order.manual_fba_exported', 'Exported manually selected FBA SKU Order Items.', properties: ['count' => $validRows->count(), 'pack' => $this->manualFbaPack]);
-        $html = '<table><thead><tr><th>FBM/FBA</th><th>Product Name</th><th>Product ID</th><th>Quantity</th><th>Pack</th><th>Link Design</th></tr></thead><tbody>';
-        foreach ($validRows as $row) $html .= '<tr><td>FBA</td><td>'.htmlspecialchars($row['order_product_name'], ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($row['product_id'], ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($row['quantity'], ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($this->manualFbaPack, ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($row['link_design'], ENT_QUOTES, 'UTF-8').'</td></tr>';
+        $html = '<table><thead><tr><th>FBM/FBA</th><th>Product Name</th><th>Product ID</th><th>Size</th><th>Quantity</th><th>Pack</th><th>Link Design</th></tr></thead><tbody>';
+        foreach ($validRows as $row) $html .= '<tr><td>FBA</td><td>'.htmlspecialchars($row['order_product_name'], ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($row['product_id'], ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars(trim($this->manualFbaSize).'in', ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($row['quantity'], ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($this->manualFbaPack, ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($row['link_design'], ENT_QUOTES, 'UTF-8').'</td></tr>';
         $html .= '</tbody></table>';
         return response()->streamDownload(fn () => print $html, 'manual-fba-orders-'.now()->format('Ymd-His').'.xls', ['Content-Type' => 'application/vnd.ms-excel']);
     }
