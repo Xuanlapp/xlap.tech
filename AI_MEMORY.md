@@ -9690,3 +9690,19 @@ Follow-up notes: The import modal copy may still mention platform-specific CSV w
 
 **Affected modules:** Amazon report FBA preview/export quantities.
 **Deploy / queue impact:** Blade-only; no migration or queue impact.
+## 2026-09-10 - Save manual FBA exports to History Orders
+
+**Root cause:**
+- `Len don FBA` from selected SKU Order Items only generated an Excel file, so it did not appear in History Orders.
+
+**Changes:**
+- Manual FBA modal now creates one stable FBA batch ID on open.
+- On export, each valid SKU is saved to `history_order_report` with batch ID, SKU, Size, Pack, Quantity, FBA Product ID, and Link Design.
+- Re-exporting the same modal does not duplicate matching variants.
+
+**Files changed:**
+- `app/Livewire/Pages/Order/Index.php`
+- `AI_MEMORY.md`
+
+**Affected modules:** Manual FBA export and History Orders.
+**Deploy / queue impact:** PHP only; no migration or queue impact.

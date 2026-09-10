@@ -44,6 +44,8 @@ class Index extends Component
 
     public string $manualFbaQuantity = '1';
 
+    public string $manualFbaBatchId = '';
+
     /** @var array<int, array<string, string>> */
     public array $manualFbaPreviewRows = [];
 
@@ -121,6 +123,7 @@ class Index extends Component
         $this->manualFbaPack = '3';
         $this->manualFbaSize = '3';
         $this->manualFbaQuantity = '1';
+        $this->manualFbaBatchId = 'FBA-MANUAL-'.now()->format('Ymd-His').'-'.auth()->id();
         $this->buildManualFbaPreview();
         $this->showManualFbaModal = true;
     }
@@ -128,7 +131,7 @@ class Index extends Component
     public function closeManualFbaModal(): void
     {
         $this->showManualFbaModal = false;
-        $this->reset(['manualFbaPack', 'manualFbaSize', 'manualFbaQuantity', 'manualFbaPreviewRows']);
+        $this->reset(['manualFbaPack', 'manualFbaSize', 'manualFbaQuantity', 'manualFbaBatchId', 'manualFbaPreviewRows']);
     }
 
     public function updatedManualFbaPack(): void
@@ -171,6 +174,22 @@ class Index extends Component
     {
         $validRows = collect($this->manualFbaPreviewRows)->filter(fn (array $row): bool => $row['error'] === '');
         if ($validRows->isEmpty()) return null;
+        foreach ($validRows as $row) {
+            $historyData = [
+                'id_order' => $this->manualFbaBatchId,
+                'sku' => $this->normalizeSku($row['sku']),
+                'product_id' => $row['product_id'],
+                'quantity' => (string) $row['quantity'],
+                'size' => $this->manualFbaSize.'in',
+                'pack' => $this->manualFbaPack,
+                'link_design' => $row['link_design'],
+                'fulfillment' => 'FBA',
+            ];
+            HistoryOrderReport::firstOrCreate(
+                ['user_id' => auth()->id(), 'order_id' => $this->manualFbaBatchId, 'sku' => $historyData['sku'], 'size' => $historyData['size'], 'quantity' => $historyData['quantity']],
+                ['images_link' => array_values(array_filter([$historyData['link_design']])), 'report_data' => $historyData, 'ordered_at' => now()],
+            );
+        }
         app(ActivityLogService::class)->record('order.manual_fba_exported', 'Exported manually selected FBA SKU Order Items.', properties: ['count' => $validRows->count(), 'pack' => $this->manualFbaPack]);
         $html = '<table><thead><tr><th>Product ID</th><th>Quantity</th><th>Link Design</th></tr></thead><tbody>';
         foreach ($validRows as $row) $html .= '<tr><td>'.htmlspecialchars($row['product_id'], ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($row['quantity'], ENT_QUOTES, 'UTF-8').'</td><td>'.htmlspecialchars($row['link_design'], ENT_QUOTES, 'UTF-8').'</td></tr>';
