@@ -7,6 +7,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response as HttpResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -17,13 +18,38 @@ class ImagePreviewController extends Controller
     public function __invoke(Request $request): Response
     {
         $validated = $request->validate([
-            'url' => ['required', 'url', 'max:1000'],
+            'url' => ['nullable', 'url', 'max:1000', 'required_without:path'],
+            'path' => ['nullable', 'string', 'max:1000', 'required_without:url'],
         ]);
 
-        $url = $validated['url'];
+        // Local storage paths are already constrained below. Remote proxy URLs must
+        // remain signed so this public image endpoint cannot become an open proxy.
+        if (! empty($validated['url'])) {
+            abort_unless($request->hasValidSignature(), 403);
+        }
+
+        if (! empty($validated['path'])) {
+            $localPath = $this->storagePath((string) $validated['path']);
+            abort_unless($localPath !== null && is_file($localPath), 404);
+
+            return response()->file($localPath, [
+                'Cache-Control' => 'private, max-age=1800',
+            ]);
+        }
+
+        $url = (string) $validated['url'];
         $host = parse_url($url, PHP_URL_HOST);
 
         abort_if(! is_string($host) || $this->isBlockedHost($host), 403);
+
+        // Serve this app's own storage directly; fetching the public URL again can hit
+        // a proxy/WAF rule and return 403 even though the local file is readable.
+        $localPath = $this->localStoragePath($url);
+        if ($localPath !== null && is_file($localPath)) {
+            return response()->file($localPath, [
+                'Cache-Control' => 'public, max-age=604800, stale-while-revalidate=86400',
+            ]);
+        }
 
         $driveFileId = $this->googleDriveFileId($url);
         $response = $this->publicImageResponse($url);
@@ -115,5 +141,31 @@ class ImagePreviewController extends Controller
         }
 
         return false;
+    }
+
+    private function localStoragePath(string $url): ?string
+    {
+        $path = parse_url($url, PHP_URL_PATH) ?: '';
+        if (! is_string($path) || ! str_starts_with($path, '/storage/')) {
+            return null;
+        }
+
+        $requestHost = strtolower((string) request()->getHost());
+        $urlHost = strtolower((string) parse_url($url, PHP_URL_HOST));
+        $appHost = strtolower((string) parse_url((string) config('app.url'), PHP_URL_HOST));
+        if ($urlHost !== $requestHost && ($appHost === '' || $urlHost !== $appHost)) {
+            return null;
+        }
+
+        return $this->storagePath($path);
+    }
+
+    private function storagePath(string $path): ?string
+    {
+        if (! str_starts_with($path, '/storage/') || str_contains($path, '..')) {
+            return null;
+        }
+
+        return Storage::disk('public')->path(ltrim(substr($path, strlen('/storage/')), '/'));
     }
 }

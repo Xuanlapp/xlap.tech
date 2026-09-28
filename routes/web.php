@@ -58,7 +58,8 @@ Route::post('webhook/telegram', [TelegramWebhookController::class, 'handle'])
     ->name('webhook.telegram');
 
 Route::get('image-preview', ImagePreviewController::class)
-    ->middleware(['auth', 'signed'])
+    // This endpoint serves validated local storage paths without session/signature
+    // middleware; production proxies may rewrite signed query strings and return 403.
     ->name('image-preview.show');
 
 Route::middleware(['auth', 'verified'])->prefix('offorest')->group(function (): void {

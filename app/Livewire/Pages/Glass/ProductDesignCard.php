@@ -187,12 +187,10 @@ class ProductDesignCard extends Component
             return null;
         }
 
-        $baseUrl = request()->getSchemeAndHttpHost();
-        $url = $baseUrl !== ''
-            ? rtrim($baseUrl, '/').'/storage/'.ltrim($path, '/')
-            : $disk->url($path);
-
-        return $url.'?v='.((string) $disk->lastModified($path));
+        return route('image-preview.show', [
+            'path' => '/storage/'.$path,
+            'v' => $disk->lastModified($path),
+        ], false);
     }
 
     private function appendPreviewUrls(ProductDesignAsset $asset, ?string $mockupPreviewVersion = null): void

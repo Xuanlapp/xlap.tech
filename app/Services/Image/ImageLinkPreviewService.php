@@ -163,7 +163,12 @@ class ImageLinkPreviewService
             return $path;
         }
 
-        return $path.'?v='.File::lastModified($publicPath);
+        return URL::temporarySignedRoute(
+            'image-preview.show',
+            now()->addHours(12),
+            ['path' => $path, 'v' => File::lastModified($publicPath)],
+            absolute: false,
+        );
     }
 
     /**

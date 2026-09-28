@@ -15,6 +15,50 @@
             if (is_string($displayOriginalUrl) && str_starts_with($displayOriginalUrl, '/')) {
                 $displayOriginalUrl = $appUrl.$displayOriginalUrl;
             }
+
+            // Production serves the app over HTTPS; normalize legacy HTTP asset URLs before canvas loads them.
+            $normalizeAssetUrl = static function ($url) use ($appUrl): ?string {
+                if (! is_string($url) || trim($url) === '') {
+                    return null;
+                }
+
+                $url = trim($url);
+                if (str_starts_with($url, '/')) {
+                    $url = $appUrl.$url;
+                }
+
+                $requestScheme = request()->getScheme();
+                if ($requestScheme === 'https' && str_starts_with(strtolower($url), 'http://')) {
+                    $url = 'https://'.substr($url, 7);
+                }
+
+                return $url;
+            };
+
+            $displayOriginalUrl = $normalizeAssetUrl($displayOriginalUrl);
+            $boundsGuideDataUrl = null;
+            $boundsGuideDisk = \Illuminate\Support\Facades\Storage::disk('public');
+            if ($boundsGuideDisk->exists('admin/glass/bounds-guide.png')) {
+                $boundsGuideDataUrl = 'data:image/png;base64,'.base64_encode($boundsGuideDisk->get('admin/glass/bounds-guide.png'));
+            }
+            // Bounds must use the same renderable/preview URL as the visible image;
+            // the raw source URL may be private or blocked while the preview works.
+            // Use the original asset first. The visible preview may be a temporary
+            // proxy URL and is not guaranteed to be readable by the canvas.
+            $boundsSourceUrl = $normalizeAssetUrl($original ?: $src);
+            // Always proxy Bounds Editor source images through XLAP so local storage is read
+            // from the configured public disk instead of a browser request that can be denied.
+            if ($boundsSourceUrl && ! str_contains($boundsSourceUrl, '/image-preview?')) {
+                $boundsPath = parse_url($boundsSourceUrl, PHP_URL_PATH) ?: '';
+                $boundsSourceUrl = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+                    'image-preview.show',
+                    now()->addMinutes(30),
+                    str_starts_with($boundsPath, '/storage/')
+                        ? ['path' => $boundsPath]
+                        : ['url' => $boundsSourceUrl],
+                    absolute: false,
+                );
+            }
         @endphp
 
         <div
@@ -28,14 +72,16 @@
                 boundsBaseScale: 1,
                 boundsOffsetX: 0,
                 boundsOffsetY: 0,
-                boundsGuideOpacity: 0.45,
+                boundsGuideOpacity: Number(localStorage.getItem('glass-master-bounds-opacity') || '0.72'),
                 boundsCropSize: 0,
                 boundsImage: null,
                 boundsGuideImage: null,
+                boundsGuideAvailable: @js((bool) $boundsGuideDataUrl),
+                boundsLoading: false,
                 boundsCanvasWidth: @js((int) data_get($glassBoundsConfig, 'canvas.width', 1203)),
                 boundsCanvasHeight: @js((int) data_get($glassBoundsConfig, 'canvas.height', 1204)),
-                boundsTarget: @js(data_get($glassBoundsConfig, 'target', ['x' => 0, 'y' => 0.5, 'width' => 1203, 'height' => 1203])),
-                boundsSafezone: @js(data_get($glassBoundsConfig, 'safezone', ['x' => 37, 'y' => 38, 'width' => 1130, 'height' => 1130])),
+                boundsTarget: @js(data_get($glassBoundsConfig, 'target') ?: ['x' => 0, 'y' => 0, 'width' => 1203, 'height' => 1203]),
+                boundsSafezone: @js(data_get($glassBoundsConfig, 'safezone') ?: ['x' => 37, 'y' => 38, 'width' => 1130, 'height' => 1130]),
                 boundsDragging: false,
                 boundsDragStartX: 0,
                 boundsDragStartY: 0,
@@ -117,17 +163,49 @@
                 },
                 startBoundsEditor() {
                     this.boundsEditing = true;
+                    this.boundsLoading = true;
+                    this.boundsImage = null;
                     this.$nextTick(() => this.initBoundsEditor());
                 },
                 initBoundsEditor() {
                     const canvas = this.$refs.boundsCanvas;
                     if (! canvas) return;
-                    const source = @js($original ?: $src);
+                    const preview = this.$refs.previewImage;
+                    if (preview?.naturalWidth && preview?.naturalHeight) {
+                        this.boundsImage = preview;
+                        this.boundsLoading = false;
+                        this.boundsBaseScale = Math.max(
+                            this.boundsTarget.width / preview.naturalWidth,
+                            this.boundsTarget.height / preview.naturalHeight,
+                        );
+                        this.boundsScale = this.boundsBaseScale;
+                        this._boundsPreviousScale = this.boundsScale;
+                        this.boundsOffsetX = this.boundsTarget.x + (this.boundsTarget.width - preview.naturalWidth * this.boundsScale) / 2;
+                        this.boundsOffsetY = this.boundsTarget.y + (this.boundsTarget.height - preview.naturalHeight * this.boundsScale) / 2;
+                        this.drawBoundsCanvas();
+                        return;
+                    }
+                    const source = @js($boundsSourceUrl);
+                    const fallbackSource = @js($normalizeAssetUrl($src));
+                    // Load the sample bounds first so the editor is useful even while
+                    // the source image is still loading or unavailable.
+                    this.loadBoundsGuideImage().then((guide) => {
+                        this.boundsGuideImage = guide;
+                        this.drawBoundsCanvas();
+                    });
                     const image = new Image();
                     image.crossOrigin = 'anonymous';
                     image.onload = async () => {
+                        if (! image.naturalWidth || ! image.naturalHeight) {
+                            image.onerror();
+                            return;
+                        }
+
                         this.boundsImage = image;
-                        this.boundsGuideImage = await this.loadBoundsGuideImage();
+                        if (! this.boundsGuideImage) {
+                            this.boundsGuideImage = await this.loadBoundsGuideImage();
+                        }
+                        this.boundsLoading = false;
                         this.boundsBaseScale = Math.max(
                             this.boundsTarget.width / image.naturalWidth,
                             this.boundsTarget.height / image.naturalHeight,
@@ -138,14 +216,26 @@
                         this.boundsOffsetY = this.boundsTarget.y + (this.boundsTarget.height - image.naturalHeight * this.boundsScale) / 2;
                         this.drawBoundsCanvas();
                     };
+                    let attempt = 0;
+                    const sources = [source, fallbackSource].filter((value, index, values) => value && values.indexOf(value) === index);
                     image.onerror = () => {
-                        this.boundsEditing = false;
+                        attempt += 1;
+                        if (attempt < sources.length) {
+                            image.src = sources[attempt];
+                            return;
+                        }
+                        this.boundsLoading = false;
+                        this.drawBoundsCanvas();
                         this.notifyProcessing('Bounds failed', 'Khong doc duoc anh goc de chinh bounds.');
                     };
-                    image.src = source;
+                    if (! sources.length) {
+                        image.onerror();
+                        return;
+                    }
+                    image.src = sources[0];
                 },
                 async loadBoundsGuideImage() {
-                    const guideUrl = @js($glassBoundsGuideUrl);
+                    const guideUrl = @js($boundsGuideDataUrl);
                     if (! guideUrl) return null;
                     const guide = new Image();
                     guide.crossOrigin = 'anonymous';
@@ -167,20 +257,20 @@
                 },
                 drawBoundsCanvas() {
                     const canvas = this.$refs.boundsCanvas;
-                    if (! canvas || ! this.boundsImage) return;
+                    if (! canvas) return;
                     const context = canvas.getContext('2d');
-                    const target = this.boundsTarget;
-                    const safezone = this.boundsSafezone;
+                    const target = this.boundsTarget || { x: 0, y: 0, width: this.boundsCanvasWidth, height: this.boundsCanvasHeight };
+                    const safezone = this.boundsSafezone || { x: 37, y: 38, width: this.boundsCanvasWidth - 74, height: this.boundsCanvasHeight - 76 };
                     const center = this.boundsCenter();
                     const radius = Math.min(target.width, target.height) / 2;
                     const safezoneCenterX = safezone.x + safezone.width / 2;
                     const safezoneCenterY = safezone.y + safezone.height / 2;
                     const safezoneRadius = Math.min(safezone.width, safezone.height) / 2;
-                    const imageWidth = this.boundsImage.naturalWidth * this.boundsScale;
-                    const imageHeight = this.boundsImage.naturalHeight * this.boundsScale;
+                    const imageWidth = this.boundsImage ? this.boundsImage.naturalWidth * this.boundsScale : 0;
+                    const imageHeight = this.boundsImage ? this.boundsImage.naturalHeight * this.boundsScale : 0;
 
                     context.clearRect(0, 0, this.boundsCanvasWidth, this.boundsCanvasHeight);
-                    if (! this.boundsGuideImage) {
+                    if (! this.boundsGuideAvailable) {
                         context.save();
                         context.fillStyle = 'rgba(220, 38, 38, 0.28)';
                         context.fillRect(0, 0, this.boundsCanvasWidth, this.boundsCanvasHeight);
@@ -191,19 +281,16 @@
                         context.restore();
                     }
 
-                    context.save();
-                    context.beginPath();
-                    context.arc(center.x, center.y, radius, 0, Math.PI * 2);
-                    context.clip();
-                    context.drawImage(this.boundsImage, this.boundsOffsetX, this.boundsOffsetY, imageWidth, imageHeight);
-                    context.restore();
-
-                    if (this.boundsGuideImage) {
+                    if (this.boundsImage) {
                         context.save();
-                        context.globalAlpha = this.boundsGuideOpacity;
-                        context.drawImage(this.boundsGuideImage, 0, 0, this.boundsCanvasWidth, this.boundsCanvasHeight);
+                        context.beginPath();
+                        context.arc(center.x, center.y, radius, 0, Math.PI * 2);
+                        context.clip();
+                        context.drawImage(this.boundsImage, this.boundsOffsetX, this.boundsOffsetY, imageWidth, imageHeight);
                         context.restore();
-                    } else {
+                    }
+
+                    if (! this.boundsGuideAvailable) {
                         context.save();
                         context.fillStyle = `rgba(34, 197, 94, ${0.26 * this.boundsGuideOpacity})`;
                         context.beginPath();
@@ -220,18 +307,20 @@
                         context.restore();
                     }
 
-                    context.save();
-                    context.strokeStyle = '#38bdf8';
-                    context.setLineDash([10, 7]);
-                    context.strokeRect(this.boundsOffsetX, this.boundsOffsetY, imageWidth, imageHeight);
-                    context.setLineDash([]);
-                    context.beginPath();
-                    context.moveTo(this.boundsOffsetX, this.boundsOffsetY);
-                    context.lineTo(this.boundsOffsetX + imageWidth, this.boundsOffsetY + imageHeight);
-                    context.moveTo(this.boundsOffsetX + imageWidth, this.boundsOffsetY);
-                    context.lineTo(this.boundsOffsetX, this.boundsOffsetY + imageHeight);
-                    context.stroke();
-                    context.restore();
+                    if (this.boundsImage && ! this.boundsGuideAvailable) {
+                        context.save();
+                        context.strokeStyle = '#38bdf8';
+                        context.setLineDash([10, 7]);
+                        context.strokeRect(this.boundsOffsetX, this.boundsOffsetY, imageWidth, imageHeight);
+                        context.setLineDash([]);
+                        context.beginPath();
+                        context.moveTo(this.boundsOffsetX, this.boundsOffsetY);
+                        context.lineTo(this.boundsOffsetX + imageWidth, this.boundsOffsetY + imageHeight);
+                        context.moveTo(this.boundsOffsetX + imageWidth, this.boundsOffsetY);
+                        context.lineTo(this.boundsOffsetX, this.boundsOffsetY + imageHeight);
+                        context.stroke();
+                        context.restore();
+                    }
                 },
                 updateBoundsScale() {
                     const oldScale = this._boundsPreviousScale || this.boundsBaseScale;
@@ -341,7 +430,7 @@
 
                     <div class="grid gap-5 p-5 {{ $imageOnly ? 'grid-cols-1' : 'lg:grid-cols-[minmax(0,3fr)_minmax(360px,2fr)]' }}">
                         <section class="min-w-0">
-                            <div class="relative flex h-[min(76vh,820px)] min-h-[460px] items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-gray-400 shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
+                            <div class="relative flex h-[min(76vh,820px)] min-h-[460px] items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
                                 @if (count($gallery) > 1)
                                     <div class="absolute left-5 top-5 z-10 rounded-xl border border-slate-200 bg-white/90 px-4 py-2 text-sm font-bold text-slate-900 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-900/90 dark:text-slate-100">
                                         {{ $currentIndex + 1 }} / {{ count($gallery) }}
@@ -406,13 +495,13 @@
                                 @endif
 
                                 @if ($productSlug === 'glass' && $assetId && $src && $action === 'glass-redesign')
-                                    <div x-show="boundsEditing" x-cloak class="absolute inset-0 z-20 flex items-center justify-center bg-slate-900/90 p-5">
-                                        <div class="relative flex h-full w-full max-w-4xl items-center justify-center overflow-hidden rounded-xl bg-slate-950" x-ref="boundsStage">
+                                    <div x-show="boundsEditing" x-cloak class="absolute inset-0 z-20 flex items-center justify-center bg-white p-5">
+                                        <div class="relative flex h-full w-full max-w-4xl items-center justify-center overflow-hidden rounded-xl bg-white" x-ref="boundsStage">
                                             <canvas
                                                 x-ref="boundsCanvas"
                                                 x-bind:width="boundsCanvasWidth"
                                                 x-bind:height="boundsCanvasHeight"
-                                                class="block max-h-full max-w-full cursor-move select-none bg-white"
+                                                class="relative z-[1] block max-h-full max-w-full cursor-move select-none bg-transparent"
                                                 x-bind:style="`aspect-ratio:${boundsCanvasWidth}/${boundsCanvasHeight};touch-action:none`"
                                                 aria-label="Glass bounds editor canvas"
                                                 x-on:pointerdown="startBoundsDrag($event)"
@@ -421,6 +510,19 @@
                                                 x-on:pointercancel="endBoundsDrag()"
                                                 x-on:wheel="zoomBoundsWithWheel($event)"
                                             ></canvas>
+                                            @if ($boundsGuideDataUrl)
+                                                <img
+                                                    src="{{ $boundsGuideDataUrl }}"
+                                                    alt=""
+                                                    aria-hidden="true"
+                                                    class="pointer-events-none absolute inset-0 h-full w-full object-contain"
+                                                    style="z-index: 10"
+                                                    x-bind:style="`opacity: ${boundsGuideOpacity}`"
+                                                >
+                                            @endif
+                                            <div x-show="boundsLoading" class="pointer-events-none absolute inset-0 flex items-center justify-center bg-slate-950/35">
+                                                <div class="rounded-lg bg-slate-900/90 px-4 py-3 text-xs font-semibold text-white shadow-lg">Dang tai bounds mau...</div>
+                                            </div>
                                         </div>
                                     </div>
                                 @endif

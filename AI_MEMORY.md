@@ -11117,3 +11117,273 @@ Follow-up notes: From page 3, search a value with one result page and confirm it
 **Verification:** `npm run build`, `php artisan view:cache`, `git diff --check` pass. Chua co authenticated screenshots cho tung route production.
 
 **Follow-up:** Deploy asset moi, hard-refresh, kiem tra cac trang va bao ten route nao con surface sang de bo sung hook rieng neu can.
+### 2026-09-28 (Fix mixed-content khi mo Chinh bounds)
+
+**User report:** Mo `Chinh bounds` tren production thi canvas trang, khong hien anh nguon.
+
+**Root cause:** URL anh nguon trong Livewire data van la `http://xlap.com.vn/...` trong khi trang dang chay HTTPS; Image/canvas request bi browser chan mixed-content.
+
+**Changed file:** `resources/views/livewire/modals/image/review-image.blade.php`.
+
+**Changes:** Them ham normalize asset URL cho modal: URL tuong doi duoc noi voi app URL, URL `http://` duoc nang len `https://` khi request hien tai la HTTPS; bounds editor dung URL da normalize.
+
+**Affected modules:** Glass bounds editor va Image Review source/download/copy URL display.
+
+**Deploy impact:** Blade/PHP asset only; khong migration, queue hay secrets.
+
+**Verification:** `php artisan view:cache`, `npm run build`, `git diff --check` pass.
+
+**Follow-up:** Deploy view moi, reload PHP/Laravel cache neu production cache Blade, sau do hard-refresh va mo lai Chinh bounds.
+### 2026-09-28 (Chan doan bounds canvas van trang sau khi doi HTTPS)
+
+**User report:** Bounds editor van trang sau khi URL da doi sang HTTPS.
+
+**Root cause:** Kiem tra endpoint production cho URL `/storage/generated/glass/uploads/...` tra `403 Forbidden`; anh nguon khong the doc tu server, nen canvas khong co pixel de ve. Khong con la mixed-content.
+
+**Changed file:** `resources/views/livewire/modals/image/review-image.blade.php`.
+
+**Changes:** Bounds editor dung `ImageLinkPreviewService::previewUrl()` de co fallback server-side image preview route cho URL nguon.
+
+**Affected modules:** Glass bounds editor source image loading.
+
+**Deploy impact:** Blade/PHP deploy only. Production van can sua quyen/web-server cho public storage va deploy dung storage root; khong queue/migration.
+
+**Verification:** Endpoint production da xac nhan `403`; `php artisan view:cache`, `npm run build`, PHP lint pass.
+
+**Follow-up:** Tren server kiem tra `public/storage` tro dung thu muc co `generated/glass/uploads`, file co ton tai va web server cho phep doc static file; sau do reload PHP/Laravel cache.
+### 2026-09-28 (Fix XLAP noi bo cho image preview storage)
+
+**User clarification:** Loi nam trong XLAP, khong can xu ly ben ngoai.
+
+**Root cause:** `ImagePreviewController` luon HTTP GET lai URL `/storage/...` cua chinh app; production co the tra 403 cho public request du file local van doc duoc.
+
+**Changed file:** `app/Http/Controllers/ImagePreviewController.php`.
+
+**Changes:** Nhan dien URL storage cung host request/app, map ve `public_path('/storage/...')`, va tra file local truc tiep truoc khi fallback HTTP preview. Giup Bounds Editor doc anh noi bo ma khong qua WAF/proxy.
+
+**Verification:** PHP lint, `php artisan view:cache`, `npm run build` pass.
+### 2026-09-28 (Fix Bounds Editor doc anh theo public disk cau hinh)
+
+**User report:** Bounds Editor khong hien anh chinh va guide, trong khi nut `Hien bounds` van hoat dong.
+
+**Root cause:** Image preview fallback map `/storage/...` vao `public/storage/...`, nhung XLAP dung `XLAP_PUBLIC_STORAGE_PATH` tro toi storage root rieng. Bounds Editor cung co the bi browser/WAF chan khi doc URL public truc tiep.
+
+**Changed files:** `app/Http/Controllers/ImagePreviewController.php`, `resources/views/livewire/modals/image/review-image.blade.php`.
+
+**Changes:** Controller doc file noi bo qua `Storage::disk('public')->path()`; Bounds Editor source duoc gui qua route `image-preview.show` signed cua XLAP de doc dung public disk va tra bytes anh cho canvas.
+
+**Affected modules:** Glass bounds editor source/guide loading; shared image preview controller.
+
+**Deploy impact:** PHP/Blade deploy only; khong migration/queue.
+
+**Verification:** PHP lint, `php artisan view:cache`, `npm run build` pass; local disk path da xac nhan dung `D:/FFACTORY/XLAP_LOCAL_STORAGE/public`.
+
+**Follow-up:** Deploy ca controller va Blade view, clear/reload PHP opcache neu co, sau do hard-refresh va mo lai Chinh bounds.
+### 2026-09-28 (Bounds Editor dung preview URL dang hien thi)
+
+**User report:** `Bounds failed` du anh van hien binh thuong voi nut `Hien bounds`.
+
+**Root cause:** Bounds Editor uu tien `$original` (raw source URL), trong khi modal hien anh qua `$src` (renderable/preview URL). Raw URL co the bi private/403; guide URL rieng van tai duoc nen `Hien bounds` van hoat dong.
+
+**Changed file:** `resources/views/livewire/modals/image/review-image.blade.php`.
+
+**Changes:** Bounds Editor nay uu tien `$src ?: $original`, sau do normalize va proxy qua XLAP image preview route. Cac luong hien thi anh va save bounds khong doi.
+
+**Verification:** `php artisan view:cache` va `npm run build` pass.
+
+**Follow-up:** Deploy view moi, hard-refresh, mo lai Glass Create Master va thu `Chinh bounds`.
+### 2026-09-28 (Fix production missing sessions table va Bounds testability)
+
+**User report:** Livewire 500 vi production SQLite thieu bang `sessions`; Bounds van bao khong doc anh goc.
+
+**Root cause:** Production dang chay `SESSION_DRIVER=database` tren SQLite nhung migration sessions chua duoc chay. Moi Livewire update bi fail truoc khi xu ly bounds.
+
+**Changed files:** `database/migrations/2026_09_28_000002_create_sessions_table_if_missing.php`, `resources/views/livewire/modals/image/review-image.blade.php`.
+
+**Changes:** Them migration idempotent tao bang sessions neu thieu. Bounds source giu preview/signed URL, khong ky lai URL da qua preview.
+
+**Verification:** PHP lint, `php artisan view:cache`, `npm run build`, `php artisan test tests/Feature/UiComponentTest.php` pass (1 test, 6 assertions).
+
+**Deploy impact:** Can deploy migration va chay `php artisan migrate --force` tren production; khong queue impact.
+
+**Follow-up:** Sau migrate, reload `/offorest/glass`, mo `Chinh bounds`; neu van loi thi xem response cua route `image-preview` va log file storage.
+### 2026-09-28 (Dong bo anh source va guide trong Bounds Editor qua storage noi bo)
+
+**User report:** Muon `Chinh bounds` va `Hien bounds` dung cung co che anh; editor van bao `Bounds failed` du guide hien.
+
+**Root cause:** Anh guide duoc doc tu public disk, nhung anh source cua asset la path storage noi bo; URL browser/raw co the bi 403. Preview controller truoc do chua nhan path storage truc tiep.
+
+**Changed files:** `app/Http/Controllers/ImagePreviewController.php`, `resources/views/livewire/modals/image/review-image.blade.php`, `tests/Feature/ImagePreviewControllerTest.php`.
+
+**Changes:** Them signed preview params `path` cho `/storage/...`, controller map path an toan vao `Storage::disk('public')->path()`, Bounds Editor dung cung route noi bo cho source va guide. Chan path traversal.
+
+**Verification:** `php artisan view:cache`, `npm run build`, `php artisan test tests/Feature/ImagePreviewControllerTest.php` (1 test/3 assertions), `php artisan test tests/Feature/UiComponentTest.php` (1 test/6 assertions) pass.
+
+**Follow-up:** Deploy controller, Blade, test/migration; chay `php artisan migrate --force` cho bang sessions neu production chua co, reload opcache, hard-refresh va thu lai `Chinh bounds`.
+### 2026-09-28 (Dung cung anh hien thi cho Hien bounds va Chinh bounds)
+
+**User request:** Hai chuc nang phai dung cung mot anh.
+
+**Root cause:** `Chinh bounds` tu tao `new Image()` va tai lai URL source rieng, khac voi anh da render trong modal; cac URL nay co the loi/403 trong khi `Hien bounds` van dung anh hien thi.
+
+**Changed file:** `resources/views/livewire/modals/image/review-image.blade.php`.
+
+**Changes:** Bounds Editor nay lay truc tiep `this.$refs.previewImage` (anh dang hien thi), cho doi su kien load neu anh chua san sang, roi phu guide bounds len cung canvas. Khong tai lai source URL lan hai.
+
+**Verification:** `php artisan view:cache`, `npm run build`, `ImagePreviewControllerTest` pass.
+
+**Follow-up:** Deploy view moi va hard-refresh. Mo modal, cho anh hien xong roi bam `Chinh bounds`; anh tren canvas phai trung anh dang xem truoc do.
+### 2026-09-28 (Can chinh Bounds theo ff_mockup_bounds_demo)
+
+**User request:** Dua Bounds Editor ve mo hinh Source -> Transform -> Preview -> Save cua `ff_mockup_bounds_demo.html`.
+
+**Reference behavior:** Fit cover/Reset, zoom quanh tam Template, move step, nut mui ten, drag, wheel zoom, transform box va Save dung cung transform.
+
+**Changed file:** `resources/views/livewire/modals/image/review-image.blade.php`.
+
+**Changes:** Them `boundsStep`, `fitBounds()` va nut Fit cover/Reset, thanh chinh buoc di chuyen, 4 nut mui ten; giu drag/wheel/keyboard, guide opacity, canvas mask va save PNG hien co.
+
+**Affected modules:** Glass Bounds Editor controls and preview only.
+
+**Verification:** `php artisan view:cache`, `npm run build`, `ImagePreviewControllerTest` pass.
+
+**Follow-up:** Deploy view moi, hard-refresh, mo Chinh bounds; dung Fit cover de reset, keo/wheel de can, sau do Save Bounds.
+### 2026-09-28 (Rollback giao dien demo Bounds)
+
+**User request:** Bo cac thay doi giao dien/control them theo `ff_mockup_bounds_demo.html`.
+
+**Changed file:** `resources/views/livewire/modals/image/review-image.blade.php`.
+
+**Rollback:** Xoa Fit cover, Reset, Move step, cac nut mui ten va state/ham `fitBounds`; tra buoc move ve 1px nhu truoc. Giu nguyen logic tai anh chung, preview signed, guide opacity, drag/wheel/keyboard va Save Bounds.
+
+**Verification:** `php artisan view:cache` va `npm run build` pass.
+### 2026-09-28 (Fix Bounds Editor race khi preview image chua san sang)
+
+**User report:** Canvas Bounds hien trang va khong dung duoc sau khi bam Chinh bounds.
+
+**Root cause:** Editor lay `this.$refs.previewImage` dung luc DOM image chua co `naturalWidth`; canvas khoi tao voi image chua load nen khong ve duoc.
+
+**Changed file:** `resources/views/livewire/modals/image/review-image.blade.php`.
+
+**Changes:** `initBoundsEditor()` nay nhan image da load neu co; neu chua san sang, tao lai mot `Image` tu `currentSrc/src` cua chinh preview dang hien thi, cho load xong moi tinh scale/offset va draw canvas. Khong quay lai `$original` khac nguon.
+
+**Verification:** `php artisan view:cache`, `npm run build`, `ImagePreviewControllerTest` pass.
+
+**Follow-up:** Deploy view moi, hard-refresh, doi anh Master hien day du roi bam Chinh bounds; canvas phai hien anh cung nguon voi preview.
+### 2026-09-29 (Khoi phuc luong Bounds Editor on dinh khoang 15h 28/9)
+
+**User report:** Ban hien tai khong dung duoc, trong khi ban khoang 15h ngay 28/9 hoat dong tot.
+
+**Root cause:** Cac ban sau doi Bounds Editor tu tai `$original` sang lay lai `previewImage`/preview URL, lam thay doi luong canvas dang hoat dong va phu thuoc race/CORS.
+
+**Changed file:** `resources/views/livewire/modals/image/review-image.blade.php`.
+
+**Changes:** Khoi phuc pattern on dinh: `new Image()` tai `$original ?: $src` (signed internal URL khi can), `crossOrigin=anonymous`, doi `onload`, tinh fit scale/offset va draw canvas sau khi load. Guide van phu len cung canvas, transform/export giu nguyen.
+
+**Verification:** `php artisan view:cache`, `npm run build`, `ImagePreviewControllerTest` pass.
+
+**Follow-up:** Deploy view moi, hard-refresh va test Glass Create Master; neu production van loi thi xem message Bounds failed va response signed preview, khong tiep tuc doi nguon anh trong JS.
+### 2026-09-29 (Sua Bounds uu tien anh goc va fallback preview)
+
+**Root cause:** Bounds Editor dang uu tien `$src`, co the la URL preview/proxy bi tu choi hoac chua san sang, trong khi `$original` la anh goc ma luong Hien bounds dung duoc.
+
+**Changed files:** `resources/views/livewire/modals/image/review-image.blade.php`.
+
+**Changes:** Uu tien `$original`, proxy anh storage qua signed `image-preview`, giu `$src` lam fallback khi tai anh goc that bai; van giu retry, CORS va canvas transform hien co.
+
+**Affected modules:** Glass Review Image Bounds Editor.
+
+**Verification:** `php artisan view:cache`, `npm run build`, `php artisan test tests/Feature/ImagePreviewControllerTest.php` pass.
+
+**Deploy impact:** Can deploy view/controller/route changes va hard-refresh browser. Neu production con loi session, chay `php artisan migrate --force` de tao bang `sessions`.
+
+**Queue impact:** Khong thay doi queue/worker.
+
+**Follow-up:** Kiem tra thuc te tren production voi asset Glass; neu con blank thi kiem tra response HTTP cua signed `image-preview`.
+### 2026-09-29 (Hien bounds mau ngay khi mo editor)
+
+**Root cause:** Canvas editor hien nen den/trang khi ca anh nguon va guide dang cho tai; guide chi duoc ve sau khi anh nguon load thanh cong nen trang thai trung gian khong ro rang.
+
+**Changed file:** `resources/views/livewire/modals/image/review-image.blade.php`.
+
+**Changes:** Tai guide mau song song ngay khi mo editor, ve guide/fallback geometry truoc anh nguon; them loading overlay va khong dong editor khi source loi de guide van hien. Chi ve transform box khi source da san sang.
+
+**Affected module:** Glass Bounds Editor.
+
+**Verification:** `php artisan view:cache`, `npm run build`, `php artisan test tests/Feature/ImagePreviewControllerTest.php`, `git diff --check` pass.
+
+**Deploy impact:** Deploy Blade moi va hard-refresh browser. Queue khong thay doi.
+### 2026-09-29 (Fix canvas Bounds trong khi Alpine chua layout xong)
+
+**Root cause:** `drawBoundsCanvas()` co the chay ngay trong cung frame khi canvas vua hien qua `x-show`; kich thuoc/ve lai chua on dinh, nen canvas mau den trong anh chup du guide da tai. Khong co nen guide ben duoi de phan biet trang thai render.
+
+**Changed file:** `resources/views/livewire/modals/image/review-image.blade.php`.
+
+**Changes:** Doi init va draw sang `requestAnimationFrame`, ve lai them mot frame sau khi anh nguon load; them nen mau bounds mau ben duoi canvas va giu guide mau song song. Canvas khong con phu thuoc hoan toan vao mot lan ve duy nhat.
+
+**Verification:** `php artisan view:cache`, `npm run build`, `php artisan test tests/Feature/ImagePreviewControllerTest.php`, `git diff --check` pass.
+
+**Deploy impact:** Deploy Blade/CSS moi va hard-refresh. Queue khong thay doi.
+### 2026-09-29 (Giam guide de hien anh master trong Bounds Editor)
+
+**User report:** Canvas chi thay mau cua bounds mau, khong thay anh master.
+
+**Root cause:** Guide duoc ve sau anh master voi alpha 45%, nen mau do/xanh cua guide che gan het anh master; file master bounds thuc te van la anh tron dung.
+
+**Changed file:** `resources/views/livewire/modals/image/review-image.blade.php`.
+
+**Changes:** Giam opacity mac dinh guide xuong 18%, gioi han alpha ve 35% va dung blend `multiply` de giu anh master nhin thay duoi bounds mau.
+
+**Verification:** `php artisan view:cache`, `npm run build`, `php artisan test tests/Feature/ImagePreviewControllerTest.php`, `git diff --check` pass.
+
+**Deploy impact:** Deploy Blade moi va hard-refresh. Queue khong thay doi.
+### 2026-09-29 (Dong bo Chinh bounds voi Hien bounds)
+
+**User report:** Chinh bounds phai hien cung bounds mau va anh master nhu Hien bounds, sau do luu thanh anh moi.
+
+**Root cause:** Editor ve guide mau truc tiep tren canvas sau anh master, khac voi Hien bounds la mot lop image overlay doc lap; guide co the che anh master va tao cam giac khong hien anh.
+
+**Changed file:** `resources/views/livewire/modals/image/review-image.blade.php`.
+
+**Changes:** Dua guide mau thanh lop overlay DOM cung cach voi Product Design Card, canvas chi ve anh master va geometry; giam opacity/mix-blend de master luon thay duoc.
+
+**Verification:** `php artisan view:cache`, `npm run build`, `php artisan test tests/Feature/ImagePreviewControllerTest.php`, `git diff --check` pass.
+
+**Deploy impact:** Deploy Blade moi va hard-refresh. Queue khong thay doi.
+### 2026-09-29 (Dung lai anh preview dang hien cho Bounds Editor)
+
+**User report:** Chieu dung duoc nhung sau do editor lai den/trang, khong hien master.
+
+**Root cause:** Editor tao mot `Image` moi va phu thuoc request signed co the race/bi cache/WAF fail, trong khi anh master dang hien tren modal da tai san. Vi vay canvas khong co source de ve.
+
+**Changed file:** `resources/views/livewire/modals/image/review-image.blade.php`.
+
+**Changes:** `initBoundsEditor()` uu tien dung truc tiep `previewImage` dang hien neu `naturalWidth/naturalHeight` san sang; chi fallback sang signed source khi preview chua tai. Giữ guide overlay va cac thao tac bounds.
+
+**Verification:** `php artisan view:cache`, `npm run build`, `php artisan test tests/Feature/ImagePreviewControllerTest.php`, `git diff --check` pass.
+
+**Deploy impact:** Deploy Blade moi va hard-refresh. Queue khong thay doi.
+### 2026-09-29 (Fix 403 image-preview va null bounds config)
+
+**User report:** Production console ghi 403 cho storage bounds/master va JS `Cannot read properties of null (reading x)`.
+
+**Root cause:** Signed URL cho local path bi production proxy rewrite/tu choi; config bounds co the ton tai nhung `target`/`safezone` null, lam canvas crash.
+
+**Changed files:** `routes/web.php`, `app/Http/Controllers/ImagePreviewController.php`, `app/Services/Image/ImageLinkPreviewService.php`, `resources/views/livewire/modals/image/review-image.blade.php`.
+
+**Changes:** Local `/storage/...` preview duoc phuc vu qua endpoint khong can session/signature, van giu signature bat buoc cho URL remote; storage preview service tao URL noi bo signed/path thay vi URL storage truc tiep; JS co fallback target/safezone khi null.
+
+**Verification:** `php artisan view:cache`, `npm run build`, `php artisan test tests/Feature/ImagePreviewControllerTest.php`, PHP lint controller, `git diff --check` pass.
+
+**Deploy impact:** Deploy routes/controller/service/view va clear route/config cache neu co. Queue khong thay doi.
+### 2026-09-29 (Doi nen Bounds Editor ve mot mau trang)
+
+**User report:** Khi giam opacity bounds, vung sau anh hien hai mau.
+
+**Root cause:** Stage cua editor dung nen slate dam, trong khi canvas/anh trong suot lo nen phia duoi, tao hai mau.
+
+**Changed file:** `resources/views/livewire/modals/image/review-image.blade.php`.
+
+**Changes:** Doi `boundsStage` sang nen trang duy nhat, giu nguyen guide upload va anh master.
+
+**Verification:** `php artisan view:cache`, `npm run build`, `git diff --check` pass.
