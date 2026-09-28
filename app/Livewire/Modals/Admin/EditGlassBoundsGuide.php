@@ -105,7 +105,13 @@ class EditGlassBoundsGuide extends Component
             return null;
         }
 
-        return $disk->url($path).'?v='.((string) $disk->lastModified($path));
+        // Build from the current request so production HTTPS does not inherit a stale APP_URL scheme.
+        $baseUrl = request()->getSchemeAndHttpHost();
+        $url = $baseUrl !== ''
+            ? rtrim($baseUrl, '/').'/storage/'.ltrim($path, '/')
+            : $disk->url($path);
+
+        return $url.'?v='.((string) $disk->lastModified($path));
     }
 
     private function guideConfig(): ?array

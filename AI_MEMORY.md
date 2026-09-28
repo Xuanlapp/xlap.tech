@@ -11085,3 +11085,35 @@ Follow-up notes: From page 3, search a value with one result page and confirm it
 **Changes:** Them dark variants cho nen, border, icon va hover cua hai nut `previous`/`next`, giu nguyen kich thuoc, vi tri va Livewire actions.
 
 **Verification:** `npm run build` va `php artisan view:cache` pass.
+### 2026-09-28 (Fix production Glass bounds image URL)
+
+**User report:** Bounds guide loads locally but shows broken-image icon on the website.
+
+**Root cause:** The public disk URL is based on `APP_URL`; when production has a stale/non-HTTPS URL, browsers can block the resulting image as mixed content even though `https://xlap.com.vn/storage/admin/glass/bounds-guide.png` returns `200 image/png`.
+
+**Changed files:** `app/Livewire/Modals/Admin/EditGlassBoundsGuide.php`, `app/Livewire/Pages/Glass/ProductDesignCard.php`, `app/Livewire/Modals/Image/ReviewImage.php`.
+
+**Changes:** Glass bounds URLs now use the active request's scheme and host, then preserve the cache-busting version. This keeps production image requests on the same HTTPS origin; local operation is unchanged.
+
+**Affected modules:** Admin Glass bounds guide modal, Create Master overlay, and bounds editor.
+
+**Deploy impact:** PHP/Blade deploy only; no migration or queue impact. Production needs the updated PHP code and regular app/cache refresh.
+
+**Verification:** Confirmed the production bounds PNG endpoint returns `200 image/png`; PHP lint, `php artisan view:cache`, and `npm run build` pass.
+### 2026-09-28 (Dong bo dark mode cho cac trang ngoai Glass)
+
+**User report:** Chuyen dark mode tren cac trang khac van bi cac khoi/nut sang giong loi truoc cua Glass.
+
+**Root cause:** Nhieu view cu dung cac class `bg-white/*`, `bg-gray-*`, `bg-slate-*` va `text-gray-*` ma khong co dark variants; cac quy tac dark cu chi xu ly mot so mau opaque.
+
+**Changed file:** `resources/css/app.css`.
+
+**Changes:** Them lop tuong thich dark dung chung cho cac surface translucent mau sang, mau chu gray va placeholder. Lop nay ap dung cho product pages va modals cu, trong khi cac hook chuyen biet nhu Glass o cuoi stylesheet van giu uu tien.
+
+**Affected modules:** Sticker, Decal, Suncatcher, Ornament, Admin va cac modal dung shared utility classes.
+
+**Deploy impact:** CSS asset only; can deploy lai Vite build. Queue/migration khong doi.
+
+**Verification:** `npm run build`, `php artisan view:cache`, `git diff --check` pass. Chua co authenticated screenshots cho tung route production.
+
+**Follow-up:** Deploy asset moi, hard-refresh, kiem tra cac trang va bao ten route nao con surface sang de bo sung hook rieng neu can.

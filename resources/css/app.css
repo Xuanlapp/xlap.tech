@@ -84,6 +84,15 @@ html.theme-dark .bg-slate-100 {
     background-color: rgba(15, 23, 42, 0.86) !important;
 }
 
+/* Normalize translucent light surfaces used by older product pages and modals. */
+html.theme-dark [class*="bg-white/"],
+html.theme-dark [class*="bg-gray-50/"],
+html.theme-dark [class*="bg-gray-100/"],
+html.theme-dark [class*="bg-slate-50/"],
+html.theme-dark [class*="bg-slate-100/"] {
+    background-color: rgba(15, 23, 42, 0.86) !important;
+}
+
 html.theme-dark .bg-gradient-to-br.from-white,
 html.theme-dark .from-white,
 html.theme-dark .to-white {
@@ -113,6 +122,19 @@ html.theme-dark .text-slate-500,
 html.theme-dark .text-slate-400,
 html.theme-dark .text-slate-300 {
     color: #aebbd0 !important;
+}
+
+html.theme-dark .text-gray-900,
+html.theme-dark .text-gray-800,
+html.theme-dark .text-gray-700,
+html.theme-dark .text-gray-600,
+html.theme-dark .text-gray-500 {
+    color: #e2e8f0 !important;
+}
+
+html.theme-dark .placeholder-gray-400::placeholder,
+html.theme-dark .placeholder-slate-400::placeholder {
+    color: #94a3b8 !important;
 }
 
 html.theme-dark select,

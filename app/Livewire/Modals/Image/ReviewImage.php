@@ -671,9 +671,15 @@ class ReviewImage extends Component
     {
         $path = 'admin/glass/bounds-guide.png';
         $disk = Storage::disk('public');
-        $this->glassBoundsGuideUrl = $disk->exists($path)
-            ? $disk->url($path).'?v='.((string) $disk->lastModified($path))
-            : null;
+        if ($disk->exists($path)) {
+            $baseUrl = request()->getSchemeAndHttpHost();
+            $url = $baseUrl !== ''
+                ? rtrim($baseUrl, '/').'/storage/'.ltrim($path, '/')
+                : $disk->url($path);
+            $this->glassBoundsGuideUrl = $url.'?v='.((string) $disk->lastModified($path));
+        } else {
+            $this->glassBoundsGuideUrl = null;
+        }
         try {
             $config = app(GlassBoundsGuideAnalyzer::class)->loadOrCreate($disk);
         } catch (InvalidArgumentException $exception) {

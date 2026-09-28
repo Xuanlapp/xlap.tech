@@ -183,9 +183,16 @@ class ProductDesignCard extends Component
         $disk = Storage::disk('public');
         $path = 'admin/glass/bounds-guide.png';
 
-        return $disk->exists($path)
-            ? $disk->url($path).'?v='.((string) $disk->lastModified($path))
-            : null;
+        if (! $disk->exists($path)) {
+            return null;
+        }
+
+        $baseUrl = request()->getSchemeAndHttpHost();
+        $url = $baseUrl !== ''
+            ? rtrim($baseUrl, '/').'/storage/'.ltrim($path, '/')
+            : $disk->url($path);
+
+        return $url.'?v='.((string) $disk->lastModified($path));
     }
 
     private function appendPreviewUrls(ProductDesignAsset $asset, ?string $mockupPreviewVersion = null): void
