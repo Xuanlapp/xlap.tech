@@ -84,6 +84,7 @@ class ListSticker extends Component
     public function updatedSearch(string $search): void
     {
         $this->search = trim($search);
+        $this->dispatch('sticker-search-updated')->to(StickerStatusPanel::class);
     }
 
     public function render(): View

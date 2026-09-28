@@ -10,6 +10,7 @@ use App\Services\Glass\PsdMockupTemplateService;
 use App\Services\Glass\GlassService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Reactive;
 use Livewire\Component;
@@ -103,6 +104,37 @@ class ProductDesignCard extends Component
         }
     }
 
+    public bool $showClearMockupsConfirmation = false;
+
+    public function requestClearPsdMockups(): void
+    {
+        $this->showClearMockupsConfirmation = true;
+    }
+
+    public function cancelClearPsdMockups(): void
+    {
+        $this->showClearMockupsConfirmation = false;
+    }
+
+    public function clearPsdMockups(): void
+    {
+        try {
+            $asset = app(GlassService::class)->clearPsdMockups(auth()->user(), $this->assetId);
+            app(ActivityLogService::class)->record(
+                event: 'glass.psd_mockups_cleared',
+                description: 'User deleted all generated Glass PSD mockups.',
+                subject: $asset,
+                properties: ['item_number' => $asset->item_number],
+            );
+            $this->showClearMockupsConfirmation = false;
+            $this->dispatch('glass-product-design-updated')->to(ListGlass::class);
+            $this->dispatch('glass-product-design-workflow-updated')->to(ListGlass::class);
+            $this->dispatch('toast', type: 'success', title: 'Mockups deleted', message: 'Da xoa toan bo mockup cua item nay.');
+        } catch (RuntimeException $exception) {
+            $this->reportUserActionError($exception, 'glass.clear_psd_mockups', ['asset_id' => $this->assetId]);
+            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
+        }
+    }
     public function toggleApproval(): void
     {
         try {
@@ -142,7 +174,18 @@ class ProductDesignCard extends Component
         return view('livewire.pages.glass.product-design-card', [
             'asset' => $asset,
             'localMockupJob' => $localMockupJob,
+            'glassBoundsGuideUrl' => $this->glassBoundsGuideUrl(),
         ]);
+    }
+
+    private function glassBoundsGuideUrl(): ?string
+    {
+        $disk = Storage::disk('public');
+        $path = 'admin/glass/bounds-guide.png';
+
+        return $disk->exists($path)
+            ? $disk->url($path).'?v='.((string) $disk->lastModified($path))
+            : null;
     }
 
     private function appendPreviewUrls(ProductDesignAsset $asset, ?string $mockupPreviewVersion = null): void

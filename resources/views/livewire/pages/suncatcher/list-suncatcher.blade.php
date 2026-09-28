@@ -244,6 +244,7 @@
     <livewire:modals.suncatcher.edit-import-sheet />
     <livewire:modals.suncatcher.edit-product-detail />
     <livewire:modals.suncatcher.psd-mockup-template />
+    <livewire:modals.product.edit-keyword />
     <livewire:modals.product-design.delete-idea-confirm />
     <livewire:modals.prompt.detail-prompt />
     <livewire:modals.ai.change-v98-store-key function-key="suncatcher" />

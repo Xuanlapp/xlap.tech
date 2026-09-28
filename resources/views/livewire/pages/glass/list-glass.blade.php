@@ -233,6 +233,7 @@
     <livewire:modals.glass.edit-product-detail />
     <livewire:modals.glass.psd-mockup-template />
     <livewire:modals.glass.excel-import-glass />
+    <livewire:modals.product.edit-keyword />
     <livewire:modals.product-design.delete-idea-confirm />
     <livewire:modals.prompt.detail-prompt />
     <livewire:modals.ai.change-v98-store-key function-key="glass" />

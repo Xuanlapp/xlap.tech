@@ -162,6 +162,7 @@
     <livewire:modals.ornament-etsy.add-product-design />
     <livewire:modals.ornament-etsy.edit-product-detail />
     <livewire:modals.ornament-etsy.psd-mockup-template />
+    <livewire:modals.product.edit-keyword />
     <livewire:modals.product-design.delete-idea-confirm />
     <livewire:modals.prompt.detail-prompt />
     <livewire:modals.ai.change-v98-store-key function-key="ornament-etsy" />

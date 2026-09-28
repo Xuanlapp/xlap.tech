@@ -1,10 +1,10 @@
 <article @if(in_array($localMockupJob?->status, ['waiting', 'processing'], true) || ($localMockupJob?->status === 'completed' && $localMockupJob->completed_at?->gte(now()->subMinute()))) wire:poll.3s @endif class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/[0.02]">
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div class="flex min-w-0 flex-1 flex-wrap items-center gap-3">
-            <span class="inline-flex h-8 shrink-0 items-center rounded-lg bg-indigo-50 px-3 text-xs font-bold text-indigo-600">
+            <span class="inline-flex h-8 shrink-0 items-center rounded-lg bg-indigo-50 px-3 text-xs font-bold text-gray-600">
                 STT: {{ $asset->item_number }}
             </span>
-            <span class="inline-flex h-8 shrink-0 items-center rounded-lg bg-slate-100 px-3 text-xs font-bold text-slate-600">
+            <span class="inline-flex h-8 shrink-0 items-center rounded-lg bg-indigo-50 px-3 text-xs font-bold text-indigo-600">
                 SKU: {{ $asset->sku ?: '-' }}
             </span>
 
@@ -12,15 +12,15 @@
                 {{ $asset->keyword ?: 'Sticker item' }}
             </h2>
 
-            @if (! $asset->is_approved && ! $asset->redesign)
+            @if (! $asset->is_approved)
                 <x-button
                     color="slate"
                     variant="ghost"
                     size="xs"
                     type="button"
-                    wire:click="$dispatch('openModal', { component: 'modals.sticker.edit-product-detail', arguments: { assetId: {{ $asset->id }} } })"
+                    wire:click="$dispatch('openModal', { component: 'modals.product.edit-keyword', arguments: { assetId: {{ $asset->id }}, productSlug: 'sticker' } })"
                 >
-                    Edit item
+                    Edit
                 </x-button>
             @endif
 
@@ -148,7 +148,7 @@
 
         <div class="min-w-0 {{ $asset->redesign ? '' : 'opacity-55' }}">
             <div class="mb-2 flex h-5 items-center justify-between gap-2">
-                <x-label class="truncate text-xs font-bold uppercase text-orange-600">3. Mockup Tu Chon</x-label>
+                <x-label class="truncate text-xs font-bold uppercase text-indigo-600">3. Mockup Tu Chon</x-label>
                 @if ($asset->redesign && ! $asset->is_approved && ! in_array($localMockupJob?->status, ['waiting', 'processing'], true))
                     <button
                         type="button"
@@ -156,7 +156,7 @@
                         wire:click="generatePsdMockups"
                         wire:loading.attr="disabled"
                         wire:target="generatePsdMockups"
-                        class="shrink-0 text-xs font-semibold text-orange-600 hover:text-orange-700 disabled:opacity-60"
+                        class="shrink-0 text-xs font-semibold text-indigo-600 hover:text-indigo-700 disabled:opacity-60"
                     >
                         <span wire:loading.remove wire:target="generatePsdMockups">Generate</span>
                         <span wire:loading wire:target="generatePsdMockups">Generating...</span>
@@ -219,7 +219,7 @@
                                     <button
                                         type="button"
                                         wire:click="$dispatch('review-image', { src: @js($mockup['src']), original: @js($mockup['original']), title: @js('MOCKUP '.$mockup['slot']), gallery: @js($psdMockupGallery), currentIndex: {{ $loop->index }}, productSlug: 'sticker', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
-                                        class="aspect-[4/3] overflow-hidden rounded-lg border border-slate-100 bg-slate-50 shadow-sm transition hover:border-orange-300 hover:ring-2 hover:ring-orange-100"
+                                        class="aspect-[4/3] overflow-hidden rounded-lg border border-slate-100 bg-slate-50 shadow-sm transition hover:border-indigo-300 hover:ring-2 hover:ring-indigo-100"
                                     >
                                         <img wire:key="sticker-mockup-{{ $asset->id }}-{{ $mockup['slot'] }}-{{ md5($mockup['src']) }}" src="{{ $mockup['src'] }}" alt="MOCKUP {{ $mockup['slot'] }}" loading="lazy" decoding="async" fetchpriority="low" class="h-full w-full object-cover">
                                     </button>
@@ -242,7 +242,7 @@
                     <button
                         type="button"
                         wire:click="$dispatch('openModal', { component: 'modals.sticker.psd-mockup-template' })"
-                        class="shrink-0 font-semibold text-orange-600 hover:text-orange-700"
+                        class="shrink-0 font-semibold text-indigo-600 hover:text-indigo-700"
                     >
                         Chon PSD
                     </button>

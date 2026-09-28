@@ -137,6 +137,10 @@ class EditImportTemplate extends Component
                 'label' => 'Sticker template',
                 'filename' => 'sticker-import-template.xlsx',
             ],
+            'decal' => [
+                'label' => 'Decal template',
+                'filename' => 'decal-import-template.xlsx',
+            ],
             'glass' => [
                 'label' => 'Glass template',
                 'filename' => 'glass-import-template.xlsx',

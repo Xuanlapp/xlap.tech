@@ -9,6 +9,8 @@ use App\Livewire\Pages\OrnamentEtsy\ListOrnamentEtsy;
 use App\Livewire\Pages\OrnamentEtsy\OrnamentEtsyStatusPanel;
 use App\Livewire\Pages\Sticker\ListSticker;
 use App\Livewire\Pages\Sticker\StickerStatusPanel;
+use App\Livewire\Pages\Decal\ListDecal;
+use App\Livewire\Pages\Decal\DecalStatusPanel;
 use App\Livewire\Pages\Glass\ListGlass;
 use App\Livewire\Pages\Glass\GlassStatusPanel;
 use App\Models\DataOrnamentAmazon;
@@ -18,9 +20,12 @@ use App\Services\Logging\ActivityLogService;
 use App\Services\OrnamentAmazonTwo\OrnamentAmazonTwoService;
 use App\Services\OrnamentEtsy\OrnamentEtsyService;
 use App\Services\Sticker\StickerService;
+use App\Services\Decal\DecalService;
 use App\Services\Glass\GlassService;
+use App\Services\Glass\GlassBoundsGuideAnalyzer;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -82,6 +87,10 @@ class ReviewImage extends Component
      * @var array<int, array{label: string, value: string}>
      */
     public array $sourceListingFields = [];
+
+    public ?string $glassBoundsGuideUrl = null;
+
+    public array $glassBoundsConfig = [];
 
     #[On('review-image')]
     public function open(
@@ -368,14 +377,15 @@ class ReviewImage extends Component
 
     public function selectAsStickerRedesign(): void
     {
-        if ($this->action !== 'sticker-redesign' || ! $this->assetId || ! $this->original) {
+        if (! in_array($this->action, ['sticker-redesign', 'decal-redesign'], true) || ! $this->assetId || ! $this->original) {
             return;
         }
 
         try {
-            app(StickerService::class)->selectRedesign(auth()->user(), $this->assetId, $this->original);
+            ($this->action === 'decal-redesign' ? app(DecalService::class) : app(StickerService::class))
+                ->selectRedesign(auth()->user(), $this->assetId, $this->original);
         } catch (RuntimeException $exception) {
-            $this->reportUserActionError($exception, 'sticker.select_redesign', [
+            $this->reportUserActionError($exception, $this->action === 'decal-redesign' ? 'decal.select_redesign' : 'sticker.select_redesign', [
                 'asset_id' => $this->assetId,
                 'original' => $this->original,
             ]);
@@ -384,8 +394,9 @@ class ReviewImage extends Component
             return;
         }
 
-        $this->dispatch('sticker-product-design-workflow-updated')->to(ListSticker::class);
-        $this->dispatch('sticker-product-design-workflow-updated')->to(StickerStatusPanel::class);
+        $event = $this->action === 'decal-redesign' ? 'decal-product-design-workflow-updated' : 'sticker-product-design-workflow-updated';
+        $this->dispatch($event)->to($this->action === 'decal-redesign' ? ListDecal::class : ListSticker::class);
+        $this->dispatch($event)->to($this->action === 'decal-redesign' ? DecalStatusPanel::class : StickerStatusPanel::class);
         $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da chon lai anh Create Master.');
         $this->close();
     }
@@ -491,11 +502,11 @@ class ReviewImage extends Component
 
     public function createStickerItemFromImage(): void
     {
-        if ($this->action !== 'sticker-redesign' || ! $this->original) {
+        if (! in_array($this->action, ['sticker-redesign', 'decal-redesign'], true) || ! $this->original) {
             return;
         }
 
-        $this->dispatch('openModal', component: 'modals.sticker.add-product-design', arguments: [
+        $this->dispatch('openModal', component: $this->action === 'decal-redesign' ? 'modals.decal.add-product-design' : 'modals.sticker.add-product-design', arguments: [
             'keyword' => $this->keyword ?: '',
             'imageLink' => $this->original,
             'sourceAssetId' => $this->assetId,
@@ -521,25 +532,25 @@ class ReviewImage extends Component
 
     public function customizeStickerRedesign(): void
     {
-        if ($this->action !== 'sticker-redesign' || ! $this->assetId || ! $this->original) {
+        if (! in_array($this->action, ['sticker-redesign', 'decal-redesign'], true) || ! $this->assetId || ! $this->original) {
             return;
         }
 
         try {
-            $asset = app(StickerService::class)->customizeRedesign(
+            $asset = ($this->action === 'decal-redesign' ? app(DecalService::class) : app(StickerService::class))->customizeRedesign(
                 auth()->user(),
                 $this->assetId,
                 $this->original,
                 $this->customPrompt,
             );
             app(ActivityLogService::class)->record(
-                event: 'sticker.master_customized',
-                description: 'User customized Sticker master image from preview.',
+                event: $this->action === 'decal-redesign' ? 'decal.master_customized' : 'sticker.master_customized',
+                description: $this->action === 'decal-redesign' ? 'User customized Decal master image from preview.' : 'User customized Sticker master image from preview.',
                 subject: $asset,
                 properties: ['item_number' => $asset->item_number, 'redesign' => $asset->redesign],
             );
         } catch (InvalidArgumentException|RuntimeException $exception) {
-            $this->reportUserActionError($exception, 'sticker.customize_redesign', [
+            $this->reportUserActionError($exception, $this->action === 'decal-redesign' ? 'decal.customize_redesign' : 'sticker.customize_redesign', [
                 'asset_id' => $this->assetId,
                 'original' => $this->original,
                 'custom_prompt' => $this->customPrompt,
@@ -548,7 +559,7 @@ class ReviewImage extends Component
 
             return;
         } catch (Throwable $exception) {
-            $this->reportUserActionError($exception, 'sticker.customize_redesign', [
+            $this->reportUserActionError($exception, $this->action === 'decal-redesign' ? 'decal.customize_redesign' : 'sticker.customize_redesign', [
                 'asset_id' => $this->assetId,
                 'original' => $this->original,
                 'custom_prompt' => $this->customPrompt,
@@ -574,8 +585,9 @@ class ReviewImage extends Component
         $this->customPrompt = '';
         $this->setCurrentFromGallery();
 
-        $this->dispatch('sticker-product-design-workflow-updated')->to(ListSticker::class);
-        $this->dispatch('sticker-product-design-workflow-updated')->to(StickerStatusPanel::class);
+        $event = $this->action === 'decal-redesign' ? 'decal-product-design-workflow-updated' : 'sticker-product-design-workflow-updated';
+        $this->dispatch($event)->to($this->action === 'decal-redesign' ? ListDecal::class : ListSticker::class);
+        $this->dispatch($event)->to($this->action === 'decal-redesign' ? DecalStatusPanel::class : StickerStatusPanel::class);
         $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da custom anh so 2.');
     }
 
@@ -615,8 +627,61 @@ class ReviewImage extends Component
         $this->title = 'Review image';
     }
 
+    public function saveGlassBounds(string $dataUrl): void
+    {
+        if ($this->productSlug !== 'glass' || $this->action !== 'glass-redesign' || ! $this->assetId) {
+            return;
+        }
+
+        if (! preg_match('#^data:image/png;base64,(?<payload>[A-Za-z0-9+/=\r\n]+)$#', $dataUrl, $matches)) {
+            $this->dispatch('toast', type: 'error', title: 'Save failed', message: 'Du lieu anh bounds PNG khong hop le.');
+            return;
+        }
+
+        $pngBytes = base64_decode($matches['payload'], true);
+        if (! is_string($pngBytes)) {
+            $this->dispatch('toast', type: 'error', title: 'Save failed', message: 'Khong doc duoc anh bounds.');
+            return;
+        }
+
+        try {
+            $asRedesign = true;
+            $asset = app(GlassService::class)->saveBoundedImage(auth()->user(), $this->assetId, $pngBytes, $asRedesign);
+            app(ActivityLogService::class)->record(
+                event: 'glass.source_bounds_saved',
+                description: 'User saved a Glass image with updated bounds from the bounds editor.',
+                subject: $asset,
+                properties: ['width_bytes' => strlen($pngBytes), 'target' => $asRedesign ? 'redesign' : 'image_link', 'image_link' => $asset->image_link, 'redesign' => $asset->redesign],
+            );
+            $this->dispatch('glass-product-design-updated')->to(ListGlass::class);
+            $this->dispatch('glass-product-design-updated')->to(GlassStatusPanel::class);
+            $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da luu anh Glass theo bounds moi.');
+            $this->close();
+        } catch (InvalidArgumentException|RuntimeException $exception) {
+            $this->reportUserActionError($exception, 'glass.save_source_bounds', ['asset_id' => $this->assetId]);
+            $this->dispatch('toast', type: 'error', title: 'Save failed', message: $exception->getMessage());
+        } catch (Throwable $exception) {
+            $this->reportUserActionError($exception, 'glass.save_source_bounds', ['asset_id' => $this->assetId]);
+            Log::error('Glass bounds save failed unexpectedly.', ['asset_id' => $this->assetId, 'message' => $exception->getMessage()]);
+            $this->dispatch('toast', type: 'error', title: 'Save failed', message: 'Loi he thong khi luu anh bounds.');
+        }
+    }
+
     public function render(): View
     {
+        $path = 'admin/glass/bounds-guide.png';
+        $disk = Storage::disk('public');
+        $this->glassBoundsGuideUrl = $disk->exists($path)
+            ? $disk->url($path).'?v='.((string) $disk->lastModified($path))
+            : null;
+        try {
+            $config = app(GlassBoundsGuideAnalyzer::class)->loadOrCreate($disk);
+        } catch (InvalidArgumentException $exception) {
+            Log::warning('Glass bounds guide analysis failed.', ['message' => $exception->getMessage()]);
+            $config = null;
+        }
+        $this->glassBoundsConfig = is_array($config) ? $config : [];
+
         return view('livewire.modals.image.review-image');
     }
 

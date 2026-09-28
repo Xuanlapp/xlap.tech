@@ -2,6 +2,67 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+    color-scheme: light;
+    --app-bg: #f5f7fb;
+    --app-panel: #ffffff;
+    --app-panel-muted: #f8fafc;
+    --app-border: #e2e8f0;
+    --app-text: #0f172a;
+    --app-muted: #64748b;
+    --app-accent: #2563eb;
+}
+
+html.theme-dark {
+    color-scheme: dark;
+    --app-bg: #0b1220;
+    --app-panel: #111c2e;
+    --app-panel-muted: #162338;
+    --app-border: rgba(148, 163, 184, 0.2);
+    --app-text: #f8fafc;
+    --app-muted: #aebbd0;
+    --app-accent: #60a5fa;
+}
+
+html,
+body,
+.app-shell {
+    background: var(--app-bg);
+    color: var(--app-text);
+    transition: background-color 160ms ease, color 160ms ease;
+}
+
+html.theme-light .app-shell,
+html.theme-light .app-main {
+    background: var(--app-bg) !important;
+}
+
+html.theme-dark .bg-indigo-50,
+html.theme-dark .bg-violet-50,
+html.theme-dark .bg-cyan-50,
+html.theme-dark .bg-sky-50,
+html.theme-dark .bg-purple-50 {
+    background-color: rgba(59, 130, 246, 0.16) !important;
+}
+
+html.theme-dark .text-indigo-600,
+html.theme-dark .text-violet-600,
+html.theme-dark .text-cyan-600,
+html.theme-dark .text-sky-600,
+html.theme-dark .text-purple-600 {
+    color: #93c5fd !important;
+}
+
+html.theme-dark .border-indigo-100,
+html.theme-dark .border-indigo-200,
+html.theme-dark .border-violet-100,
+html.theme-dark .border-cyan-100,
+html.theme-dark .border-cyan-200,
+html.theme-dark .border-sky-100,
+html.theme-dark .border-purple-100 {
+    border-color: rgba(96, 165, 250, 0.28) !important;
+}
+
 html.theme-dark,
 html.theme-dark body {
     background: #0b1120;
@@ -209,4 +270,15 @@ html.theme-dark .dashboard-mini-stat {
     .dashboard-product-card {
         border-radius: 22px;
     }
+}
+/* Keep Glass surfaces readable when broad dark-mode compatibility rules are active. */
+html.theme-dark .glass-status-toolbar,
+html.theme-dark .glass-item-card,
+html.theme-dark .glass-item-header {
+    background: #111c2e !important;
+    border-color: rgba(148, 163, 184, 0.22) !important;
+}
+
+html.theme-dark .glass-item-header {
+    background: #1a2940 !important;
 }

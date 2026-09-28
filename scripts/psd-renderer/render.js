@@ -106,12 +106,8 @@ async function replaceDesignLayers(psd, masterImagePath) {
         const height = placedHeight || Math.max(1, Math.round((layer.bottom ?? 0) - (layer.top ?? 0)));
         const canvas = createCanvas(width, height);
         const ctx = canvas.getContext('2d');
-        const originalDesignCanvas = layerSourceCanvas(layer);
-        const targetRect = originalDesignCanvas
-            ? scaleRectToCanvas(alphaBoundsFromCanvas(originalDesignCanvas), originalDesignCanvas, width, height)
-            : { left: 0, top: 0, width, height };
-
-        drawImageContainInRect(ctx, trimTransparentCanvas(image), scaledAroundCenter(targetRect, designFitScale()));
+        ctx.clearRect(0, 0, width, height);
+        ctx.drawImage(image, 0, 0, width, height);
 
         layer.canvas = canvas;
         layer.imageData = undefined;
@@ -126,7 +122,7 @@ async function replaceDesignLayers(psd, masterImagePath) {
 }
 
 async function prepareMasterImage(masterImagePath) {
-    const image = await loadImage(masterImagePath);
+    const image = await loadImage(fs.readFileSync(masterImagePath));
     const canvas = createCanvas(image.width || 1, image.height || 1);
     const ctx = canvas.getContext('2d');
 

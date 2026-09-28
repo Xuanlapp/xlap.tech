@@ -23,6 +23,24 @@
                 zoomed: false,
                 copied: false,
                 dimensions: 'Loading...',
+                boundsEditing: false,
+                boundsScale: 1,
+                boundsBaseScale: 1,
+                boundsOffsetX: 0,
+                boundsOffsetY: 0,
+                boundsGuideOpacity: 0.45,
+                boundsCropSize: 0,
+                boundsImage: null,
+                boundsGuideImage: null,
+                boundsCanvasWidth: @js((int) data_get($glassBoundsConfig, 'canvas.width', 1203)),
+                boundsCanvasHeight: @js((int) data_get($glassBoundsConfig, 'canvas.height', 1204)),
+                boundsTarget: @js(data_get($glassBoundsConfig, 'target', ['x' => 0, 'y' => 0.5, 'width' => 1203, 'height' => 1203])),
+                boundsSafezone: @js(data_get($glassBoundsConfig, 'safezone', ['x' => 37, 'y' => 38, 'width' => 1130, 'height' => 1130])),
+                boundsDragging: false,
+                boundsDragStartX: 0,
+                boundsDragStartY: 0,
+                boundsStartOffsetX: 0,
+                boundsStartOffsetY: 0,
                 generatedAt: new Date().toLocaleString(),
                 notifyProcessing(title, message) {
                     window.dispatchEvent(new CustomEvent('toast', {
@@ -97,22 +115,223 @@
 
                     window.open(@js($displayOriginalUrl ?: $src), '_blank', 'noreferrer');
                 },
-            }"
+                startBoundsEditor() {
+                    this.boundsEditing = true;
+                    this.$nextTick(() => this.initBoundsEditor());
+                },
+                initBoundsEditor() {
+                    const canvas = this.$refs.boundsCanvas;
+                    if (! canvas) return;
+                    const source = @js($original ?: $src);
+                    const image = new Image();
+                    image.crossOrigin = 'anonymous';
+                    image.onload = async () => {
+                        this.boundsImage = image;
+                        this.boundsGuideImage = await this.loadBoundsGuideImage();
+                        this.boundsBaseScale = Math.max(
+                            this.boundsTarget.width / image.naturalWidth,
+                            this.boundsTarget.height / image.naturalHeight,
+                        );
+                        this.boundsScale = this.boundsBaseScale;
+                        this._boundsPreviousScale = this.boundsScale;
+                        this.boundsOffsetX = this.boundsTarget.x + (this.boundsTarget.width - image.naturalWidth * this.boundsScale) / 2;
+                        this.boundsOffsetY = this.boundsTarget.y + (this.boundsTarget.height - image.naturalHeight * this.boundsScale) / 2;
+                        this.drawBoundsCanvas();
+                    };
+                    image.onerror = () => {
+                        this.boundsEditing = false;
+                        this.notifyProcessing('Bounds failed', 'Khong doc duoc anh goc de chinh bounds.');
+                    };
+                    image.src = source;
+                },
+                async loadBoundsGuideImage() {
+                    const guideUrl = @js($glassBoundsGuideUrl);
+                    if (! guideUrl) return null;
+                    const guide = new Image();
+                    guide.crossOrigin = 'anonymous';
+
+                    return await new Promise((resolve) => {
+                        guide.onload = () => resolve(guide);
+                        guide.onerror = () => resolve(null);
+                        guide.src = guideUrl;
+                    });
+                },
+                boundsMinScale() {
+                    return this.boundsBaseScale * 0.3;
+                },
+                boundsCenter() {
+                    return {
+                        x: this.boundsTarget.x + this.boundsTarget.width / 2,
+                        y: this.boundsTarget.y + this.boundsTarget.height / 2,
+                    };
+                },
+                drawBoundsCanvas() {
+                    const canvas = this.$refs.boundsCanvas;
+                    if (! canvas || ! this.boundsImage) return;
+                    const context = canvas.getContext('2d');
+                    const target = this.boundsTarget;
+                    const safezone = this.boundsSafezone;
+                    const center = this.boundsCenter();
+                    const radius = Math.min(target.width, target.height) / 2;
+                    const safezoneCenterX = safezone.x + safezone.width / 2;
+                    const safezoneCenterY = safezone.y + safezone.height / 2;
+                    const safezoneRadius = Math.min(safezone.width, safezone.height) / 2;
+                    const imageWidth = this.boundsImage.naturalWidth * this.boundsScale;
+                    const imageHeight = this.boundsImage.naturalHeight * this.boundsScale;
+
+                    context.clearRect(0, 0, this.boundsCanvasWidth, this.boundsCanvasHeight);
+                    if (! this.boundsGuideImage) {
+                        context.save();
+                        context.fillStyle = 'rgba(220, 38, 38, 0.28)';
+                        context.fillRect(0, 0, this.boundsCanvasWidth, this.boundsCanvasHeight);
+                        context.globalCompositeOperation = 'destination-out';
+                        context.beginPath();
+                        context.arc(center.x, center.y, radius, 0, Math.PI * 2);
+                        context.fill();
+                        context.restore();
+                    }
+
+                    context.save();
+                    context.beginPath();
+                    context.arc(center.x, center.y, radius, 0, Math.PI * 2);
+                    context.clip();
+                    context.drawImage(this.boundsImage, this.boundsOffsetX, this.boundsOffsetY, imageWidth, imageHeight);
+                    context.restore();
+
+                    if (this.boundsGuideImage) {
+                        context.save();
+                        context.globalAlpha = this.boundsGuideOpacity;
+                        context.drawImage(this.boundsGuideImage, 0, 0, this.boundsCanvasWidth, this.boundsCanvasHeight);
+                        context.restore();
+                    } else {
+                        context.save();
+                        context.fillStyle = `rgba(34, 197, 94, ${0.26 * this.boundsGuideOpacity})`;
+                        context.beginPath();
+                        context.arc(safezoneCenterX, safezoneCenterY, safezoneRadius, 0, Math.PI * 2);
+                        context.fill();
+                        context.strokeStyle = '#22c55e';
+                        context.lineWidth = 3;
+                        context.stroke();
+                        context.strokeStyle = '#0ea5e9';
+                        context.lineWidth = 2;
+                        context.beginPath();
+                        context.arc(center.x, center.y, radius, 0, Math.PI * 2);
+                        context.stroke();
+                        context.restore();
+                    }
+
+                    context.save();
+                    context.strokeStyle = '#38bdf8';
+                    context.setLineDash([10, 7]);
+                    context.strokeRect(this.boundsOffsetX, this.boundsOffsetY, imageWidth, imageHeight);
+                    context.setLineDash([]);
+                    context.beginPath();
+                    context.moveTo(this.boundsOffsetX, this.boundsOffsetY);
+                    context.lineTo(this.boundsOffsetX + imageWidth, this.boundsOffsetY + imageHeight);
+                    context.moveTo(this.boundsOffsetX + imageWidth, this.boundsOffsetY);
+                    context.lineTo(this.boundsOffsetX, this.boundsOffsetY + imageHeight);
+                    context.stroke();
+                    context.restore();
+                },
+                updateBoundsScale() {
+                    const oldScale = this._boundsPreviousScale || this.boundsBaseScale;
+                    const center = this.boundsCenter();
+                    const ratio = this.boundsScale / oldScale;
+                    this.boundsOffsetX = center.x + (this.boundsOffsetX - center.x) * ratio;
+                    this.boundsOffsetY = center.y + (this.boundsOffsetY - center.y) * ratio;
+                    this._boundsPreviousScale = this.boundsScale;
+                    this.drawBoundsCanvas();
+                },
+                moveBounds(direction) {
+                    const step = 1;
+                    if (direction === 'up') this.boundsOffsetY -= step;
+                    if (direction === 'down') this.boundsOffsetY += step;
+                    if (direction === 'left') this.boundsOffsetX -= step;
+                    if (direction === 'right') this.boundsOffsetX += step;
+                    this.drawBoundsCanvas();
+                },
+                zoomBoundsWithWheel(event) {
+                    if (! this.boundsImage) return;
+                    event.preventDefault();
+                    const oldScale = this.boundsScale;
+                    const nextScale = Math.max(this.boundsBaseScale * 0.3, Math.min(this.boundsBaseScale * 1.8, oldScale + (event.deltaY < 0 ? this.boundsBaseScale * 0.01 : -this.boundsBaseScale * 0.01)));
+                    const rect = this.$refs.boundsCanvas.getBoundingClientRect();
+                    const mouseX = (event.clientX - rect.left) * this.boundsCanvasWidth / rect.width;
+                    const mouseY = (event.clientY - rect.top) * this.boundsCanvasHeight / rect.height;
+                    this.boundsOffsetX = mouseX + (this.boundsOffsetX - mouseX) * (nextScale / oldScale);
+                    this.boundsOffsetY = mouseY + (this.boundsOffsetY - mouseY) * (nextScale / oldScale);
+                    this.boundsScale = nextScale;
+                    this._boundsPreviousScale = nextScale;
+                    this.drawBoundsCanvas();
+                },
+                handleBoundsKeydown(event) {
+                    if (! this.boundsEditing) return;
+                    if (! ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+                    event.preventDefault();
+                    this.moveBounds({ ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' }[event.key]);
+                },
+                startBoundsDrag(event) {
+                    if (! this.boundsImage) return;
+                    this.boundsDragging = true;
+                    const rect = this.$refs.boundsCanvas.getBoundingClientRect();
+                    this.boundsDragStartX = (event.clientX - rect.left) * this.boundsCanvasWidth / rect.width;
+                    this.boundsDragStartY = (event.clientY - rect.top) * this.boundsCanvasHeight / rect.height;
+                    this.boundsStartOffsetX = this.boundsOffsetX;
+                    this.boundsStartOffsetY = this.boundsOffsetY;
+                    event.currentTarget.setPointerCapture?.(event.pointerId);
+                },
+                moveBoundsDrag(event) {
+                    if (! this.boundsDragging) return;
+                    const rect = this.$refs.boundsCanvas.getBoundingClientRect();
+                    const pointerX = (event.clientX - rect.left) * this.boundsCanvasWidth / rect.width;
+                    const pointerY = (event.clientY - rect.top) * this.boundsCanvasHeight / rect.height;
+                    this.boundsOffsetX = this.boundsStartOffsetX + pointerX - this.boundsDragStartX;
+                    this.boundsOffsetY = this.boundsStartOffsetY + pointerY - this.boundsDragStartY;
+                    this.drawBoundsCanvas();
+                },
+                endBoundsDrag() { this.boundsDragging = false; },
+                cancelBoundsEditor() { this.boundsEditing = false; this.boundsImage = null; },
+                async saveBoundsEditor() {
+                    if (! this.boundsImage) return;
+                    const canvas = document.createElement('canvas');
+                    canvas.width = this.boundsCanvasWidth;
+                    canvas.height = this.boundsCanvasHeight;
+                    const context = canvas.getContext('2d');
+                    const center = this.boundsCenter();
+                    const radius = Math.min(this.boundsTarget.width, this.boundsTarget.height) / 2;
+                    context.save();
+                    context.beginPath();
+                    context.arc(center.x, center.y, radius, 0, Math.PI * 2);
+                    context.clip();
+                    context.drawImage(
+                        this.boundsImage,
+                        this.boundsOffsetX,
+                        this.boundsOffsetY,
+                        this.boundsImage.naturalWidth * this.boundsScale,
+                        this.boundsImage.naturalHeight * this.boundsScale,
+                    );
+                    context.restore();
+
+                    const dataUrl = canvas.toDataURL('image/png');
+                    this.boundsEditing = false;
+                    await this.$wire.saveGlassBounds(dataUrl);
+                },            }"
             x-show="modalVisible"
             x-transition.opacity.duration.150ms
             x-on:keydown.escape.window="modalVisible = false; $wire.close()"
+            x-on:keydown.window="handleBoundsKeydown($event)"
             tabindex="-1"
             aria-modal="true"
             role="dialog"
             class="fixed inset-0 z-50 flex h-full w-full items-center justify-center overflow-y-auto bg-slate-950/70 p-4 backdrop-blur-sm"
         >
             <div class="relative z-10 w-full max-w-[1500px]">
-                <div class="relative overflow-hidden rounded-2xl border border-white/70 bg-white shadow-2xl">
+                <div class="relative overflow-hidden rounded-2xl border border-white/70 bg-white shadow-2xl dark:border-white/10 dark:bg-slate-950">
                     <button
                         type="button"
                         x-on:click="modalVisible = false"
                         wire:click="close"
-                        class="absolute right-4 top-4 z-20 inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white/90 text-slate-500 shadow-sm backdrop-blur transition hover:bg-white hover:text-slate-950"
+                        class="absolute right-4 top-4 z-20 inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white/90 text-slate-500 shadow-sm backdrop-blur transition hover:bg-white hover:text-slate-950 dark:border-white/10 dark:bg-slate-900/90 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
                         aria-label="Close image review"
                     >
                         <svg class="h-4 w-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
@@ -124,7 +343,7 @@
                         <section class="min-w-0">
                             <div class="relative flex h-[min(76vh,820px)] min-h-[460px] items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-gray-400 shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
                                 @if (count($gallery) > 1)
-                                    <div class="absolute left-5 top-5 z-10 rounded-xl border border-slate-200 bg-white/90 px-4 py-2 text-sm font-bold text-slate-900 shadow-sm backdrop-blur">
+                                    <div class="absolute left-5 top-5 z-10 rounded-xl border border-slate-200 bg-white/90 px-4 py-2 text-sm font-bold text-slate-900 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-900/90 dark:text-slate-100">
                                         {{ $currentIndex + 1 }} / {{ count($gallery) }}
                                     </div>
                                 @endif
@@ -133,7 +352,7 @@
                                     <button
                                         type="button"
                                         x-on:click="zoomed = ! zoomed"
-                                        class="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white/90 text-slate-700 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:bg-white hover:text-blue-700"
+                                        class="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white/90 text-slate-700 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:bg-white hover:text-blue-700 dark:border-white/10 dark:bg-slate-900/90 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-blue-300"
                                         aria-label="Zoom image"
                                     >
                                         <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -145,20 +364,29 @@
                                     <button
                                         type="button"
                                         x-on:click="fullscreenImage()"
-                                        class="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white/90 text-slate-700 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:bg-white hover:text-blue-700"
+                                        class="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white/90 text-slate-700 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:bg-white hover:text-blue-700 dark:border-white/10 dark:bg-slate-900/90 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-blue-300"
                                         aria-label="Fullscreen image"
                                     >
                                         <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                             <path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M16 21h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
                                         </svg>
                                     </button>
+                                    @if ($productSlug === 'glass' && $assetId && $src && $action === 'glass-redesign')
+                                        <button
+                                            type="button"
+                                            x-on:click="startBoundsEditor()"
+                                            class="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50/95 px-3 text-xs font-bold text-red-700 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:bg-red-100 dark:border-red-400/40 dark:bg-red-950/70 dark:text-red-200 dark:hover:bg-red-900/70"
+                                        >
+                                            Chinh bounds
+                                        </button>
+                                    @endif
                                 </div>
 
                                 @if (count($gallery) > 1)
                                     <button
                                         type="button"
                                         wire:click="previous"
-                                        class="absolute left-5 top-1/2 z-10 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white/95 text-slate-900 shadow-lg transition hover:-translate-y-[52%] hover:bg-white hover:text-blue-700"
+                                        class="absolute left-5 top-1/2 z-10 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white/95 text-slate-900 shadow-lg transition hover:-translate-y-[52%] hover:bg-white hover:text-blue-700 dark:border-white/10 dark:bg-slate-900/90 dark:text-slate-100 dark:hover:bg-slate-800 dark:hover:text-blue-300"
                                         aria-label="Previous image"
                                     >
                                         <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -168,7 +396,7 @@
                                     <button
                                         type="button"
                                         wire:click="next"
-                                        class="absolute right-5 top-1/2 z-10 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white/95 text-slate-900 shadow-lg transition hover:-translate-y-[52%] hover:bg-white hover:text-blue-700"
+                                        class="absolute right-5 top-1/2 z-10 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white/95 text-slate-900 shadow-lg transition hover:-translate-y-[52%] hover:bg-white hover:text-blue-700 dark:border-white/10 dark:bg-slate-900/90 dark:text-slate-100 dark:hover:bg-slate-800 dark:hover:text-blue-300"
                                         aria-label="Next image"
                                     >
                                         <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -177,6 +405,25 @@
                                     </button>
                                 @endif
 
+                                @if ($productSlug === 'glass' && $assetId && $src && $action === 'glass-redesign')
+                                    <div x-show="boundsEditing" x-cloak class="absolute inset-0 z-20 flex items-center justify-center bg-slate-900/90 p-5">
+                                        <div class="relative flex h-full w-full max-w-4xl items-center justify-center overflow-hidden rounded-xl bg-slate-950" x-ref="boundsStage">
+                                            <canvas
+                                                x-ref="boundsCanvas"
+                                                x-bind:width="boundsCanvasWidth"
+                                                x-bind:height="boundsCanvasHeight"
+                                                class="block max-h-full max-w-full cursor-move select-none bg-white"
+                                                x-bind:style="`aspect-ratio:${boundsCanvasWidth}/${boundsCanvasHeight};touch-action:none`"
+                                                aria-label="Glass bounds editor canvas"
+                                                x-on:pointerdown="startBoundsDrag($event)"
+                                                x-on:pointermove="moveBoundsDrag($event)"
+                                                x-on:pointerup="endBoundsDrag()"
+                                                x-on:pointercancel="endBoundsDrag()"
+                                                x-on:wheel="zoomBoundsWithWheel($event)"
+                                            ></canvas>
+                                        </div>
+                                    </div>
+                                @endif
                                 @if ($src)
                                     <img
                                         x-ref="previewImage"
@@ -226,7 +473,7 @@
                                         </div> -->
                                         <div class="flex flex-wrap gap-2">
                                             @if ($displayOriginalUrl)
-                                                <a href="{{ $displayOriginalUrl }}" download class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50">
+                                                <a href="{{ $displayOriginalUrl }}" download class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700">
                                                     <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                                         <path d="M12 3v12M7 10l5 5 5-5M5 21h14" />
                                                     </svg>
@@ -242,7 +489,7 @@
 
                         @unless ($imageOnly)
                         <aside class="flex max-h-[76vh] min-h-[460px] min-w-0 flex-col gap-4 overflow-y-auto pr-1">
-                            <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                            <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-slate-900">
                                 <div class="mb-4 flex items-center gap-3">
                                     <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
                                         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -277,6 +524,23 @@
                                         </div>
                                     @endif
 
+                                    <div x-show="boundsEditing" x-cloak class="rounded-xl border border-blue-200 bg-blue-50/60 p-3">
+                                        <div class="mb-3 flex items-center justify-between">
+                                            <span class="text-xs font-bold text-slate-700">Bounds controls</span>
+                                            <span class="text-xs font-semibold text-slate-500">Arrow keys: move</span>
+                                        </div>
+                                        <div class="space-y-3">
+                                            <label class="block">
+                                                <div class="mb-1 flex items-center justify-between text-xs font-semibold text-slate-600"><span>Zoom</span><span x-text="`${Math.round((boundsScale / boundsBaseScale) * 100)}%`"></span></div>
+                                                <input type="range" :min="boundsBaseScale * 0.3" :max="boundsBaseScale * 1.8" :step="boundsBaseScale * 0.001" x-model.number="boundsScale" x-on:input="updateBoundsScale()" class="w-full">
+                                            </label>
+                                            <label class="block">
+                                                <div class="mb-1 flex items-center justify-between text-xs font-semibold text-slate-600"><span>Guide opacity</span><span x-text="`${Math.round(boundsGuideOpacity * 100)}%`"></span></div>
+                                                <input type="range" min="0" max="1" step="0.01" x-model.number="boundsGuideOpacity" x-on:input="drawBoundsCanvas()" class="w-full">
+                                            </label>
+                                            <div class="flex items-center justify-between text-xs text-slate-600"><span>Arrow keys</span><span class="font-semibold">1px / keypress</span><span class="ml-auto">Wheel: 1%</span></div>
+                                        </div>
+                                    </div>
                                     <div>
                                         <div class="text-xs font-medium text-slate-500">Status</div>
                                         @if ($original)
@@ -535,8 +799,8 @@
                                 </section>
                             @endif
 
-                            @if (! $assetApproved && in_array($action, ['sticker-redesign', 'glass-redesign', 'ornament-etsy-redesign'], true))
-                                <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                            @if (! $assetApproved && in_array($action, ['sticker-redesign', 'decal-redesign', 'glass-redesign', 'ornament-etsy-redesign'], true))
+                                <section x-show="! boundsEditing" x-cloak class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-slate-900">
                                     <div class="mb-4 flex items-center gap-3">
                                         <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
                                             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -574,7 +838,7 @@
                                     </form>
                                 </section>
 
-                                <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                                <section x-show="! boundsEditing" x-cloak class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                                     <div class="mb-4 flex items-center gap-3">
                                         <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
                                             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -635,19 +899,28 @@
                                 </section>
                             @endif
 
-                            <div class="sticky bottom-0 mt-auto rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-lg shadow-slate-900/5 backdrop-blur">
+                            <div class="sticky bottom-0 mt-auto rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-lg shadow-slate-900/5 backdrop-blur dark:border-white/10 dark:bg-slate-900/95">
                                 <div class="flex justify-end gap-3">
-                                    <button type="button" x-on:click="modalVisible = false" wire:click="close" class="inline-flex min-w-32 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                                    <button type="button" x-show="! boundsEditing" x-on:click="modalVisible = false" wire:click="close" class="inline-flex min-w-32 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700">
                                         Close
                                     </button>
-                                    @if (in_array($action, ['sticker-redesign', 'glass-redesign', 'ornament-etsy-redesign'], true))
-                                        <button type="button" wire:click="{{ $action === 'ornament-etsy-redesign' ? 'selectAsOrnamentEtsyRedesign' : ($action === 'glass-redesign' ? 'selectAsGlassRedesign' : 'selectAsStickerRedesign') }}" class="inline-flex min-w-40 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition hover:-translate-y-0.5 hover:bg-blue-700">
+                                    <button type="button" x-show="boundsEditing" x-cloak x-on:click="cancelBoundsEditor()" class="inline-flex min-w-32 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700">
+                                        Cancel
+                                    </button>
+                                    @if (in_array($action, ['sticker-redesign', 'decal-redesign', 'glass-redesign', 'ornament-etsy-redesign'], true))
+                                        <button type="button" x-show="! boundsEditing" wire:click="{{ $action === 'ornament-etsy-redesign' ? 'selectAsOrnamentEtsyRedesign' : ($action === 'glass-redesign' ? 'selectAsGlassRedesign' : 'selectAsStickerRedesign') }}" class="inline-flex min-w-40 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition hover:-translate-y-0.5 hover:bg-blue-700">
                                             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                                 <path d="M20 6 9 17l-5-5" />
                                             </svg>
                                             Save Selection
                                         </button>
                                     @endif
+                                    <button type="button" x-show="boundsEditing" x-cloak x-on:click="saveBoundsEditor()" class="inline-flex min-w-40 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-500/20 transition hover:-translate-y-0.5 hover:bg-emerald-700">
+                                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                            <path d="M20 6 9 17l-5-5" />
+                                        </svg>
+                                        Save Bounds
+                                    </button>
                                 </div>
                             </div>
                         </aside>

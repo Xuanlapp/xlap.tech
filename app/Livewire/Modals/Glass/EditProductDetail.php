@@ -127,12 +127,7 @@ class EditProductDetail extends Component
             return;
         }
 
-        app(GlassService::class)->updateProductDetail(
-            auth()->user(),
-            $this->assetId,
-            $validated['keyword'],
-            $validated['imageLink'],
-        );
+        app(GlassService::class)->updateKeyword(auth()->user(), $this->assetId, $validated['keyword']);
 
         $this->dispatch('glass-product-design-updated', assetId: $this->assetId);
         $this->dispatch('glass-product-design-updated')->to(ListGlass::class);

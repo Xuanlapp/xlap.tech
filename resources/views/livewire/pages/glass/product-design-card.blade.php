@@ -1,26 +1,44 @@
-<article @if(in_array($localMockupJob?->status, ['waiting', 'processing'], true) || ($localMockupJob?->status === 'completed' && $localMockupJob->completed_at?->gte(now()->subMinute()))) wire:poll.3s @endif class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/[0.02]">
-    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div class="flex min-w-0 flex-1 flex-wrap items-center gap-3">
-            <span class="inline-flex h-8 shrink-0 items-center rounded-lg bg-indigo-50 px-3 text-xs font-bold text-indigo-600">
+<article
+    x-data="{
+        showMasterBounds: localStorage.getItem('glass-show-master-bounds') === '1',
+        masterBoundsOpacity: Number(localStorage.getItem('glass-master-bounds-opacity') || '0.72'),
+        init() {
+            window.addEventListener('glass-master-bounds-changed', (event) => {
+                this.showMasterBounds = Boolean(event.detail?.visible);
+                if (event.detail?.opacity !== undefined) this.masterBoundsOpacity = Number(event.detail.opacity);
+            });
+        },
+        toggleMasterBounds() {
+            this.showMasterBounds = ! this.showMasterBounds;
+            localStorage.setItem('glass-show-master-bounds', this.showMasterBounds ? '1' : '0');
+            window.dispatchEvent(new CustomEvent('glass-master-bounds-changed', { detail: { visible: this.showMasterBounds } }));
+        },
+    }"
+    @if(in_array($localMockupJob?->status, ['waiting', 'processing'], true) || ($localMockupJob?->status === 'completed' && $localMockupJob->completed_at?->gte(now()->subMinute()))) wire:poll.3s @endif
+    class="glass-item-card rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/[0.02] dark:border-slate-700 dark:bg-slate-900 dark:ring-white/[0.03]"
+>
+    <div class="glass-item-header mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-2 dark:border-slate-700 dark:bg-slate-800/70">
+        <div class="flex min-w-0 flex-1 flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white/60 p-1.5 dark:border-slate-700 dark:bg-slate-900/50">
+            <span class="inline-flex h-8 shrink-0 items-center rounded-lg bg-white px-3 text-xs font-bold text-slate-950 shadow-sm dark:bg-slate-800 dark:text-slate-100">
                 STT: {{ $asset->item_number }}
             </span>
-            <span class="inline-flex h-8 shrink-0 items-center rounded-lg bg-slate-100 px-3 text-xs font-bold text-slate-600">
+            <span class="inline-flex h-8 shrink-0 items-center rounded-lg border border-indigo-100 bg-indigo-50 px-3 text-xs font-bold text-indigo-600">
                 SKU: {{ $asset->sku ?: '-' }}
             </span>
 
-            <h2 class="min-w-0 truncate text-lg font-bold text-slate-950">
+            <h2 class="min-w-0 flex-1 truncate text-base font-bold text-slate-950 sm:text-lg">
                 {{ $asset->keyword ?: 'Glass item' }}
             </h2>
 
-            @if (! $asset->is_approved && ! $asset->redesign)
+            @if (! $asset->is_approved)
                 <x-button
                     color="slate"
                     variant="ghost"
                     size="xs"
                     type="button"
-                    wire:click="$dispatch('openModal', { component: 'modals.glass.edit-product-detail', arguments: { assetId: {{ $asset->id }} } })"
+                    wire:click="$dispatch('openModal', { component: 'modals.product.edit-keyword', arguments: { assetId: {{ $asset->id }}, productSlug: 'glass' } })"
                 >
-                    Edit item
+                    Edit
                 </x-button>
             @endif
 
@@ -46,13 +64,15 @@
             @endif
         </div>
 
-        <button
-            type="button"
-            wire:click="$dispatch('openModal', { component: 'modals.product-design.delete-idea-confirm', arguments: { productSlug: 'glass', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) } })"
-            class="inline-flex h-8 items-center rounded-lg border border-rose-200 bg-rose-50 px-3 text-xs font-bold text-rose-600 transition hover:border-rose-300 hover:bg-rose-100"
-        >
-            Delete
-        </button>
+        <div class="flex shrink-0 items-center gap-2 rounded-lg border border-slate-200 bg-white/60 p-1.5 dark:border-slate-700 dark:bg-slate-900/50">
+            <button
+                type="button"
+                wire:click="$dispatch('openModal', { component: 'modals.product-design.delete-idea-confirm', arguments: { productSlug: 'glass', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) } })"
+                class="inline-flex h-8 items-center rounded-md border border-rose-200 bg-white px-3 text-xs font-bold text-rose-600 transition hover:border-rose-300 hover:bg-rose-50 dark:border-rose-500/40 dark:bg-slate-800"
+            >
+                Delete
+            </button>
+        </div>
     </div>
 
     <div class="grid gap-5 lg:grid-cols-3">
@@ -85,19 +105,21 @@
         <div class="min-w-0 {{ $asset->image_link ? '' : 'opacity-55' }}">
             <div class="mb-2 flex h-5 items-center justify-between gap-2">
                 <x-label class="truncate text-xs font-bold uppercase text-blue-600">2. Create Master</x-label>
-                @if ($asset->image_link && ! $asset->is_approved && ! $asset->hasCustomMockupOutput())
-                    <button
-                        type="button"
-                        wire:click="generateRedesign"
-                        wire:loading.attr="disabled"
-                        wire:target="generateRedesign"
-                        class="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs font-semibold text-blue-600 transition hover:bg-blue-50 hover:text-blue-700 disabled:cursor-wait disabled:opacity-60"
-                    >
-                        <svg wire:loading wire:target="generateRedesign" class="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" /><path class="opacity-75" fill="currentColor" d="M12 3a9 9 0 0 1 9 9h-3a6 6 0 0 0-6-6V3z" /></svg>
-                        <span wire:loading.remove wire:target="generateRedesign">Create Master</span>
-                        <span wire:loading wire:target="generateRedesign">Creating...</span>
-                    </button>
-                @endif
+                <div class="flex shrink-0 items-center gap-1">
+                    @if ($asset->image_link && ! $asset->is_approved && ! $asset->hasCustomMockupOutput())
+                        <button
+                            type="button"
+                            wire:click="generateRedesign"
+                            wire:loading.attr="disabled"
+                            wire:target="generateRedesign"
+                            class="inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-semibold text-blue-600 transition hover:bg-blue-50 hover:text-blue-700 disabled:cursor-wait disabled:opacity-60"
+                        >
+                            <svg wire:loading wire:target="generateRedesign" class="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" /><path class="opacity-75" fill="currentColor" d="M12 3a9 9 0 0 1 9 9h-3a6 6 0 0 0-6-6V3z" /></svg>
+                            <span wire:loading.remove wire:target="generateRedesign">Create Master</span>
+                            <span wire:loading wire:target="generateRedesign">Creating...</span>
+                        </button>
+                    @endif
+                </div>
             </div>
 
             <div class="relative aspect-[4/4.45] overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
@@ -116,9 +138,22 @@
                         <button
                             type="button"
                             wire:click="$dispatch('review-image', { src: @js($asset->redesign_preview_url), original: @js($asset->redesign), title: 'Create Master', gallery: @js($redesignGallery), currentIndex: @js($selectedRedesignIndex), action: @js($asset->hasCustomMockupOutput() ? null : 'glass-redesign'), productSlug: 'glass', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
-                            class="block h-full w-full"
+                            class="flex h-full w-full items-center justify-center p-4"
                         >
-                            <img src="{{ $asset->redesign_preview_url }}" alt="Redesign image" loading="lazy" decoding="async" fetchpriority="low" class="h-full w-full object-contain">
+                            <span class="relative block h-[88%] max-w-[88%] aspect-square">
+                                <img src="{{ $asset->redesign_preview_url }}" alt="Redesign image" loading="lazy" decoding="async" fetchpriority="low" class="h-full w-full object-contain">
+                                @if ($glassBoundsGuideUrl)
+                                    <img
+                                        x-show="showMasterBounds"
+                                        x-cloak
+                                        src="{{ $glassBoundsGuideUrl }}"
+                                        alt=""
+                                        aria-hidden="true"
+                                        class="pointer-events-none absolute inset-0 h-full w-full object-contain"
+                                        x-bind:style="`opacity: ${masterBoundsOpacity}`"
+                                    >
+                                @endif
+                            </span>
                         </button>
                     @else
                         <div class="flex h-full w-full items-center justify-center px-4 text-center text-sm font-medium text-slate-400">
@@ -129,16 +164,27 @@
             </div>
 
             @if (count($redesignGallery) > 1)
-                <div class="mt-2 rounded-lg border border-slate-200 bg-white p-2">
+                <div class="mt-2 rounded-lg border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-800">
                     <div class="mb-2 text-[11px] font-bold uppercase text-slate-500">Anh Create Master da tao</div>
                     <div class="flex gap-2 overflow-x-auto pb-1">
                         @foreach ($redesignGallery as $index => $image)
                             <button
                                 type="button"
                                 wire:click="$dispatch('review-image', { src: @js($image['src']), original: @js($image['original']), title: @js($image['title']), gallery: @js($redesignGallery), currentIndex: {{ $index }}, action: @js($asset->hasCustomMockupOutput() ? null : 'glass-redesign'), productSlug: 'glass', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
-                                class="h-16 w-16 shrink-0 overflow-hidden rounded-md border {{ ($image['original'] ?? null) === $asset->redesign ? 'border-blue-500 ring-2 ring-blue-100' : 'border-slate-200' }} bg-slate-50"
+                                class="relative h-16 w-16 shrink-0 overflow-hidden rounded-md border {{ ($image['original'] ?? null) === $asset->redesign ? 'border-blue-500 ring-2 ring-blue-100' : 'border-slate-200' }} bg-slate-50"
                             >
-                                <img src="{{ $image['src'] }}" alt="{{ $image['title'] }}" loading="lazy" decoding="async" fetchpriority="low" class="h-full w-full object-cover">
+                                <img src="{{ $image['src'] }}" alt="{{ $image['title'] }}" loading="lazy" decoding="async" fetchpriority="low" class="h-full w-full object-contain">
+                                @if ($glassBoundsGuideUrl)
+                                    <img
+                                        x-show="showMasterBounds"
+                                        x-cloak
+                                        src="{{ $glassBoundsGuideUrl }}"
+                                        alt=""
+                                        aria-hidden="true"
+                                        class="pointer-events-none absolute inset-0 h-full w-full object-contain"
+                                        x-bind:style="`opacity: ${masterBoundsOpacity}`"
+                                    >
+                                @endif
                             </button>
                         @endforeach
                     </div>
@@ -148,7 +194,7 @@
 
         <div class="min-w-0 {{ $asset->redesign ? '' : 'opacity-55' }}">
             <div class="mb-2 flex h-5 items-center justify-between gap-2">
-                <x-label class="truncate text-xs font-bold uppercase text-orange-600">3. Mockup Tu Chon</x-label>
+                <x-label class="truncate text-xs font-bold uppercase text-indigo-600">3. Mockup Tu Chon</x-label>
                 @if ($asset->redesign && ! $asset->is_approved && ! in_array($localMockupJob?->status, ['waiting', 'processing'], true))
                     <button
                         type="button"
@@ -156,7 +202,7 @@
                         wire:click="generatePsdMockups"
                         wire:loading.attr="disabled"
                         wire:target="generatePsdMockups"
-                        class="shrink-0 text-xs font-semibold text-orange-600 hover:text-orange-700 disabled:opacity-60"
+                        class="shrink-0 text-xs font-semibold text-indigo-600 hover:text-indigo-700 disabled:opacity-60"
                     >
                         <span wire:loading.remove wire:target="generatePsdMockups">Generate</span>
                         <span wire:loading wire:target="generatePsdMockups">Generating...</span>
@@ -188,8 +234,8 @@
                     ->all();
             @endphp
 
-            <div class="relative aspect-[4/4.45] overflow-hidden rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
-                <div wire:loading.flex wire:target="generatePsdMockups" class="absolute inset-0 z-10 items-center justify-center rounded-xl bg-white/95">
+            <div class="relative aspect-[4/4.45] overflow-hidden rounded-xl border border-slate-200 bg-white p-2 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                <div wire:loading.flex wire:target="generatePsdMockups" class="absolute inset-0 z-10 items-center justify-center rounded-xl bg-white/95 dark:bg-slate-900/95">
                     <x-spinner />
                 </div>
 
@@ -209,7 +255,14 @@
                         </span>
 
                         @if ($psdMockups->isNotEmpty())
-                            <span class="text-[11px] font-medium text-slate-400">Scroll</span>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[11px] font-medium text-slate-400">Scroll</span>
+                                @if (! $asset->is_approved && ! in_array($localMockupJob?->status, ['waiting', 'processing'], true))
+                                    <button type="button" wire:click="requestClearPsdMockups" class="rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-bold text-rose-700 hover:bg-rose-100">
+                                        Xoa mockup
+                                    </button>
+                                @endif
+                            </div>
                         @endif
                     </div>
 
@@ -220,7 +273,7 @@
                                     <button
                                         type="button"
                                         wire:click="$dispatch('review-image', { src: @js($mockup['src']), original: @js($mockup['original']), title: @js('MOCKUP '.$mockup['slot']), gallery: @js($psdMockupGallery), currentIndex: {{ $loop->index }}, productSlug: 'glass', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
-                                        class="aspect-[4/3] overflow-hidden rounded-lg border border-slate-100 bg-slate-50 shadow-sm transition hover:border-orange-300 hover:ring-2 hover:ring-orange-100"
+                                        class="aspect-[4/3] overflow-hidden rounded-lg border border-slate-100 bg-slate-50 shadow-sm transition hover:border-indigo-300 hover:ring-2 hover:ring-indigo-100"
                                     >
                                         <img wire:key="glass-mockup-{{ $asset->id }}-{{ $mockup['slot'] }}-{{ md5($mockup['src']) }}" src="{{ $mockup['src'] }}" alt="MOCKUP {{ $mockup['slot'] }}" loading="lazy" decoding="async" fetchpriority="low" class="h-full w-full object-cover">
                                     </button>
@@ -243,7 +296,7 @@
                     <button
                         type="button"
                         wire:click="$dispatch('openModal', { component: 'modals.glass.psd-mockup-template' })"
-                        class="shrink-0 font-semibold text-orange-600 hover:text-orange-700"
+                        class="shrink-0 font-semibold text-indigo-600 hover:text-indigo-700"
                     >
                         Chon PSD
                     </button>
@@ -251,4 +304,19 @@
             </div>
         </div>
     </div>
-</article>
+
+    @if ($showClearMockupsConfirmation)
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" role="dialog" aria-modal="true" aria-labelledby="clear-glass-mockups-title">
+            <div class="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl">
+                <h3 id="clear-glass-mockups-title" class="text-base font-bold text-slate-950">Xoa toan bo mockup?</h3>
+                <p class="mt-2 text-sm text-slate-600">Thao tac nay se xoa cac anh MOCKUP 1 den MOCKUP 6 cua item nay. Anh Create Master van duoc giu lai.</p>
+                <div class="mt-5 flex justify-end gap-3">
+                    <button type="button" wire:click="cancelClearPsdMockups" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50">No</button>
+                    <button type="button" wire:click="clearPsdMockups" wire:loading.attr="disabled" wire:target="clearPsdMockups" class="rounded-lg bg-rose-600 px-4 py-2 text-sm font-bold text-white hover:bg-rose-700 disabled:opacity-60">
+                        <span wire:loading.remove wire:target="clearPsdMockups">Yes</span>
+                        <span wire:loading wire:target="clearPsdMockups">Deleting...</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif</article>

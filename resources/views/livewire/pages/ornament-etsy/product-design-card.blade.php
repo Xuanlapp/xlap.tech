@@ -1,10 +1,10 @@
 <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/[0.02]">
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div class="flex min-w-0 flex-1 flex-wrap items-center gap-3">
-            <span class="inline-flex h-8 shrink-0 items-center rounded-lg bg-indigo-50 px-3 text-xs font-bold text-indigo-600">
+            <span class="inline-flex h-8 shrink-0 items-center rounded-lg bg-indigo-50 px-3 text-xs font-bold text-gray-600">
                 STT: {{ $asset->item_number }}
             </span>
-            <span class="inline-flex h-8 shrink-0 items-center rounded-lg bg-slate-100 px-3 text-xs font-bold text-slate-600">
+            <span class="inline-flex h-8 shrink-0 items-center rounded-lg bg-indigo-50 px-3 text-xs font-bold text-indigo-600">
                 SKU: {{ $asset->sku ?: '-' }}
             </span>
 
@@ -12,15 +12,15 @@
                 {{ $asset->keyword ?: 'Ornament Etsy item' }}
             </h2>
 
-            @if (! $asset->is_approved && ! $asset->redesign)
+            @if (! $asset->is_approved)
                 <x-button
                     color="slate"
                     variant="ghost"
                     size="xs"
                     type="button"
-                    wire:click="$dispatch('openModal', { component: 'modals.ornament-etsy.edit-product-detail', arguments: { assetId: {{ $asset->id }} } })"
+                    wire:click="$dispatch('openModal', { component: 'modals.product.edit-keyword', arguments: { assetId: {{ $asset->id }}, productSlug: 'ornament-etsy' } })"
                 >
-                    Edit item
+                    Edit
                 </x-button>
             @endif
 

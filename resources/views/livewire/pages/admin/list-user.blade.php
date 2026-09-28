@@ -65,6 +65,13 @@
                     >
                         Add user
                     </button>
+                    <button
+                        type="button"
+                        wire:click="$dispatch('openModal', { component: 'modals.admin.edit-glass-bounds-guide' })"
+                        class="inline-flex h-9 items-center justify-center rounded-md border border-red-200 bg-red-50 px-3 text-xs font-bold text-red-700 transition hover:bg-red-100"
+                    >
+                        Ảnh bounds Glass
+                    </button>
                 </div>
 
                 @if ($googleDriveConnection)
@@ -395,4 +402,5 @@
     <livewire:modals.admin.edit-product-background-removal />
     <livewire:modals.admin.edit-import-template />
     <livewire:modals.admin.edit-bridge-extension />
+    <livewire:modals.admin.edit-glass-bounds-guide />
 </section>

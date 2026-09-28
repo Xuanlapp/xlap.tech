@@ -535,7 +535,7 @@ class Index extends Component
         if ($this->previewRows === []) { $this->addError('orderItemFile', 'Hay upload file de xem preview truoc.'); return; }
         $user = $this->importableUsers()->whereKey($data['importUserId'])->first();
         if (! $user) { $this->addError('importUserId', 'Chi duoc chon user thuong, khong chon Admin.'); return; }
-        $product = Product::query()->whereKey($data['importProductId'])->whereIn('slug', ['sticker', 'glass', 'ornament-etsy'])->first();
+        $product = Product::query()->whereKey($data['importProductId'])->whereIn('slug', ['sticker', 'decal', 'glass', 'ornament-etsy'])->first();
         if (! $product) { $this->addError('importProductId', 'Product khong hop le.'); return; }
         $count = 0;
         foreach ($this->previewRows as $row) {
@@ -629,7 +629,7 @@ class Index extends Component
 
         return view('livewire.pages.order.index', [
             'items' => $items,
-            'products' => Product::query()->whereIn('slug', ['sticker', 'glass', 'ornament-etsy'])->orderBy('name')->get(),
+            'products' => Product::query()->whereIn('slug', ['sticker', 'decal', 'glass', 'ornament-etsy'])->orderBy('name')->get(),
             'importUsers' => auth()->user()?->is_admin ? $this->importableUsers()->orderBy('name')->get(['id', 'name', 'email']) : collect(),
             'orderProducts' => $orderProducts,
             'historyOrders' => $historyOrders,

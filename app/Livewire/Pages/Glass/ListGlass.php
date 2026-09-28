@@ -55,6 +55,10 @@ class ListGlass extends Component
     {
         $this->selectedAiProvider = $providerKey;
         $this->selectedImageModel = null;
+
+        if ($providerKey) {
+            auth()->user()->setDefaultAiProvider($providerKey);
+        }
     }
 
     #[On('v98store-key-updated')]
@@ -62,6 +66,7 @@ class ListGlass extends Component
     {
         $this->selectedAiProvider = 'v98store';
         $this->selectedImageModel = null;
+        auth()->user()->setDefaultAiProvider('v98store');
     }
 
     #[On('cheapkeyai-key-updated')]
@@ -69,6 +74,7 @@ class ListGlass extends Component
     {
         $this->selectedAiProvider = 'cheapkeyai';
         $this->selectedImageModel = null;
+        auth()->user()->setDefaultAiProvider('cheapkeyai');
     }
 
     public function updatedPerPage(int|string $perPage): void
@@ -84,6 +90,7 @@ class ListGlass extends Component
     public function updatedSearch(string $search): void
     {
         $this->search = trim($search);
+        $this->dispatch('glass-search-updated')->to(GlassStatusPanel::class);
     }
 
     public function render(): View
@@ -91,7 +98,12 @@ class ListGlass extends Component
         $service = app(GlassService::class);
         $perPage = in_array($this->perPage, self::PER_PAGE_OPTIONS, true) ? $this->perPage : 5;
         $providerOptions = $service->providerOptionsForUser(auth()->user());
-        $this->selectedAiProvider = array_key_exists((string) $this->selectedAiProvider, $providerOptions) ? $this->selectedAiProvider : array_key_first($providerOptions);
+        if (! array_key_exists((string) $this->selectedAiProvider, $providerOptions)) {
+            $preferredProvider = auth()->user()->activeAiProviderKey();
+            $this->selectedAiProvider = array_key_exists((string) $preferredProvider, $providerOptions)
+                ? $preferredProvider
+                : array_key_first($providerOptions);
+        }
         $imageModelOptions = $service->imageModelOptionsForProvider($this->selectedAiProvider);
         $this->selectedImageModel = array_key_exists((string) $this->selectedImageModel, $imageModelOptions) ? $this->selectedImageModel : array_key_first($imageModelOptions);
         $v98StoreBalance = $service->v98StoreBalanceForUser(auth()->user(), $this->selectedAiProvider);

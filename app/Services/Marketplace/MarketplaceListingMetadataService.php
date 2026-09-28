@@ -22,153 +22,152 @@ use Throwable;
 class MarketplaceListingMetadataService
 {
     private const AMAZON_PROMPT_TEMPLATE = <<<'PROMPT'
-Ban hay dong vai mot chuyen gia viet content Amazon chuyen nghiep bang tieng Anh, chuyen toi uu Amazon SEO, Title, Bullet Points, Generic Keywords va Product Description. Muc tieu la viet noi dung de doc, tu nhien nhu nguoi ban xu, tang ty le chuyen doi, tranh keyword stuffing, tranh tu bi cam, tranh claim qua da, tranh dung ten thuong hieu doi thu, va tuan thu chinh sach Amazon.
+Bạn hãy đóng vai một chuyên gia viết content Amazon chuyên nghiệp bằng tiếng Anh, chuyên tối ưu Amazon SEO, Title, Bullet Points, Generic Keywords và Product Description. Mục tiêu là viết nội dung dễ đọc, tự nhiên như người bản xứ, tăng tỷ lệ chuyển đổi, tránh keyword stuffing, tránh từ bị cấm, tránh claim quá đà, tránh dùng tên thương hiệu đối thủ, và tuân thủ chính sách Amazon.
 
-San pham cua toi la: {amazon_product_from_sheet}
+Sản phẩm của tôi là: {amazon_product_from_sheet}
 
-Link doi thu de tham khao cau truc, keyword, cach trinh bay va insight khach hang:
-[LINK DOI THU : {competitor_link}]
+Link đối thủ để tham khảo cấu trúc, keyword, cách trình bày và insight khách hàng:
+[LINK ĐỐI THỦ: {competitor_link}]
 
-Danh sach keyword uu tien cua toi, hay dung theo thu tu uu tien tu tren xuong duoi. Keyword nao o tren thi uu tien dua vao Title, Bullet Points, Generic Keywords va Product Description truoc. Hay dung toi da nhieu keyword nhat co the nhung phai tu nhien, khong spam, khong lap qua muc:
+Danh sách keyword ưu tiên của tôi, hãy dùng theo thứ tự ưu tiên từ trên xuống dưới. Keyword nào ở trên thì ưu tiên đưa vào Title, Bullet Points, Generic Keywords và Product Description trước. Hãy dùng tối đa nhiều keyword nhất có thể nhưng phải tự nhiên, không spam, không lặp quá mức:
 [KEYWORDS: {keyword_phrase}]
 
-
-YÃŠU Cáº¦U Äáº¦U RA:
+YÊU CẦU ĐẦU RA:
 
 TITLE AMAZON
 
-Viáº¿t 1 Title báº±ng tiáº¿ng Anh, tá»‘i Æ°u keyword, dá»… Ä‘á»c, tá»± nhiÃªn, phÃ¹ há»£p Amazon US.
+Viết 1 Title bằng tiếng Anh, tối ưu keyword, dễ đọc, tự nhiên, phù hợp Amazon US.
 
-YÃªu cáº§u báº¯t buá»™c:
+Yêu cầu bắt buộc:
 
-Äá»™ dÃ i Title náº±m trong khoáº£ng 180â€“195 kÃ½ tá»± tÃ­nh cáº£ dáº¥u cÃ¡ch.
-KhÃ´ng Ä‘Æ°á»£c vÆ°á»£t quÃ¡ 200 kÃ½ tá»± bao gá»“m cáº£ dáº¥u cÃ¡ch.
-Æ¯u tiÃªn keyword chÃ­nh á»Ÿ Ä‘áº§u Title.
-KhÃ´ng nhá»“i keyword quÃ¡ lá»™.
-KhÃ´ng dÃ¹ng ALL CAPS.
-KhÃ´ng dÃ¹ng kÃ½ tá»± Ä‘áº·c biá»‡t khÃ´ng cáº§n thiáº¿t.
-KhÃ´ng dÃ¹ng claim nhÆ° Best, #1, Guaranteed, Official, Luxury náº¿u khÃ´ng cÃ³ cÄƒn cá»©.
-KhÃ´ng dÃ¹ng tÃªn thÆ°Æ¡ng hiá»‡u Ä‘á»‘i thá»§.
-Title pháº£i mÃ´ táº£ rÃµ loáº¡i sáº£n pháº©m, Ä‘iá»ƒm cÃ¡ nhÃ¢n hÃ³a, Ä‘á»‘i tÆ°á»£ng táº·ng quÃ  vÃ  dá»‹p sá»­ dá»¥ng.
+* Độ dài Title nằm trong khoảng 180–195 ký tự tính cả dấu cách.
+* Không được vượt quá 200 ký tự bao gồm cả dấu cách.
+* Ưu tiên keyword chính ở đầu Title.
+* Không nhồi keyword quá lộ.
+* Không dùng ALL CAPS.
+* Không dùng ký tự đặc biệt không cần thiết.
+* Không dùng claim như Best, #1, Guaranteed, Official, Luxury nếu không có căn cứ.
+* Không dùng tên thương hiệu đối thủ.
+* Title phải mô tả rõ loại sản phẩm, điểm cá nhân hóa, đối tượng tặng quà và dịp sử dụng.
 
-Sau Title, ghi rÃµ:
-TITLE â€” [Sá» KÃ Tá»°] CHARACTERS
+Sau Title, ghi rõ:
+TITLE — [SỐ KÝ TỰ] CHARACTERS
 
 BULLET POINTS AMAZON
 
-Viáº¿t 5 Bullet Points báº±ng tiáº¿ng Anh.
+Viết 5 Bullet Points bằng tiếng Anh.
 
-YÃªu cáº§u báº¯t buá»™c:
+Yêu cầu bắt buộc:
 
-Má»—i bullet point pháº£i cÃ³ Ä‘á»™ dÃ i tá»« 460â€“480 kÃ½ tá»± tÃ­nh cáº£ dáº¥u cÃ¡ch.
-KhÃ´ng bullet nÃ o Ä‘Æ°á»£c vÆ°á»£t quÃ¡ 480 kÃ½ tá»±.
-Má»—i bullet cÃ³ 1 icon phÃ¹ há»£p á»Ÿ Ä‘áº§u dÃ²ng.
-Bullet point Ä‘áº§u tiÃªn pháº£i mÃ´ táº£ trá»±c tiáº¿p sáº£n pháº©m cá»§a tÃ´i: sáº£n pháº©m lÃ  gÃ¬, dÃ¹ng Ä‘á»ƒ lÃ m gÃ¬, Ä‘iá»ƒm cÃ¡ nhÃ¢n hÃ³a chÃ­nh.
-CÃ¡c bullet cÃ²n láº¡i pháº£i táº­p trung vÃ o lá»£i Ã­ch, tÃ­nh nÄƒng, quÃ  táº·ng, dá»‹p sá»­ dá»¥ng, cáº£m xÃºc, cÃ¡ch cÃ¡ nhÃ¢n hÃ³a vÃ  giÃ¡ trá»‹ lÆ°u giá»¯ ká»· niá»‡m.
-DÃ¹ng keyword theo thá»© tá»± Æ°u tiÃªn tá»« danh sÃ¡ch tÃ´i Ä‘Æ°a.
-Keyword pháº£i Ä‘Æ°á»£c Ä‘Æ°a vÃ o tá»± nhiÃªn, khÃ´ng spam.
-Ná»™i dung pháº£i phÃ¹ há»£p vá»›i khÃ¡ch hÃ ng Amazon US.
-KhÃ´ng dÃ¹ng cÃ¢u cam káº¿t tuyá»‡t Ä‘á»‘i nhÆ° â€œwill last foreverâ€, â€œguaranteed to make them happyâ€, â€œbest qualityâ€.
-KhÃ´ng dÃ¹ng tá»« bá»‹ cáº¥m hoáº·c claim y táº¿, tÃ´n giÃ¡o, chÃ­nh trá»‹, phÃ¢n biá»‡t Ä‘á»‘i tÆ°á»£ng náº¿u khÃ´ng liÃªn quan.
-KhÃ´ng dÃ¹ng tÃªn brand Ä‘á»‘i thá»§ hoáº·c trademark cá»§a ngÆ°á»i khÃ¡c.
+* Mỗi bullet point phải có độ dài từ 460–480 ký tự tính cả dấu cách.
+* Không bullet nào được vượt quá 480 ký tự.
+* Mỗi bullet có 1 icon phù hợp ở đầu dòng.
+* Bullet point đầu tiên phải mô tả trực tiếp sản phẩm của tôi: sản phẩm là gì, dùng để làm gì, điểm cá nhân hóa chính.
+* Các bullet còn lại phải tập trung vào lợi ích, tính năng, quà tặng, dịp sử dụng, cảm xúc, cách cá nhân hóa và giá trị lưu giữ kỷ niệm.
+* Dùng keyword theo thứ tự ưu tiên từ danh sách tôi đưa.
+* Keyword phải được đưa vào tự nhiên, không spam.
+* Nội dung phải phù hợp với khách hàng Amazon US.
+* Không dùng câu cam kết tuyệt đối như “will last forever”, “guaranteed to make them happy”, “best quality”.
+* Không dùng từ bị cấm hoặc claim y tế, tôn giáo, chính trị, phân biệt đối tượng nếu không liên quan.
+* Không dùng tên brand đối thủ hoặc trademark của người khác.
 
-Sau má»—i bullet, ghi rÃµ:
-BULLET POINT 1 â€” [Sá» KÃ Tá»°] CHARACTERS
-BULLET POINT 2 â€” [Sá» KÃ Tá»°] CHARACTERS
-BULLET POINT 3 â€” [Sá» KÃ Tá»°] CHARACTERS
-BULLET POINT 4 â€” [Sá» KÃ Tá»°] CHARACTERS
-BULLET POINT 5 â€” [Sá» KÃ Tá»°] CHARACTERS
+Sau mỗi bullet, ghi rõ:
+BULLET POINT 1 — [SỐ KÝ TỰ] CHARACTERS
+BULLET POINT 2 — [SỐ KÝ TỰ] CHARACTERS
+BULLET POINT 3 — [SỐ KÝ TỰ] CHARACTERS
+BULLET POINT 4 — [SỐ KÝ TỰ] CHARACTERS
+BULLET POINT 5 — [SỐ KÝ TỰ] CHARACTERS
 
 GENERIC KEYWORDS
 
-Viáº¿t Generic Keywords theo Ä‘Ãºng danh sÃ¡ch keyword tÃ´i Ä‘Æ°a, Æ°u tiÃªn tá»« trÃªn xuá»‘ng dÆ°á»›i.
+Viết Generic Keywords theo đúng danh sách keyword tôi đưa, ưu tiên từ trên xuống dưới.
 
-YÃªu cáº§u báº¯t buá»™c:
+Yêu cầu bắt buộc:
 
-CÃ¡c tá»« khÃ³a cÃ¡ch nhau báº±ng dáº¥u â€œ;â€
-Äá»™ dÃ i Generic Keywords náº±m trong khoáº£ng 230â€“240 kÃ½ tá»± tÃ­nh cáº£ dáº¥u cÃ¡ch thÃ¬ dá»«ng láº¡i.
-KhÃ´ng Ä‘Æ°á»£c vÆ°á»£t quÃ¡ 240 kÃ½ tá»± bao gá»“m cáº£ dáº¥u cÃ¡ch.
-KhÃ´ng thÃªm keyword náº¿u vÆ°á»£t giá»›i háº¡n.
-KhÃ´ng dÃ¹ng tÃªn thÆ°Æ¡ng hiá»‡u Ä‘á»‘i thá»§.
-KhÃ´ng dÃ¹ng ASIN.
-KhÃ´ng dÃ¹ng tá»« sai chÃ­nh táº£ náº¿u lÃ m listing thiáº¿u chuyÃªn nghiá»‡p.
-KhÃ´ng láº·p láº¡i má»™t tá»« khÃ³a quÃ¡ nhiá»u náº¿u khÃ´ng cáº§n thiáº¿t.
-Æ¯u tiÃªn keyword cÃ³ volume/search intent cao hÆ¡n.
+* Các từ khóa cách nhau bằng dấu “;”.
+* Độ dài Generic Keywords nằm trong khoảng 230–240 ký tự tính cả dấu cách thì dừng lại.
+* Không được vượt quá 240 ký tự bao gồm cả dấu cách.
+* Không thêm keyword nếu vượt giới hạn.
+* Không dùng tên thương hiệu đối thủ.
+* Không dùng ASIN.
+* Không dùng từ sai chính tả nếu làm listing thiếu chuyên nghiệp.
+* Không lặp lại một từ khóa quá nhiều nếu không cần thiết.
+* Ưu tiên keyword có volume/search intent cao hơn.
 
-Sau pháº§n Generic Keywords, ghi rÃµ:
-GENERIC KEYWORDS â€” [Sá» KÃ Tá»°] CHARACTERS
+Sau phần Generic Keywords, ghi rõ:
+GENERIC KEYWORDS — [SỐ KÝ TỰ] CHARACTERS
 
 PRODUCT DESCRIPTION
 
-Viáº¿t Product Description báº±ng tiáº¿ng Anh.
+Viết Product Description bằng tiếng Anh.
 
-YÃªu cáº§u báº¯t buá»™c:
+Yêu cầu bắt buộc:
 
-Äá»™ dÃ i náº±m trong khoáº£ng 1800â€“1900 kÃ½ tá»± tÃ­nh cáº£ dáº¥u cÃ¡ch.
-KhÃ´ng Ä‘Æ°á»£c vÆ°á»£t quÃ¡ 2000 kÃ½ tá»± bao gá»“m cáº£ dáº¥u cÃ¡ch.
-Ná»™i dung pháº£i giÃ u cáº£m xÃºc, tá»± nhiÃªn, dá»… Ä‘á»c, tÄƒng chuyá»ƒn Ä‘á»•i.
-Giáº£i thÃ­ch rÃµ sáº£n pháº©m lÃ  gÃ¬, dÃ¹ng nhÆ° tháº¿ nÃ o, cÃ¡ nhÃ¢n hÃ³a ra sao, phÃ¹ há»£p táº·ng ai, phÃ¹ há»£p dá»‹p nÃ o.
-ÄÆ°a nhiá»u keyword nháº¥t cÃ³ thá»ƒ theo thá»© tá»± Æ°u tiÃªn tá»« danh sÃ¡ch tÃ´i cung cáº¥p, nhÆ°ng pháº£i tá»± nhiÃªn.
-KhÃ´ng láº·p keyword quÃ¡ dÃ y.
-KhÃ´ng claim quÃ¡ Ä‘Ã .
-KhÃ´ng dÃ¹ng tÃªn brand Ä‘á»‘i thá»§.
-KhÃ´ng viáº¿t thÃ´ng tin sai vá» cháº¥t liá»‡u, kÃ­ch thÆ°á»›c, quy trÃ¬nh sáº£n xuáº¥t náº¿u tÃ´i chÆ°a cung cáº¥p.
-Náº¿u thÃ´ng tin sáº£n pháº©m chÆ°a rÃµ, hÃ£y viáº¿t theo hÆ°á»›ng an toÃ n, khÃ´ng kháº³ng Ä‘á»‹nh quÃ¡ cá»¥ thá»ƒ.
-Táº­p trung vÃ o cáº£m xÃºc: family memories, holiday tradition, meaningful keepsake, personalized gift, Christmas tree decor, loved ones, special moments.
+* Độ dài nằm trong khoảng 1800–1900 ký tự tính cả dấu cách.
+* Không được vượt quá 2000 ký tự bao gồm cả dấu cách.
+* Nội dung phải giàu cảm xúc, tự nhiên, dễ đọc, tăng chuyển đổi.
+* Giải thích rõ sản phẩm là gì, dùng như thế nào, cá nhân hóa ra sao, phù hợp tặng ai, phù hợp dịp nào.
+* Đưa nhiều keyword nhất có thể theo thứ tự ưu tiên từ danh sách tôi cung cấp, nhưng phải tự nhiên.
+* Không lặp keyword quá dày.
+* Không claim quá đà.
+* Không dùng tên brand đối thủ.
+* Không viết thông tin sai về chất liệu, kích thước, quy trình sản xuất nếu tôi chưa cung cấp.
+* Nếu thông tin sản phẩm chưa rõ, hãy viết theo hướng an toàn, không khẳng định quá cụ thể.
+* Tập trung vào cảm xúc: family memories, holiday tradition, meaningful keepsake, personalized gift, Christmas tree decor, loved ones, special moments.
 
-Sau pháº§n Product Description, ghi rÃµ:
-PRODUCT DESCRIPTION â€” [Sá» KÃ Tá»°] CHARACTERS
+Sau phần Product Description, ghi rõ:
+PRODUCT DESCRIPTION — [SỐ KÝ TỰ] CHARACTERS
 
-KIá»‚M TRA CUá»I CÃ™NG
+KIỂM TRA CUỐI CÙNG
 
-TrÆ°á»›c khi tráº£ káº¿t quáº£, hÃ£y tá»± kiá»ƒm tra:
+Trước khi trả kết quả, hãy tự kiểm tra:
 
-Title cÃ³ náº±m trong 180â€“195 kÃ½ tá»± khÃ´ng?
-Title cÃ³ vÆ°á»£t 200 kÃ½ tá»± khÃ´ng?
-Má»—i bullet cÃ³ náº±m trong 460â€“480 kÃ½ tá»± khÃ´ng?
-CÃ³ bullet nÃ o vÆ°á»£t 480 kÃ½ tá»± khÃ´ng?
-Generic Keywords cÃ³ náº±m trong 230â€“240 kÃ½ tá»± khÃ´ng?
-Generic Keywords cÃ³ vÆ°á»£t 240 kÃ½ tá»± khÃ´ng?
-Product Description cÃ³ náº±m trong 1800â€“1900 kÃ½ tá»± khÃ´ng?
-Product Description cÃ³ vÆ°á»£t 2000 kÃ½ tá»± khÃ´ng?
-CÃ³ dÃ¹ng tÃªn thÆ°Æ¡ng hiá»‡u Ä‘á»‘i thá»§ khÃ´ng?
-CÃ³ dÃ¹ng claim quÃ¡ Ä‘Ã  hoáº·c tá»« cÃ³ rá»§i ro chÃ­nh sÃ¡ch khÃ´ng?
-Keyword cÃ³ Ä‘Æ°á»£c dÃ¹ng tá»± nhiÃªn khÃ´ng?
-Ná»™i dung cÃ³ phÃ¹ há»£p khÃ¡ch hÃ ng Amazon US khÃ´ng?
+* Title có nằm trong 180–195 ký tự không?
+* Title có vượt 200 ký tự không?
+* Mỗi bullet có nằm trong 460–480 ký tự không?
+* Có bullet nào vượt 480 ký tự không?
+* Generic Keywords có nằm trong 230–240 ký tự không?
+* Generic Keywords có vượt 240 ký tự không?
+* Product Description có nằm trong 1800–1900 ký tự không?
+* Product Description có vượt 2000 ký tự không?
+* Có dùng tên thương hiệu đối thủ không?
+* Có dùng claim quá đà hoặc từ có rủi ro chính sách không?
+* Keyword có được dùng tự nhiên không?
+* Nội dung có phù hợp khách hàng Amazon US không?
 
-Äá»ŠNH Dáº NG TRáº¢ Káº¾T QUáº¢:
+ĐỊNH DẠNG TRẢ KẾT QUẢ:
 
-Tráº£ káº¿t quáº£ theo Ä‘Ãºng format sau, khÃ´ng giáº£i thÃ­ch dÃ i dÃ²ng:
+Trả kết quả theo đúng format sau, không giải thích dài dòng:
 
-TITLE â€” [Sá» KÃ Tá»°] CHARACTERS
+TITLE — [SỐ KÝ TỰ] CHARACTERS
 
-[Title hoÃ n chá»‰nh]
+[Title hoàn chỉnh]
 
-BULLET POINT 1 â€” [Sá» KÃ Tá»°] CHARACTERS
+BULLET POINT 1 — [SỐ KÝ TỰ] CHARACTERS
 
 [Bullet 1]
 
-BULLET POINT 2 â€” [Sá» KÃ Tá»°] CHARACTERS
+BULLET POINT 2 — [SỐ KÝ TỰ] CHARACTERS
 
 [Bullet 2]
 
-BULLET POINT 3 â€” [Sá» KÃ Tá»°] CHARACTERS
+BULLET POINT 3 — [SỐ KÝ TỰ] CHARACTERS
 
 [Bullet 3]
 
-BULLET POINT 4 â€” [Sá» KÃ Tá»°] CHARACTERS
+BULLET POINT 4 — [SỐ KÝ TỰ] CHARACTERS
 
 [Bullet 4]
 
-BULLET POINT 5 â€” [Sá» KÃ Tá»°] CHARACTERS
+BULLET POINT 5 — [SỐ KÝ TỰ] CHARACTERS
 
 [Bullet 5]
 
-GENERIC KEYWORDS â€” [Sá» KÃ Tá»°] CHARACTERS
+GENERIC KEYWORDS — [SỐ KÝ TỰ] CHARACTERS
 
 [Generic Keywords]
 
-PRODUCT DESCRIPTION â€” [Sá» KÃ Tá»°] CHARACTERS
+PRODUCT DESCRIPTION — [SỐ KÝ TỰ] CHARACTERS
 
 [Product Description]
 
@@ -182,16 +181,18 @@ Readability: Good / Needs Improvement
 Return ONLY valid JSON. Do not include markdown, explanation, comments, character-count labels, safety-check text, or extra keys.
 
 Required JSON schema, with exact keys:
+
 {
-  "title": "string",
-  "description": "string",
-  "bullet_point_1": "string",
-  "bullet_point_2": "string",
-  "bullet_point_3": "string",
-  "bullet_point_4": "string",
-  "bullet_point_5": "string",
-  "generic_keyword": "string"
+"title": "string",
+"description": "string",
+"bullet_point_1": "string",
+"bullet_point_2": "string",
+"bullet_point_3": "string",
+"bullet_point_4": "string",
+"bullet_point_5": "string",
+"generic_keyword": "string"
 }
+
 PROMPT;
 
     private const AMAZON_STICKER_PROMPT_TEMPLATE = <<<'PROMPT'
@@ -201,7 +202,7 @@ LINK DOI THU : {competitor_link}
 KEYWORDS: {keyword_phrase}
 
 Ban hay viet cho toi:
-Title toi uu keyword, de doc, tuan thu do dai Amazon o cuoi tieu de co ( 3PCS,3â€) ( co do dai nam trong khoang 180-195 ky tu tinh ca dau cach, khong duoc vuot qua 200 ky tu bao gom ca dau cach, khong duoc lap lai tu stickers qua 2 lan )
+Title toi uu keyword, de doc, tuan thu do dai Amazon o cuoi tieu de co ( 3PCS,3") ( co do dai nam trong khoang 180-195 ky tu tinh ca dau cach, khong duoc vuot qua 200 ky tu bao gom ca dau cach, khong duoc lap lai tu stickers qua 2 lan )
 Bullet Points (5 dong) ( moi bullet points phai co do dai nam trong khoang 460 den 480 ky tu tinh ca dau cach, khong duoc vuot qua 480 ky tu bao gom ca dau cach - mo ta loi ich va tinh nang san pham
 + Bullet point dau mo ta ve san pham cua toi
 + Co cac icon phu hop o dau cac bullet point
@@ -271,7 +272,7 @@ PROMPT;
             return null;
         }
 
-        if (in_array($asset->product?->slug, ['ornament-amazon-2', 'sticker'], true)) {
+        if (in_array($asset->product?->slug, ['ornament-amazon-2', 'sticker', 'decal'], true)) {
             return $this->assets->markListingCompleted($this->generateAmazonMetadata($asset), 'amazon');
         }
 
@@ -742,14 +743,14 @@ PROMPT;
 
     private function marketplaceForAsset(ProductDesignAsset $asset): string
     {
-        return in_array($asset->product?->slug, ['ornament-amazon-2', 'sticker'], true)
+        return in_array($asset->product?->slug, ['ornament-amazon-2', 'sticker', 'decal'], true)
             ? 'amazon'
             : ($asset->user->can_generate_amazon_listing ? 'amazon' : 'etsy');
     }
 
     private function amazonPromptTemplate(ProductDesignAsset $asset): string
     {
-        return $asset->product?->slug === 'sticker'
+        return in_array($asset->product?->slug, ['sticker', 'decal'], true)
             ? self::AMAZON_STICKER_PROMPT_TEMPLATE
             : self::AMAZON_PROMPT_TEMPLATE;
     }

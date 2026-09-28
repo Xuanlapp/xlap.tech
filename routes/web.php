@@ -261,4 +261,9 @@ Route::middleware(['auth', 'verified'])->prefix('offorest')->group(function (): 
 
 require __DIR__.'/auth.php';
 
+if (app()->environment('local')) {
+    Route::view('ui-preview', 'ui-preview')
+        ->name('ui-preview');
+}
+
 

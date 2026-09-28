@@ -355,7 +355,7 @@ class OrnamentAmazonTwoService
     public function updateKeyword(User $user, int $assetId, string $keyword): void
     {
         $asset = $this->assetForUser($user, $assetId);
-        $this->ensureSourceDetailsEditable($asset);
+        $this->ensureNotApproved($asset);
         $asset->update(['keyword' => $this->normalizeKeyword($keyword)]);
     }
 

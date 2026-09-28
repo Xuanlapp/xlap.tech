@@ -114,6 +114,12 @@ class GlassStatusPanel extends Component
         $this->resetPage($this->pageName());
     }
 
+    #[On('glass-search-updated')]
+    public function resetPageForSearch(): void
+    {
+        $this->resetPage($this->pageName());
+    }
+
     #[On('product-design-created')]
     #[On('glass-product-design-updated')]
     #[On('glass-product-design-approval-updated')]

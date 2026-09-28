@@ -7,6 +7,7 @@ use App\Livewire\Pages\OrnamentAmazonTwo\ListOrnamentAmazonTwo;
 use App\Livewire\Pages\OrnamentEtsy\ListOrnamentEtsy;
 use App\Livewire\Pages\Proxy\Index as ProxyPage;
 use App\Livewire\Pages\Sticker\ListSticker;
+use App\Livewire\Pages\Decal\ListDecal;
 use App\Livewire\Pages\Glass\ListGlass;
 use App\Livewire\Pages\YTrends\Index as YTrendsPage;
 use App\Livewire\Pages\IdeaEtsy\IdeaEtsy as IdeaEtsyPage;
@@ -22,6 +23,16 @@ class ProductRegistry
     public static function all(): array
     {
         return [
+            [
+                'name' => 'Decal',
+                'slug' => 'decal',
+                'description' => 'Create decal-ready artwork.',
+                'route_name' => 'offorest.products.decal',
+                'path' => 'decal',
+                'component' => ListDecal::class,
+                'sort_order' => 29,
+                'is_active' => true,
+            ],
             [
                 'name' => 'Sticker',
                 'slug' => 'sticker',

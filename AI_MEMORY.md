@@ -9811,3 +9811,1277 @@ Follow-up notes: The import modal copy may still mention platform-specific CSV w
 **Affected modules:** Manual FBA History save and Excel export.
 **Deploy / queue impact:** PHP only; no migration or queue impact.
 **Follow-up:** Existing History data is unchanged; duplicate variants resolved by `firstOrCreate()` reuse the existing History row ID.
+## 2026-09-25 - Glass source bounds crop prototype
+
+**Goal:** Add a Glass-only source-image bounds editor in the shared review modal.
+
+**Files changed:**
+- `app/Livewire/Modals/Image/ReviewImage.php`
+- `app/Services/Glass/GlassService.php`
+- `resources/views/livewire/modals/image/review-image.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Bounds editor is shown only for Glass `Source image` previews with an asset ID.
+- Added fixed red rectangular crop frame, cyan circular visual guide, drag and zoom controls.
+- Browser creates the crop at source resolution; content outside the red frame is removed.
+- Server validates and normalizes the PNG with alpha, stores it under `generated/glass/bounds`, updates `image_link`, and records an activity log.
+- The existing source image is unchanged until Save bounds is pressed.
+
+**Verification:** PHP lint passed for `GlassService.php` and `ReviewImage.php`; `php artisan view:cache` passed.
+
+**Affected modules:** Glass source preview, shared image review modal, Glass public storage.
+**Deploy / queue impact:** PHP/Blade only; no migration or queue changes. Public storage link must exist.
+**Follow-up:** This prototype saves a rectangular crop; the cyan circle is a guide only. Test a real remote/Google Drive Glass image because browser canvas needs a same-origin/CORS-safe preview URL.
+## 2026-09-25 - Make Glass bounds button visible for source modal events
+
+**Root cause:** The first prototype required an exact `Source image` title. Modal events can arrive with a different title/action shape, so the button was hidden.
+
+**Change:** Bounds UI now appears for Glass modal previews with an asset and no workflow action (source image only), while Create Master and mockup previews remain unaffected. Save validation uses the same source-only condition.
+
+**Verification:** PHP lint and Blade cache pass. The local working tree contains the change; a hosted server requires deployment and cache clear before the UI changes appear.
+## 2026-09-25 - Apply Glass bounds editor to Create Master
+
+**Root cause:** User needs bounds adjustment on Glass Create Master so the resulting image feeds PSD mockup generation, not only on source image.
+
+**Changes:** Shared review modal now shows Chinh bounds for Glass source and `glass-redesign` previews. Save calls GlassService with a redesign target, stores a new PNG under generated/glass/bounds, updates `redesign`, and appends the path to `redesign_candidates`. Source image is not overwritten when editing Create Master.
+
+**Files:** `app/Services/Glass/GlassService.php`, `app/Livewire/Modals/Image/ReviewImage.php`, `resources/views/livewire/modals/image/review-image.blade.php`, `AI_MEMORY.md`.
+
+**Verification:** PHP lint and `php artisan view:cache` passed.
+**Deploy/queue:** PHP/Blade only, no migration or queue changes. Deploy files and run `php artisan optimize:clear` on server.
+## 2026-09-25 - Allow Glass source bounds replacement after Create Master
+
+**Root cause:** Bounds save from the Glass Source Image modal called the new crop method with `asRedesign=false`, but it reused `ensureSourceDetailsEditable`, which intentionally blocks any source edit after `redesign` exists. This produced `Item da co Create Master nen khong the edit.`
+
+**Fix:** Bounds crop now checks only approval for source PNG replacement; normal keyword/source URL editing rules remain unchanged. Create Master bounds still targets `redesign` and keeps its own mockup restrictions.
+
+**File:** `app/Services/Glass/GlassService.php`.
+**Verification:** PHP lint and Blade cache pass.
+**Deploy/queue:** PHP only; no migration or queue impact. Deploy and clear application/view cache on server.
+## 2026-09-25 - Create standalone local Glass PSD mockup worker
+
+**Goal:** Create a separate local-only app at `D:\CODER\MOCKUP` to receive and render Glass PSD mockup jobs independently from the VPS renderer.
+
+**Files created outside Laravel repo:**
+- `D:\CODER\MOCKUP\worker.js`
+- `D:\CODER\MOCKUP\render.js`
+- `D:\CODER\MOCKUP\package.json`
+- `D:\CODER\MOCKUP\.env.example`
+- `D:\CODER\MOCKUP\.env`
+- `D:\CODER\MOCKUP\template-overrides.json`
+- `D:\CODER\MOCKUP\README.md`
+
+**Changes:**
+- Standalone Node worker polls shared `psd_local_mockup_jobs` only for `product_slug=glass`, claims as `local-glass-worker`, runs local `render.js`, writes output PNG URLs into `mockup1..mockup11`, and completes the job.
+- Local PSD override map permits a template ID to use a PSD under `D:\CODER\MOCKUP\templates` without changing the VPS template storage path/database record.
+- Copied existing renderer and required Node renderer dependencies into the standalone folder; installed mysql2.
+
+**Verification / finding:**
+- `node --check worker.js` and `node --check render.js` pass.
+- First `npm run once` successfully claimed job #9/asset #3731 but local PSD `psd-mockups/24/glass/33e10c71-11bf-44c6-a411-3a06d69a210e.psd` is missing. The job was immediately restored to `waiting` with attempts reset, so no job remains failed by the test.
+
+**Affected modules:** External local Glass renderer only; main Laravel app unchanged by this worker creation.
+**Deploy / queue impact:** No Laravel migration or queue changes. To stop VPS competing for jobs set `GLASS_LOCAL_MOCKUP_FALLBACK_ENABLED=false` on VPS and clear config. Worker needs same DB and public storage as local web.
+**Follow-up:** Put the desired updated PSD in `D:\CODER\MOCKUP\templates`, map its `psd_mockup_templates.id` in `template-overrides.json`, then run `npm run worker`.
+**Worker safety update:** Local worker now checks whether a local PSD exists (shared storage or `template-overrides.json`) before it claims a waiting job. `npm run once` now exits cleanly without claiming job #9 when its local PSD is absent.
+## 2026-09-25 - Make D:\CODER\MOCKUP fully local-only with dashboard
+
+**User intent:** Test Glass mockups locally; FF-mockup/VPS must be independent.
+
+**Changes in D:\CODER\MOCKUP:**
+- Worker now uses one local PSD path `LOCAL_GLASS_PSD_PATH` for every Glass job and does not read VPS `psd_mockup_templates` storage paths.
+- Added `server.mjs` dashboard on `127.0.0.1:3188` showing local PSD availability and recent job states.
+- Added npm script `app`; README updated for two-terminal local test flow.
+- Worker still shares only the job/result database and local public storage with the web app; renderer and PSD files are local.
+
+**Verification:** `node --check worker.js`, `node --check server.mjs`, and `npm run once` passed. Dashboard `/api/jobs` returned job #9 status waiting and `psdExists=false`; worker correctly did not claim it without `D:\CODER\MOCKUP\templates\glass.psd`. Job #9 remains waiting with attempts 0.
+
+**Deploy/queue impact:** No Laravel code, migration, or queue change. Disable VPS fallback when local-only behavior is desired: `GLASS_LOCAL_MOCKUP_FALLBACK_ENABLED=false` on VPS, then clear config cache. Local app needs shared DB and local storage paths only.
+## 2026-09-25 - Validate and start local Glass mockup app
+
+**Root cause:** Job #9 retained the previous failed state after the storage path was corrected, so a fresh worker could not retry it. The dashboard was already running on port 3188; starting a second instance correctly returned `EADDRINUSE`.
+
+**Changes/operations:** Confirmed `D:\CODER\MOCKUP\templates\glass.psd` exists and reset only job #9 from `failed` to `waiting` for validation. Ran `npm run once` with the corrected local storage root. The worker claimed job #9 / asset #3731 and completed successfully, producing 6 mockups under `public/storage/generated/glass/mockups/3731` and updating `product_design_assets.mockup1..mockup6`.
+
+**Affected modules:** Standalone local worker, local dashboard, shared Glass mockup job table, product design asset outputs.
+
+**Deploy/queue impact:** No Laravel deploy or migration. Local dashboard is already available at `http://127.0.0.1:3188/`; the local worker process is running. VPS fallback remains a separate concern and should be disabled remotely when local-only ownership is required.
+
+**Follow-up:** Keep the desired PSD at `D:\CODER\MOCKUP\templates\glass.psd`; monitor `/api/jobs` for future jobs. Do not start another dashboard on port 3188 while the existing instance is running.
+
+## 2026-09-25 - Recover Glass local job #11 after stale worker configuration
+
+**Root cause:** Job #11 reported the master image missing even though the new PNG existed at `public/storage/generated/glass/bounds/24/3731/20260925151526-a583032b.png`. Multiple old/local worker processes were running concurrently; at least one was using stale code/config and marked the job failed.
+
+**Resolution:** Stopped the duplicate worker process tree, reset only job #11 to `waiting`, ran the current `D:\CODER\MOCKUP\worker.js` once, and verified successful rendering of 6 mockups. Restarted one background worker for future jobs.
+
+**Affected modules:** Standalone local Glass worker and shared `psd_local_mockup_jobs` row #11; generated outputs for asset #3731.
+
+**Deploy/queue impact:** No Laravel code or migration. Avoid starting multiple `npm run worker` processes; keep exactly one local worker connected to the shared database.
+
+**Follow-up:** Job #11 is `completed`; dashboard should refresh and show the completed state. If the same error returns, check for duplicate `worker.js` processes before retrying.
+
+## 2026-09-25 - Align local mockup output with XLAP selectable storage root
+
+**Root cause:** Laravel local `.env` uses `XLAP_PUBLIC_STORAGE_PATH=D:/FFACTORY/XLAP_LOCAL_STORAGE/public`, while the standalone worker was hard-coded/configured to `D:/FFACTORY/API/xlap/public/storage`. The generated URLs were therefore served through the wrong storage mapping. The simultaneous Laravel `rename(...storage/framework/views...) Access is denied` errors are a separate Windows compiled-view file-lock/cache issue; `php artisan optimize:clear` cleared the stale compiled views.
+
+**Changes:** Added `MOCKUP_STORAGE_ROOT` support to `D:\CODER\MOCKUP\worker.js`, with fallback discovery from the XLAP project's `.env`. Updated the local worker `.env` and `.env.example` to the same `D:\FFACTORY\XLAP_LOCAL_STORAGE\public` root used by Laravel. This is the selectable path equivalent to FF-Mockup's storage-root setting; changing this one value changes where master/mockup files are read and written.
+
+**Verification:** `node --check worker.js` passed; `npm run once` reports `storage=D:\FFACTORY\XLAP_LOCAL_STORAGE\public`; Laravel `php artisan optimize:clear` completed successfully. Existing Glass mockup files are present under the aligned storage root.
+
+**Affected modules:** Standalone local Glass worker, Laravel public filesystem configuration, compiled Blade view cache.
+
+**Deploy/queue impact:** No migration or VPS change. Restart the single local worker after changing `MOCKUP_STORAGE_ROOT`; do not run duplicate workers. If Laravel view rename errors recur, stop duplicate PHP/dev-server processes and clear compiled views again.
+
+**Follow-up:** Keep `MOCKUP_STORAGE_ROOT` equal to Laravel `XLAP_PUBLIC_STORAGE_PATH`. The VPS `FF-Mockup` remains independent.
+
+## 2026-09-25 - Add Glass mockup clear confirmation and Create Master-only bounds controls
+
+**User intent:** Let users delete the current six Glass PSD mockups with a Yes/No confirmation from the Scroll area. Restrict bounds editing to `2. Create Master`, with an individual bounds overlay, wheel zoom, typed percentage zoom, and configurable arrow-key move increment.
+
+**Changes:**
+- Added `Xoa mockup` beside Scroll when mockups exist and the item is not approved. The confirmation dialog has `Yes` and `No`; Yes deletes local files and database values for `mockup1` through `mockup6` only, keeps Create Master, records `glass.psd_mockups_cleared`, and refreshes the Glass UI.
+- Added `GlassService::clearPsdMockups()` with protection against deleting while a local job is waiting/processing.
+- Bounds UI and server save validation now require the `glass-redesign` action, so only the Create Master modal has Chinh bounds. Source image and mockup preview modals do not expose it.
+- Expanded bounds editor controls: the red/cyan current-item bounds guide remains visible; users can drag, wheel zoom, type an exact percentage, and use left/up/down/right with a typed px movement step.
+
+**Files:** `app/Livewire/Pages/Glass/ProductDesignCard.php`, `app/Services/Glass/GlassService.php`, `app/Livewire/Modals/Image/ReviewImage.php`, `resources/views/livewire/pages/glass/product-design-card.blade.php`, `resources/views/livewire/modals/image/review-image.blade.php`, `AI_MEMORY.md`.
+
+**Verification:** PHP lint passed for all changed PHP files. `php artisan view:clear` and `php artisan view:cache` passed. `php artisan test --filter=Glass` had no matching tests (tool output said 0 tests), so no feature test was executed.
+
+**Deploy/queue impact:** No migration or queue change. Clears only the six rendered mockups and does not affect the local worker configuration or Create Master file.
+
+**Follow-up:** Test the dialog and bounds controls in a live Glass Create Master modal after the page reloads. Existing unrelated change in `MarketplaceListingMetadataService.php` remains untouched.
+
+## 2026-09-25 - Compare local Glass worker with FF-Mockup/VPS renderer
+
+**Finding:** The standalone `D:\CODER\MOCKUP` worker is not byte-for-byte identical to the FF-Mockup Electron app. It is intentionally closer to the Laravel VPS renderer: `D:\CODER\MOCKUP\render.js` is SHA-256 identical to `D:\FFACTORY\API\xlap\scripts\psd-renderer\render.js`, and both use `ag-psd` 30.1.1. FF-Mockup uses its own in-app renderer/fallback code and currently declares `ag-psd` 28.5.1, with an optional Photoshop engine fallback.
+
+**Behavior differences:** Local worker always uses `LOCAL_GLASS_PSD_PATH` / `MOCKUP_STORAGE_ROOT`, claims only Glass waiting jobs, and writes `/storage/generated/glass/mockups/{asset}`. FF-Mockup resolves the PSD from the database template path, claims validated jobs for all supported products, and renders through its own local rendering pipeline. VPS fallback uses Laravel `PsdMockupRenderer` and the server PSD template after the idle timeout.
+
+**Deploy/queue impact:** A local job completed by the local worker will not be rendered again by VPS because the row is completed. If local processing fails or no worker claims it, the VPS fallback can still render after the configured idle period (currently 120 seconds) with the VPS template, which can produce a visual difference if its PSD differs from `D:\CODER\MOCKUP\templates\glass.psd`.
+
+**Follow-up:** For guaranteed visual parity, use the same PSD file and same `scripts/psd-renderer/render.js`/`ag-psd` version on both local and VPS, or disable `GLASS_LOCAL_MOCKUP_FALLBACK_ENABLED` on VPS while testing local-only. Do not run the FF-Mockup worker and standalone local worker against the same waiting job at the same time.
+
+## 2026-09-26 - Make standalone local Glass worker FF-Mockup-compatible
+
+**User request:** Make the local worker behave like FF-Mockup so local testing does not diverge from VPS behavior.
+
+**Changes in `D:\CODER\MOCKUP\worker.js`:**
+- Added `MOCKUP_PSD_MODE=template` (default). The worker now resolves `psd_mockup_templates.storage_path` from the job against the configured local storage root, with safe path validation and stale absolute-path remapping. `MOCKUP_PSD_MODE=local` remains available only when explicitly forcing `LOCAL_GLASS_PSD_PATH` for isolated testing.
+- Job claim now mirrors FF-Mockup validation: joins asset/product/template, verifies matching product/user relationships, requires unapproved asset and non-empty `redesign`, and claims with a guarded `status='waiting'` update.
+- Uses `master_image_uri` with `asset_redesign` fallback, updates all 11 mockup columns (nulling unused slots), and writes the same output URL convention.
+- Added a MySQL advisory lock so duplicate local worker processes exit instead of competing for a job.
+
+**Configuration:** `.env` and `.env.example` now default to `MOCKUP_PSD_MODE=template`. The current database template #10 resolves to the same local PSD file as `D:\CODER\MOCKUP\templates\glass.psd` (matching SHA-256).
+
+**Verification:** `node --check worker.js` passed; `npm run once` started in FF-compatible mode and exited cleanly with no waiting job; one background worker was restarted. README documents template/local modes and validation behavior.
+
+**Difference retained:** FF-Mockup's Electron app has an optional Photoshop fallback for PSDs that ag-psd cannot parse. The standalone worker still uses the shared XLAP renderer (`render.js`, identical to Laravel's renderer); it does not invoke Photoshop. For normal Glass PSDs this is the same rendering path as the VPS renderer.
+
+**Deploy/queue impact:** No Laravel migration or VPS changes. The local worker remains Glass-only and local-storage-only. Keep exactly one worker; the advisory lock now enforces that at the database level.
+
+## 2026-09-26 - Add admin-managed Glass bounds permission
+
+**User request:** Bounds editing should be controlled from User Access and only admins should be able to grant it.
+
+**Changes:** Added `users.can_edit_glass_bounds` (default false) with migration `2026_09_26_000001_add_glass_bounds_access_to_users_table.php`, run successfully on local DB. Added `User::canEditGlassBounds()` which grants access to admins automatically and to non-admin users only when the checkbox is enabled. Added `Edit Glass bounds` checkbox to Admin Add User and Edit User forms, persisted through create/update services and included in model fillable/casts. The Glass Create Master bounds button/overlay is hidden without the permission, and the Livewire `saveGlassBounds` server action rejects unauthorized direct calls.
+
+**Affected modules:** Users schema/model, admin user access forms, user access service/action, Glass shared image review modal.
+
+**Verification:** Migration completed. PHP syntax validation passed for all changed PHP files. `php artisan view:clear` and `php artisan view:cache` passed.
+
+**Deploy/queue impact:** One database migration is required on other environments. No queue changes. Admins retain access automatically; existing non-admin users default to no bounds access until granted.
+
+**Follow-up:** In User Access, edit the target user and enable `Edit Glass bounds`; refresh/re-login the user session if the old modal was already open.
+
+### 2026-09-26
+
+**Muc tieu:** Them anh bounds Glass dung chung do admin thay the.
+
+**File da sua/tao:**
+- `app/Livewire/Modals/Admin/EditGlassBoundsGuide.php`
+- `resources/views/livewire/modals/admin/edit-glass-bounds-guide.blade.php`
+- `resources/views/livewire/pages/admin/list-user.blade.php`
+- `app/Livewire/Modals/Image/ReviewImage.php`
+- `resources/views/livewire/modals/image/review-image.blade.php`
+- User access model/form files de bo quyen per-user bounds da them nham.
+
+**Thay doi chinh:**
+- Tao upload modal admin cho anh bounds dung chung tai `storage/public/admin/glass/bounds-guide.png`.
+- Upload moi xoa/ghi de len file cu, co cache-busting URL va ghi activity log.
+- Glass Create Master doc anh bounds moi trong preview; neu chua co anh thi dung guide CSS fallback.
+- Bo hoan toan checkbox/property/method `can_edit_glass_bounds`; viec chinh bounds khong con phu thuoc quyen per-user.
+
+**Root cause:** Bounds truoc day chi la khung CSS, khong co nguon anh global de admin thay the.
+
+**Deploy impact:** Can deploy PHP/Blade files va dam bao `storage:link`, thu muc public disk co quyen ghi. Khong sua `.env`, khong co migration.
+
+**Queue impact:** Khong anh huong queue/worker.
+
+**Follow-up:** Kiem tra upload tren User Access va mo Glass `2. Create Master`; khi doi anh, browser se nhan URL moi theo `lastModified`.
+
+### 2026-09-26 (Glass circular bounds crop fix)
+
+**Root cause:** Bounds editor used the square crop rectangle for canvas output. The cyan circular guide was visual-only, so pixels in the four square corners outside the circle were saved and appeared in the resulting Create Master image.
+
+**Changed files:**
+- `resources/views/livewire/modals/image/review-image.blade.php`
+
+**Change:** Before drawing the selected source region, the browser canvas now clips to a centered circle and restores the context afterward. PNG corners outside the Glass circle remain transparent while the content inside the circle is preserved.
+
+**Deploy impact:** Deploy the updated Blade asset and clear/rebuild Laravel views. No migration or environment change.
+
+**Queue impact:** None.
+
+**Follow-up:** Test a Glass Create Master bounds save and confirm the saved PNG has transparent corners outside the cyan circle. The crop remains square in dimensions for downstream compatibility, with circular alpha masking.
+
+### 2026-09-26 (Bounds crop coordinate correction)
+
+**Root cause:** The first circular-mask fix still exported only the square selected region (`sourceX/sourceY/sourceSize`) and then masked that square. Scaling the main image therefore permanently cropped the main image before applying the bounds.
+
+**Changed file:** `resources/views/livewire/modals/image/review-image.blade.php`
+
+**Corrected logic:** The output canvas now keeps the full natural width/height of the main image. The center/radius of the visible bounds circle are converted from stage coordinates to source-image coordinates using the current scale and offsets. The canvas clips to that circle and draws the complete source image, so scale/drag controls determine placement relative to bounds instead of defining a square crop window.
+
+**Deploy/queue impact:** Blade-only change; rebuild Laravel views. No migration or queue impact.
+
+**Follow-up:** Verify with the three provided images: saved output should preserve the original composition from image 3 and only make pixels outside the bounds transparent; it must not resemble image 1's zoomed square crop.
+
+### 2026-09-26 (Preserve full artwork while applying bounds)
+
+**User-reported behavior:** Saved image was a zoomed section of the artwork. The editor showed the complete composition, but export used a square crop, so the result lost the original image area.
+
+**Final logic:** Store a canvas at the main image natural resolution. Convert the editor zoom to a relative scale against the initial fit scale and convert drag offsets from stage pixels to output pixels. Draw the complete source image using that transform, then apply the centered circular bounds alpha mask. The bounds editor therefore controls artwork placement inside the bounds; it does not crop the source into a square first.
+
+**Changed file:** `resources/views/livewire/modals/image/review-image.blade.php`
+
+**Verification:** `php artisan view:cache` passed. Test with the supplied original/editor/saved examples after reloading the page; old saved assets will not be retroactively repaired and must be saved again.
+
+### 2026-09-26 (Bounds geometry investigation)
+
+Inspected `D:\bounds.png` directly: 1404x1404, green usable region is pixel bbox 137..1266 on both axes (1130 px diameter, ratio 0.805). Inspected `D:\CODER\MOCKUP\templates\glass.psd`: 1254x1254 artboard; top Design layer is offset (29,18) and 1203x1202, while each MOCKUP group has its own Design and mask layers. The PSD does not expose one universal Create Master bounds mask; uploaded bounds guide is the source geometry. Updated editor initial bounds ratio from guessed 0.72 to measured 0.805. The export logic keeps natural image canvas and applies transformed artwork before masking.
+
+### 2026-09-26 (Pixel-mask export for Glass bounds)
+
+**User requirement:** Save must take the image being edited and create/update its bounds in place without cutting away the artwork composition.
+
+**Root cause:** Previous export used an estimated circle and/or square source crop. It did not use the actual uploaded bounds guide geometry.
+
+**Changed file:** `resources/views/livewire/modals/image/review-image.blade.php`
+
+**Final export behavior:** Load the shared bounds guide image, copy the source image pixel-for-pixel into a natural-size canvas, map each source pixel through the current editor scale/offset into guide coordinates, read guide pixels, and set alpha to 0 for pixels outside the guide's green usable region. No source square crop and no guessed circle are used when a guide exists.
+
+**Deploy/queue impact:** Blade-only; rebuild Laravel views. No migration or queue impact.
+
+**Follow-up:** Reload the page and save a new Glass Create Master. Existing incorrectly saved images require re-edit/save. If a new guide uses a different color convention than green, update the guide classification rule or upload a transparent mask format.
+
+### 2026-09-26 (Fix bounds save without async/export regression)
+
+**User-reported behavior:** Khi bấm Save bounds, ảnh kết quả bị cắt/xén mất composition thay vì giữ ảnh đang chỉnh và áp bounds lên chính ảnh đó.
+
+**Root cause:** Export bounds đang dùng canvas ảnh nguồn nguyên kích thước và pixel-mask theo guide, nhưng editor callback khởi tạo ảnh dùng `await` trong callback không phải `async`, gây lỗi JavaScript; đồng thời wording backend vẫn gọi output là crop nên che khuất đúng hành vi mong muốn. Logic export hiện tại được giữ nguyên: không tạo square crop, chỉ map ảnh theo scale/offset rồi làm trong suốt pixel ngoài vùng bounds.
+
+**Changed files:**
+- `resources/views/livewire/modals/image/review-image.blade.php`
+- `app/Livewire/Modals/Image/ReviewImage.php`
+
+**Affected modules:** Glass Create Master bounds editor and Glass bounded-image persistence.
+
+**Deploy impact:** Blade/PHP change only; chạy `php artisan view:cache` thành công. Không có migration hoặc thay đổi `.env`.
+
+**Queue impact:** Không ảnh hưởng queue/worker.
+
+**Follow-up:** Reload trang, mở lại Glass Create Master và Save bounds bằng ảnh test. Ảnh mới phải giữ nguyên canvas/composition và chỉ áp transparency theo guide; các asset đã lưu sai cần edit/save lại.
+
+### 2026-09-26 (Align bounds mask with real Glass PSD outer bounds)
+
+**User-reported behavior:** Test bằng ảnh thực tế trong PSD cho thấy ảnh bị hụt một khoảng quanh bounds.
+
+**Root cause:** Export mask chỉ giữ vùng màu xanh bên trong của `bounds.png` (khoảng 1130x1130), trong khi PSD `glass.psd` dùng Design layer ngoài khoảng 1203x1202 tại vị trí `left=29, top=18`. Vì vậy output nhỏ hơn bounds thực tế khoảng 73 px mỗi phía.
+
+**Changed file:** `resources/views/livewire/modals/image/review-image.blade.php`
+
+**Change:** Mask giờ giữ toàn bộ vùng guide không phải nền đỏ (gồm cả vòng ngoài/dark ring và vùng xanh), thay vì chỉ giữ pixel xanh. Nền đỏ của guide vẫn bị loại bỏ.
+
+**Affected module:** Glass Create Master bounds export.
+
+**Deploy impact:** Blade-only; `php artisan view:cache` passed. Không migration hoặc `.env` change.
+
+**Queue impact:** Không ảnh hưởng queue/worker.
+
+**Follow-up:** Reload page và save lại một asset test; đối chiếu vòng ngoài với Design layer PSD. Asset đã lưu trước đây cần save lại.
+
+### 2026-09-26 (Fix web bounds size mismatch with PSD Template)
+
+**User-reported behavior:** Bounds chỉnh đúng trên web nhưng khi chạy renderer/PSD thì artwork không vừa khung Template, bị nhỏ và hụt khoảng quanh viền.
+
+**Root cause:** Web editor hard-coded bounds size theo vùng xanh `0.805` của guide, trong khi renderer thay master image vào Design layer PSD khoảng `1203x1202` trên artboard `1254x1254` (xấp xỉ `0.9593`). Guide mask và PSD Design layer đang biểu diễn hai lớp khác nhau; dùng vùng xanh để fit làm ảnh web nhỏ hơn vùng Template thực tế.
+
+**Changed file:** `resources/views/livewire/modals/image/review-image.blade.php`
+
+**Change:** Editor tự quét guide để tìm bounding box của toàn bộ vùng không phải nền đỏ (vòng ngoài), dùng kích thước đó cho `boundsCropSize`; bỏ hệ số phóng cứng `1.08`. Mask export vẫn giữ vòng ngoài và loại nền đỏ.
+
+**Affected module:** Glass Create Master bounds editor and PSD mockup input alignment.
+
+**Deploy impact:** Blade-only; `php artisan view:cache` passed. Không migration hoặc `.env` change.
+
+**Queue impact:** Không ảnh hưởng queue/worker.
+
+**Follow-up:** Reload trang, mở lại Create Master, để editor khởi tạo lại bounds rồi Save bounds và chạy mockup PSD mới. Asset/mockup cũ cần generate lại để thấy kích thước mới.
+
+### 2026-09-26 (Use PSD safezone as the exported bounds)
+
+**User clarification:** Vùng xanh cần xuất đúng là layer `safezone` trong PSD; layer `Template` màu xanh đậm là vòng/template ngoài.
+
+**Root cause:** Mask trước đó bị đổi sang vòng ngoài/loại nền đỏ, nên không còn đại diện đúng vùng xanh safezone mà user cần xuất.
+
+**Changed file:** `resources/views/livewire/modals/image/review-image.blade.php`
+
+**Change:** Bounds sizing and alpha mask now detect the green safezone region from the guide; export computes the safezone circle geometry and removes pixels outside that circle. Artwork colors no longer determine the mask; only guide geometry is used for the final circular mask.
+
+**Affected module:** Glass Create Master bounds editor/export.
+
+**Deploy impact:** Blade-only; `php artisan view:cache` passed. No migration, env, or queue changes.
+
+**Follow-up:** Reload the page, open Create Master, confirm the green safezone circle, save again, then regenerate the PSD mockup. Compare the saved PNG against the PSD `safezone` layer, not the outer `Template` ring.
+
+### 2026-09-26 (Final safezone coordinate-variable correction)
+
+**Correction:** Sau khi chuyển mask sang safezone, phát hiện bbox safezone dùng trùng tên biến với tọa độ guide trên stage, có thể làm editor lỗi khi export. Đổi thành `safezoneLeft/Top/Right/Bottom` và `stageGuideLeft/Top` để tách hai hệ tọa độ.
+
+**Verification:** `php artisan view:cache`, `php -l app/Livewire/Modals/Image/ReviewImage.php`, và `git diff --check` đều đạt.
+
+### 2026-09-26 (Read bounds from embedded Design Smart Object)
+
+**User clarification:** Layer `Design` ngoài là Smart Object; group `khung đo` nằm bên trong Smart Object, không nằm trực tiếp ở layer tree ngoài.
+
+**Investigation:** Trích embedded `Rectangle 3.psb` từ `D:\Download\MOCKUP công việc.psd`. PSB có artboard `1404x1404`, layer `Design` ở `105,103..1308,1305` với kích thước `1203x1202`, và group `khung đo` chứa `Hình chữ nhật 1`, `Template`, `safezone`.
+
+**Exact vector geometry:**
+- `Hình chữ nhật 1`: square `(100,100)` đến `(1303,1303)`.
+- `Template`: circle centered khoảng `(701.5,701.5)`, outer bounds `(100,100)..(1303,1303)`.
+- `safezone`: circle centered `(701.5,701.5)`, radius `564.74216795`, bounds khoảng `(136.7578,136.7578)..(1266.2422,1266.2422)`.
+
+**Changed file:** `resources/views/livewire/modals/image/review-image.blade.php`
+
+**Change:** Bounds editor/export now uses the exact safezone vector ratio (`564.74216795 / 1404`) for fit and circular alpha mapping. It no longer infers safezone geometry from guide pixel colors. Renderer behavior was verified: it places the master into outer Design bounds `1203x1202`, so the master canvas remains the embedded PSB coordinate system and scales consistently into the PSD.
+
+**Deploy impact:** Blade-only; `php artisan view:cache` passed. No migration, env, or queue changes.
+
+**Follow-up:** Reload the page, open Create Master, save a new bounds asset, regenerate the PSD mockup, and compare against the embedded PSB `safezone` layer. Existing output files must be regenerated.
+
+### 2026-09-26 (Export exact khung đo from Rectangle 3.psb)
+
+**User request:** Dùng trực tiếp khung đo trong Smart Object `Design`/`Rectangle 3.psb` để căn bounds trên web.
+
+**Changed asset:** `storage/app/public/admin/glass/bounds-guide.png`
+
+**Change:** Exported a `1404x1404` guide from the embedded PSB vector geometry: red `Hình chữ nhật 1` `(100,100)-(1303,1303)`, dark-blue `Template` circle centered `(701.5,701.5)` radius `601.5`, and green `safezone` circle centered `(701.5,701.5)` radius `564.74216795`.
+
+**Affected modules:** Glass bounds editor guide and safezone alignment.
+
+**Deploy impact:** Updated public storage asset only; Blade cache rebuilt. No migration, env, or queue change.
+
+**Follow-up:** Hard-refresh the browser so the guide URL cache-buster loads the new asset, then reopen `Create Master` and compare the web overlay against the `khung đo` group inside the Smart Object.
+
+### 2026-09-26 (SKU 4 asset 3737 uses Template export boundary)
+
+**Investigation:** Located user 24 / SKU 4 / STT 1 as `product_design_assets.id=3737`. Source and redesign PNG are `1254x1254`; saved redesign alpha bbox is about `1045x1047`, showing it was exported with the smaller safezone boundary.
+
+**Root cause:** The web editor displayed Template + safezone, but export mask used safezone geometry while the product/PSD result follows the outer Template circle. This made the visible web line and final product line differ.
+
+**Changed file:** `resources/views/livewire/modals/image/review-image.blade.php`
+
+**Change:** Editor fit and export alpha mask now use the exact embedded PSB `Template` circle radius `601.5/1404`; safezone geometry remains available as a reference but is not used to cut the final image. Also removed an intermediate malformed literal newline from the JavaScript block.
+
+**Deploy impact:** Blade-only; `php artisan view:cache` and PHP syntax check passed. No migration, env, or queue change.
+
+**Follow-up:** Save bounds again for asset 3737 and regenerate its PSD mockup. Existing redesign/output remains the old safezone result until explicitly re-saved.
+
+### 2026-09-26 (Preserve Smart Object coordinate system end-to-end)
+
+**User requirement:** Bounds export must match the actual `Rectangle 3.psb` data exactly because the PNG replaces the Smart Object content.
+
+**Root cause:** Web output was previously saved at source canvas size (`1254x1254`) while the embedded Smart Object uses `1404x1404`; renderer also applied alpha-bound trimming and a legacy `0.72` fit/scale path, causing a second coordinate transform and different product cut line.
+
+**Changed files:**
+- `resources/views/livewire/modals/image/review-image.blade.php`
+- `scripts/psd-renderer/render.js`
+- `D:\CODER\MOCKUP\render.js` (local worker renderer)
+
+**Change:** Browser export now uses the guide/Smart Object canvas dimensions (`1404x1404`), maps the current web image transform into that coordinate system, and applies the Template circle at exact PSB coordinates. Both repo and local renderers now draw the full master canvas into the Design/placed-layer canvas without alpha trimming or legacy `0.72` scaling.
+
+**Verification:** Blade cache, PHP syntax, `node --check` for both renderers, and `git diff --check` passed. Ran the repo renderer with asset 3737 successfully and generated six mockups; that validation used the old saved asset, so final visual confirmation requires saving bounds again with the new 1404x1404 export.
+
+**Deploy/queue impact:** Renderer and Blade changes; no migration or `.env` changes. No queue schema change. Local worker renderer must be synchronized/deployed with the repo renderer.
+
+**Follow-up:** Hard refresh, re-save `user_id=24 / SKU=4 / STT=1` bounds, then regenerate mockups and compare against `Rectangle 3.psb` `khung đo`.
+
+### 2026-09-26 (Bounds transform test with MOCKUP công việc.psd)
+
+**User requirement:** Web bounds must be drag/zoom controls that produce the exact image placement when inserted into the real PSD Smart Object, including crop/add behavior from the X transform frame.
+
+**Changed behavior:** Web export now creates the master in the Smart Object canvas (`1404x1404`), draws the source using the exact stage transform (image left/top, zoom, offsets), and applies the exact Template circle. Both repo and local renderer preserve the full master canvas and no longer apply alpha trimming or legacy fit scaling.
+
+**Verification:** Blade cache, PHP syntax, Node syntax, and diff checks passed. A full local render attempt with `D:\Download\MOCKUP công việc.psd` was blocked by an existing Windows-path incompatibility in `@napi-rs/canvas` (`Protocol "d:" not supported`) when the renderer loads a local PNG; this is separate from bounds geometry and needs path normalization in renderer test/runtime.
+
+**Follow-up:** Save new bounds for asset 3737, then run the worker after fixing/normalizing local PNG paths; compare the resulting PSD output against the `Rectangle 3.psb` transform frame and khung đo.
+
+### 2026-09-28 (Recover HTTP 500 Blade cache rename access denied)
+
+**Root cause:** Laravel Blade compilation failed on Windows while atomically renaming a temporary compiled view in `storage/framework/views` (`rename(...tmp,...php): Access is denied`, code 5). Both the temporary and destination files existed, while directory ACL already allowed Modify; this was a stale/locked compiled-view cache issue rather than a bounds PHP/Blade syntax error.
+
+**Changed files:** `AI_MEMORY.md` only. No application code changed for this incident.
+
+**Operations:** Ran `php artisan view:clear`, `php artisan optimize:clear`, and `php artisan view:cache`. The stale temporary/target files were removed and all Blade templates compiled successfully.
+
+**Affected modules:** Laravel/Livewire view rendering globally; the exception happened while compiling `resources/views/components/input-error.blade.php`.
+
+**Deploy impact:** Cache cleanup only. No migration, environment, or secret changes.
+
+**Queue impact:** None.
+
+**Follow-up:** Reload the page. If code 5 returns, inspect concurrent PHP/Laravel processes or antivirus/indexer locks on `storage/framework/views`; avoid multiple processes compiling Blade cache simultaneously.
+
+### 2026-09-28
+
+**Muc tieu:** Fix Import Glass Excel loi `Call to undefined method ProductDesignAssetRepository::createImportedGlass()`.
+
+**Root cause:** `GlassService::importAsset()` da goi method `createImportedGlass()`, nhung repository chi co method tuong ung cho Sticker; Glass import khong the tao asset.
+
+**File da sua:**
+- `app/Repositories/Product/ProductDesignAssetRepository.php`
+- `AI_MEMORY.md`
+
+**Thay doi:** Them `createImportedGlass()` voi transaction, lock `item_number`, kiem tra SKU trung theo user, luu source image, Create Master vao `redesign`, va luu toi da 6 mockup vao `mockup1..mockup6`.
+
+**Deploy impact:** Deploy file repository PHP; khong can migration, khong anh huong queue. Excel format va link Google Drive khong can doi.
+
+**Verification:** PHP lint va view cache can duoc chay sau khi sua; can test lai import mot dong Glass tren giao dien.
+
+### 2026-09-28 (Fix initial bounds editor scale)
+
+**User-reported behavior:** Khi mở Chỉnh bounds lần đầu, ảnh bị phóng lớn/hiển thị 100% và không nằm vừa khung; sau khi kéo thủ công xuống khoảng 58% thì mới khớp.
+
+**Root cause:** Bounds initialization still had a stale reference to the removed safezone geometry method and used an outdated `0.805` fallback. Initial scale was also calculated independently instead of explicitly fitting the current Template diameter.
+
+**Changed file:** `resources/views/livewire/modals/image/review-image.blade.php`
+
+**Change:** Each editor open now calculates `boundsCropSize` from the exact Template geometry, uses a `0.9593` fallback for the Template diameter, and initializes `boundsScale` from the fitted source-to-Template ratio. Offset is reset to zero before clamping.
+
+**Verification:** `php artisan view:cache` and PHP syntax check passed. No migration, env, renderer, or queue change.
+
+**Follow-up:** Hard refresh and reopen bounds; the initial zoom should already fit the Template. Manual zoom/move remains available for deliberate adjustments.
+
+### 2026-09-28 (Bounds editor controls UX)
+
+**User request:** Đưa Zoom vào Image Information; wheel mỗi nấc là 1%; dùng phím mũi tên để dịch ảnh; thêm thanh chỉnh độ đậm/nhạt của guide xanh để nhìn ảnh gốc.
+
+**Changed file:** `resources/views/livewire/modals/image/review-image.blade.php`
+
+**Changes:** Added bounds controls panel inside Image Information with zoom slider, guide opacity slider, and move-step input. Wheel zoom increment is `1%` of the fitted base scale. Global arrow-key handler maps ArrowUp/Down/Left/Right to image movement and prevents page scrolling while editing. Guide image opacity is bound to the new slider.
+
+**Verification:** Blade cache rebuilt successfully; PHP syntax and diff checks passed. No migration, renderer, env, or queue impact.
+
+**Follow-up:** Hard refresh the modal. Open Chỉnh bounds, use Image Information controls, scroll one wheel notch to verify 1%, and use arrow keys while the editor is active.
+
+### 2026-09-28 (Swap STT/SKU badge colors)
+
+**Muc tieu:** Doi mau hai badge `STT` va `SKU` dong bo tren cac trang san pham.
+
+**File da sua:**
+- `resources/views/livewire/pages/glass/product-design-card.blade.php`
+- `resources/views/livewire/pages/sticker/product-design-card.blade.php`
+- `resources/views/livewire/pages/ornament-etsy/product-design-card.blade.php`
+- `resources/views/livewire/pages/ornament-amazon-two/product-design-card.blade.php`
+- `resources/views/livewire/pages/suncatcher/product-design-card.blade.php`
+
+**Thay doi:** `STT` tu indigo sang slate; `SKU` tu slate sang indigo. Khong thay doi logic du lieu.
+
+**Verification:** `php artisan view:cache` pass.
+
+### 2026-09-28 (Badge color correction completed)
+
+The first replacement pass only matched one file's line endings; a targeted regex pass then applied the swap to all five product card views. Final state: STT uses slate (`bg-slate-100/text-slate-600`) and SKU uses indigo (`bg-indigo-50/text-indigo-600`) on Glass, Sticker, Ornament Etsy, Ornament Amazon Two, and Suncatcher. View cache rebuilt successfully.
+
+### 2026-09-28 (Preserve transparent source in Glass bounds editor)
+
+**User request:** Bounds editor must save the background-removed image with alpha preserved; arrow keys must move exactly 1px per press and users must not configure the step.
+
+**Root cause:** The bounds editor loaded `$src`, which is the versioned/preview URL. For some Glass assets that preview is flattened or rendered with a white background, so the canvas export copied white pixels before applying the circular alpha mask. The editor's arrow movement already used a hardcoded 1px step after the prior UI change.
+
+**Changed files:**
+- `resources/views/livewire/modals/image/review-image.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:** Bounds initialization now loads `$original ?: $src`, and the editor image element follows the loaded original image. The export path therefore draws the transparent source and retains its existing alpha; only pixels outside the Template circle are cleared. Arrow movement remains hardcoded to `1` pixel and the configurable step input remains removed.
+
+**Affected modules:** Glass Create Master bounds editor and its `saveGlassBounds` PNG export. Other image preview/display flows are unchanged.
+
+**Deploy impact:** One Blade view deploy; no migration, environment, secret, or renderer change.
+
+**Queue impact:** None. Existing saved white-background bounds files are not retroactively repaired; they must be opened and saved again.
+
+**Verification:** `php artisan view:cache`, PHP lint for `ReviewImage.php`, and targeted diff checks passed. Browser test still required: hard-refresh, open Glass Create Master, save bounds, and inspect PNG corners/transparent artwork pixels.
+
+**Follow-up:** Retest user 24 / SKU 4 / STT 1. Confirm the saved bounds PNG has transparent corners and no white fill, then regenerate the PSD mockup if needed.
+
+### 2026-09-28 (Align Glass bounds export with tested demo compositing)
+
+**User request:** Reuse the tested FF-Mockup demo behavior because the current bounds result was geometrically wrong, while preserving transparent cutout pixels.
+
+**Root cause:** The Laravel export used a per-pixel alpha rewrite after drawing. Although it could clear the outside area, it did not mirror the demo's exact `save transform -> circular clip -> draw source` compositing model. This made the export path harder to reason about and risked differences from the preview.
+
+**Changed files:**
+- `resources/views/livewire/modals/image/review-image.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:** Replaced the pixel loop with a canvas ellipse clip and drew the original transparent image using the same transformed coordinates used by the preview. The export now follows the demo's compositing rule and preserves all source alpha inside the Template mask. The existing original-source selection and fixed 1px arrow movement remain active.
+
+**Affected modules:** Glass Create Master bounds editor and `saveGlassBounds` PNG export.
+
+**Deploy impact:** One Blade view deploy; no schema, env, secret, renderer, or queue changes.
+
+**Queue impact:** None.
+
+**Verification:** `php artisan view:cache` and PHP lint passed. Live browser verification remains required with the supplied demo/reference image; previously saved bounds files must be saved again.
+
+**Follow-up:** Hard-refresh, open user 24 / SKU 4 / STT 1, use the same transform as the demo, save bounds, and verify the resulting PNG has the same composition as the demo with transparent outside pixels rather than white fill.
+
+### 2026-09-28 (Match bounds coordinates to supplied demo)
+
+**User-reported issue:** Saved Glass bounds were still cut in the wrong position/size even though alpha behavior was improved.
+
+**Root cause:** The Laravel editor/export continued using the 1404x1404 guide coordinate system, while the supplied working demo uses a 1203x1204 output canvas and bounds rectangle `{x:86,y:86,width:1031,height:1032}`. The preview/export coordinate systems therefore did not match the user's known-good demo.
+
+**Changed files:**
+- `resources/views/livewire/modals/image/review-image.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:** Glass bounds geometry now uses the demo's 1203x1204 logical output and 86/86/1031/1032 Template bounds. Export derives its canvas size and circular mask from this shared geometry while drawing the original source with the current transform.
+
+**Affected modules:** Glass bounds editor preview, fit scale, clamp limits, and `saveGlassBounds` PNG export.
+
+**Deploy impact:** One Blade view deploy; no database, env, secret, renderer, or queue changes.
+
+**Queue impact:** None.
+
+**Verification:** Blade cache and PHP lint passed. A live browser save and PSD mockup regeneration are still required to visually verify against the supplied demo and target PSD.
+
+**Follow-up:** Hard-refresh, reopen the same Glass asset, save new bounds, and compare the resulting PNG dimensions/placement to the demo. Regenerate old mockups after saving because existing files retain the prior transform.
+
+### 2026-09-28 (Edit keyword modal)
+
+**Muc tieu:** Cho phep sua Keyword tren item chua duyet.
+
+**Thay doi:** Tao modal dung chung `app/Livewire/Modals/Product/EditKeyword.php` va view `resources/views/livewire/modals/product/edit-keyword.blade.php`. Modal nhan `assetId` + `productSlug`, load keyword, chi cho item chua approved, goi `updateKeyword()` cua service tuong ung, ghi activity log va refresh list/status panel.
+
+**Product cards:** Glass, Sticker, Ornament Etsy da doi nut Edit sang modal moi va hien cho moi item chua duyet, ke ca item da co Create Master. Modal duoc mount trong list views cua cac trang san pham.
+
+**Deploy/queue impact:** PHP/Blade only, khong migration, khong queue impact. View cache pass; PHP lint pass cho modal va cac service.
+
+### 2026-09-28 (Fix clipping caused by mixing demo and PSD coordinate systems)
+
+**User-reported issue:** The editor preview showed the artwork correctly fitted to the PSD guide, but the saved PNG was zoomed/cropped differently and lost the intended composition.
+
+**Root cause:** The export path had been changed to the demo's 1203x1204 canvas and 86/86/1031/1032 bounds, while the actual Glass editor displayed the 1404x1404 PSD Smart Object guide with Template radius 601.5. Preview and export therefore used different coordinate systems; the saved result was clipped at the wrong scale/position.
+
+**Changed files:**
+- `resources/views/livewire/modals/image/review-image.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:** Restored shared geometry to the actual guide dimensions (`naturalWidth`/`naturalHeight`, fallback 1404x1404) and PSD Template geometry (center at canvas center, radius 601.5 normalized from 1404). Export canvas and ellipse mask now use the same geometry as the visible guide and the same transformed source.
+
+**Affected modules:** Glass bounds editor preview and `saveGlassBounds` PNG export.
+
+**Deploy impact:** One Blade view deploy; no migration, env, secret, renderer, or queue changes.
+
+**Queue impact:** None.
+
+**Verification:** Blade cache and PHP lint passed. Browser re-save is required because existing PNGs were generated with the mixed coordinate system.
+
+**Follow-up:** Hard-refresh, reopen bounds, save a new PNG, confirm its dimensions are 1404x1404 and compare its circle/content directly with the preview. Regenerate PSD mockups from the newly saved bounds.
+
+### 2026-09-28 (Theme persistence and palette normalization)
+
+**Root cause:** `users.theme_mode` stores the strings `light`/`dark`, but `User::casts()` grouped `theme_mode` with `can_view_all_proxy` as boolean. Both string values were therefore read as boolean, so the layout comparison to `dark` failed and reloads defaulted to light. The UI also relied on many hard-coded Tailwind colors with incomplete dark overrides.
+
+**Changed files:**
+- `app/Models/User.php`
+- `resources/views/layouts/app.blade.php`
+- `resources/views/livewire/layout/navigation.blade.php`
+- `resources/css/app.css`
+- `AI_MEMORY.md`
+
+**Changes:** Cast `theme_mode` as string; keep `can_view_all_proxy` boolean. Added early head script and localStorage key `offorest.theme` to apply the chosen theme before paint and across page navigation. Theme toggle now updates localStorage, `data-theme-mode`, root classes, and database. Added shared light/dark CSS variables and coherent dark indigo/cyan/violet/surface overrides.
+
+**Deploy impact:** Deploy Blade/CSS/model changes and rebuilt Vite assets (`npm run build` passed). No migration or queue impact.
+
+**Follow-up:** Test by selecting dark, hard-reloading, navigating to another product, and logging out/in. If localStorage is stale from earlier testing, clear `offorest.theme` once and select the desired mode again.
+
+### 2026-09-28 (Match saved bounds to PSD Design/Hình chữ nhật 1 placement)
+
+**User request:** The saved bounds PNG must match the visible editor and align exactly when replacing the `Design` smart object content / `Hình chữ nhật 1` inside the `khung đo` group of the Glass PSD.
+
+**Root cause:** The PSD renderer scales the supplied master image into the `Design` layer canvas (approximately 1203x1202), while the editor guide is the embedded 1404x1404 PSB coordinate system. Exporting a 1404x1404 master caused a second scale during replacement and shifted the artwork relative to `Hình chữ nhật 1`.
+
+**Changed files:**
+- `resources/views/livewire/modals/image/review-image.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:** Bounds export now uses the Design smart-object local canvas (`1203x1202`). The visible guide remains in 1404 coordinates, but export converts guide coordinates to Design-local coordinates by subtracting the embedded Design offset (`105,103`). The Template mask center is correspondingly `(1404/2-105, 1404/2-103)` with PSD Template radius `601.5`. Preview transform and export transform remain shared.
+
+**Affected modules:** Glass bounds editor, saved redesign PNG, PSD Design-layer replacement, and final Glass mockup rendering.
+
+**Deploy impact:** One Blade view deploy; no database migration, env, secret, or queue changes.
+
+**Queue impact:** None. Existing bounds PNGs and mockups must be regenerated.
+
+**Verification:** Blade cache, PHP lint, and targeted diff checks passed. A live save followed by PSD render is required to confirm pixel-level matching.
+
+**Follow-up:** Hard-refresh, save a new bounds file, verify it is `1203x1202`, then render the same PSD and compare the content to `Hình chữ nhật 1`/`Design` in `Rectangle 3.psb`.
+
+### 2026-09-28 (Color harmony pass)
+
+**Muc tieu:** Giam cam giac mau sac lon xon trong dark/light UI.
+
+**Thay doi:** Standardized product-card mockup accents by replacing orange Tailwind utilities with indigo equivalents across all `product-design-card.blade.php` views. This keeps the product workflow on the same blue/indigo family as Create Master and navigation; orange remains available only for genuinely semantic warnings/marketplace branding. Existing shared CSS variables and dark indigo/cyan overrides remain active.
+
+**Verification:** `php artisan view:cache` and `npm run build` passed. No data, migration, or queue changes.
+
+### 2026-09-28 (Replace Glass bounds engine with tested Canvas demo)
+
+**User request:** Remove the accumulated Glass bounds logic and temporarily implement the supplied `ff_mockup_bounds_demo.html` behavior so the user can test a known-good preview/export path.
+
+**Root cause:** Previous iterations mixed PSD guide coordinates, Design-layer coordinates, and demo coordinates. Preview and export had separate conversion formulas, which repeatedly produced mismatched crops.
+
+**Changed files:**
+- `resources/views/livewire/modals/image/review-image.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:** Replaced the bounds rendering engine with one logical HTML Canvas matching the demo: canvas `1203x1204`, target bounds `{x:86,y:86,width:1031,height:1032}`, cover-fit initialization, shared `scale/translateX/translateY`, pointer drag converted into canvas coordinates, 1% wheel zoom around the pointer, 1px keyboard nudging, and circular clipping. Preview and saved PNG now call the same transform values. The saved PNG starts from a transparent canvas and preserves source alpha; visual red/green guides and transform lines are drawn only on the preview canvas.
+
+**Affected modules:** Glass Create Master bounds modal and `saveGlassBounds` PNG payload. Backend persistence and PSD renderer were not changed in this task.
+
+**Deploy impact:** Deploy the Blade view. No migration, environment, secret, dependency, or worker change.
+
+**Queue impact:** None. Existing saved bounds images and generated mockups are unchanged until the user saves again.
+
+**Verification:** `php artisan view:cache`, PHP lint, targeted diff check, Better Design comprehension review, and source review passed. Better Design runtime spacing capture could not be completed because no authenticated XLAP browser tab was available; visual parity remains user-test pending.
+
+**Follow-up:** Hard-refresh, open Glass Create Master bounds, compare preview to the saved PNG from the same transform, and report whether this isolated demo engine matches. If it does, adapt the PSD renderer around this canonical `1203x1204` master rather than adding coordinate conversions back into the editor.
+### 2026-09-28 (Rollback Better Design Glass redesign)
+
+**User request:** Roll back the Better Design Precision changes made to the Glass page.
+
+**Root cause:** The user did not want to keep the newly applied Glass Precision redesign.
+
+**Changed files:**
+- `resources/css/app.css`
+- `resources/views/components/ui/button.blade.php`
+- `resources/views/livewire/pages/glass/list-glass.blade.php`
+- `resources/views/livewire/pages/glass/glass-status-panel.blade.php`
+- `resources/views/livewire/pages/glass/product-design-card.blade.php`
+- `.better-design/feature-map.json` (removed)
+- `AI_MEMORY.md`
+
+**Changes:** Reversed only the immediately preceding Better Design work: removed the scoped Glass Precision CSS and Inter import, restored the previous Glass toolbar, floating add button, status tabs, card spacing, stage dimensions, colors, and copy, removed the temporary `indigo` shared button mappings, removed the generated Better Design feature map, and deleted the previous redesign memory episode. Existing earlier Glass bounds, edit-keyword, dark-mode, worker, and product workflow changes were preserved.
+
+**Affected modules:** Glass frontend only. No backend logic, database, storage, or image generation behavior changed.
+
+**Deploy impact:** Rebuild frontend assets and deploy the restored Blade/CSS files. No migration, environment, dependency, or worker change.
+
+**Queue impact:** None.
+
+**Verification:** `php artisan view:cache` passed; `npm run build` passed. Residue scan found no `glass-workspace`, Precision CSS marker, redesign memory marker, feature map, or temporary shared-button `indigo` entries. Targeted git status returned to the same pre-existing modified files that were present before the redesign task.
+
+**Follow-up:** Hard-refresh `/offorest/glass` to load the restored stylesheet.
+### 2026-09-28 (Isolated shadcn/ui trial)
+
+**User request:** Install shadcn/ui in XLAP for a safe trial.
+
+**Root cause:** XLAP uses Laravel Blade, Livewire, Volt, and Tailwind 3, not React/Inertia. Installing current React shadcn components directly into production pages would not work safely.
+
+**Changed files:**
+- `tools/shadcn-demo/` (new isolated React 19 + Vite 8 + Tailwind 4 + shadcn/ui trial)
+- `AI_MEMORY.md`
+
+**Changes:** Created a standalone shadcn/ui Nova/Radix demo under `tools/shadcn-demo`; installed Button, Card, Input, Label, Badge, Switch, and Dialog; added an interactive workflow example; isolated Tailwind 4 from the parent Tailwind 3 PostCSS config; scoped the generated-component lint exception; documented local usage.
+
+**Affected modules:** Trial tooling only. Existing Laravel routes, Blade views, Livewire components, root Vite config, root CSS, authentication, and production UI were not changed.
+
+**Deploy impact:** None unless the trial is intentionally deployed separately. Run with `cd tools/shadcn-demo && npm run dev`.
+
+**Queue impact:** None.
+
+**Verification:** `npm run typecheck`, `npm run lint`, and `npm run build` passed. Browser interaction verified input, switch state, action state, and Dialog rendering at `http://127.0.0.1:5175/`. Better Design review was unavailable because the free MCP quota was exhausted.
+
+**Follow-up:** Use the trial to choose components and visual direction. For production, port selected patterns to Blade/Livewire or plan a deliberate React/Inertia migration instead of mixing React ad hoc into current pages.
+### 2026-09-28 (Tailwind Blade UI foundation)
+
+**User request:** Build a reusable UX/UI foundation for XLAP using the existing Tailwind-only frontend stack.
+
+**Root cause:** XLAP had many page-specific Tailwind patterns and only one component in the `x-ui` namespace. The production frontend uses Blade, Livewire, Volt, and Tailwind 3, so React shadcn components are not directly compatible.
+
+**Changed files:**
+- `resources/views/components/ui/card.blade.php`
+- `resources/views/components/ui/input.blade.php`
+- `resources/views/components/ui/textarea.blade.php`
+- `resources/views/components/ui/select.blade.php`
+- `resources/views/components/ui/badge.blade.php`
+- `resources/views/components/ui/form-field.blade.php`
+- `resources/views/ui-preview.blade.php`
+- `routes/web.php`
+- `tests/Feature/UiComponentTest.php`
+- `AI_MEMORY.md`
+
+**Changes:** Added reusable Tailwind Blade components with dark mode, focus, invalid, disabled, required, hint, and error states. Added a local-only `/ui-preview` route using the guest layout so components can be reviewed without authentication. The route is registered only when `APP_ENV=local`. Existing legacy components and the modified `x-ui.button` were preserved.
+
+**Affected modules:** Shared Blade UI foundation and a local preview page only. No production page was migrated in this task.
+
+**Deploy impact:** New components are inert until used. `/ui-preview` is not registered outside local environment. Frontend assets must be rebuilt when these components are adopted by production pages.
+
+**Queue impact:** None.
+
+**Verification:** Component feature test passed with 6 assertions; PHP lint, Blade view cache, and Vite production build passed. Browser review confirmed labels, required text, error role, disabled state, one-column narrow layout, and coherent dark mode. Better Design review and spacing tools were attempted but unavailable because the free MCP quota was exhausted. Automated Playwright screenshots were unavailable because its Chromium binary is not installed; visual review used the Codex in-app browser.
+
+**Follow-up:** Select one production page, migrate its repeated controls to `x-ui.*`, compare behavior before/after, and only then expand the component set.
+### 2026-09-28 (Persistent UI screenshot and design-review workflow)
+
+**User request:** Make the screenshot and visual-review loop automatic for every future XLAP UI request.
+
+**Root cause:** XLAP had reusable Tailwind Blade components but no project-level design source of truth or mandatory before/after visual verification workflow. Better Design MCP was also unavailable after the free quota was exhausted.
+
+**Changed files:**
+- `AGENTS.md`
+- `DESIGN.md`
+- `.design/README.md`
+- `AI_MEMORY.md`
+
+**External tools installed:**
+- Global `screenshot` skill from `openai/skills` at `C:\Users\Xuan Lap\.agents\skills\screenshot`
+- Global `design-review` skill from `julianoczkowski/designer-skills` at `C:\Users\Xuan Lap\.agents\skills\design-review`
+
+**Changes:** Added an automatic XLAP UI workflow to `AGENTS.md`: read `DESIGN.md`, scope the screen and flow, create a feature design brief, capture baseline screenshots, implement with Blade/Livewire/Tailwind and shared `x-ui` components, run tests/build, capture matching after screenshots, run design review, fix all Must Fix findings, and never claim PASS without rendered evidence. Added the XLAP design-system source of truth and the `.design/<feature>/` artifact convention.
+
+**Affected modules:** Agent workflow and design documentation only. No runtime application code, route, database, queue, or production UI behavior changed.
+
+**Deploy impact:** None. The installed skills become available to Codex on the next task/session discovery cycle. Repository instructions apply automatically to future tasks opened inside XLAP.
+
+**Queue impact:** None.
+
+**Verification:** Confirmed both global skill files exist; confirmed `AGENTS.md` contains the UI/UX workflow; reviewed `DESIGN.md` and `.design/README.md`. No build or application test was required because runtime code was unchanged.
+
+**Follow-up:** On the next UI request, choose a real page such as Login or Dashboard. The agent should create `.design/<page>/DESIGN_BRIEF.md` and execute the full screenshot-review-fix loop automatically.
+## 2026-09-28 - Add isolated Decal workspace cloned from Sticker
+
+Root cause: XLAP needed a Decal workflow with the same capabilities as Sticker but fully isolated by product identity.
+
+Files changed:
+- app/Livewire/Pages/Decal/*
+- app/Livewire/Modals/Decal/*
+- app/Services/Decal/*
+- resources/views/livewire/pages/decal/*
+- resources/views/livewire/modals/decal/*
+- app/Console/Commands/RunDecalLocalMockupFallback.php
+- app/Support/ProductRegistry.php
+- database/migrations/2026_09_28_000001_add_decal_product.php
+- config/services.php
+- routes/console.php
+- app/Livewire/Modals/Image/ReviewImage.php
+- app/Services/Prompt/PromptService.php
+- app/Services/Marketplace/MarketplaceListingMetadataService.php
+- app/Services/Dashboard/DashboardStatsService.php
+- app/Livewire/Pages/Order/Index.php
+- resources/views/livewire/layout/navigation.blade.php
+- public/templates/decal-import-template.xlsx
+- .design/decal-module/*
+
+Changes:
+- Added independent Decal route, navigation, data product, access assignment, prompts copied from Sticker at migration time, assets, event names, PSD templates, storage paths, API function key, and local mockup fallback.
+- Decal shares Sticker behavior but does not read/write Sticker product assets, templates, prompts, jobs, or generated directories.
+- Added Decal support to shared image review, listing metadata, dashboard and order product filtering.
+
+Affected modules: Decal product workflow, shared image review, marketplace metadata, dashboard, order import selection, scheduled local mockup fallback.
+
+Deploy impact: Run `php artisan migrate`, deploy code and Vite assets, and run `php artisan optimize:clear`. Assign Decal product access to users as required. Users configure Decal API credentials separately; migration copies Sticker prompts into Decal as initial independent records.
+
+Queue impact: A separate `decal:local-mockup-fallback` scheduled command runs once per minute. No existing Sticker worker/job is changed.
+
+Validation:
+- PHP lint passed for all Decal classes, migration, shared review, registry, and command.
+- `php artisan route:list --name=offorest.products.decal`, `php artisan view:cache`, and `npm run build` passed.
+- The existing `OfforestProductSchemaTest` suite could not start because the pre-existing SQLite-incompatible migration uses MySQL `UPDATE ... JOIN` syntax; all 46 tests fail before test setup, unrelated to Decal.
+- Visual capture/review is pending: no authenticated browser or browser-capture MCP was available.
+
+Follow-up notes: Test `/offorest/decal` at desktop/mobile in light/dark mode, configure the Decal API key for users who need generation, and confirm PSD worker integration on the production/local worker.
+## 2026-09-28 - Make Decal visible in admin product permissions
+
+Root cause: The Decal migration was pending locally, so no Decal product record existed. After running it, the original migration only attached Decal to the first user; `adminxlap` was not that user and therefore the Edit User product checkbox did not display as assigned.
+
+Files changed:
+- database/migrations/2026_09_28_000001_add_decal_product.php
+- AI_MEMORY.md
+
+Changes:
+- Ran the Decal migration locally; product `decal` now exists as active record ID 14.
+- Granted the Decal product to all existing admin users, including `adminxlap`.
+- Updated the migration for fresh environments to grant Decal to every admin (`is_admin` or role `admin`) rather than only the first user.
+
+Affected modules: Admin Edit User product permissions, navigation, and Decal route access.
+
+Deploy impact: On VPS run `php artisan migrate --force` and `php artisan optimize:clear`. For a VPS that already ran the original migration, grant Decal product access to existing admins once.
+
+Queue impact: None.
+
+Validation: Migration completed, bootstrap caches cleared, migration PHP lint passed, and `adminxlap` now has Decal product access (`true`).
+
+Follow-up notes: Hard-refresh the Edit User modal; Decal should appear in Products & tools and be checked for the admin.
+## 2026-09-28 - Complete Decal parity audit with Sticker
+
+Root cause: The first Decal clone matched its dedicated classes but shared entry points outside the Sticker namespace still only recognized the `sticker` slug.
+
+Files changed:
+- app/Livewire/Modals/ProductDesign/DeleteIdeaConfirm.php
+- app/Livewire/Modals/Product/EditKeyword.php
+- app/Livewire/Modals/Image/ReviewImage.php
+- app/Livewire/Pages/IdeaEtsy/IdeaEtsy.php
+- app/Livewire/Pages/IdeaAmazon/IdeaAmazon.php
+- app/Livewire/Pages/Admin/ListUser.php
+- app/Livewire/Modals/Admin/EditImportTemplate.php
+- storage/app/public/import-templates/decal-import-template.xlsx
+- AI_MEMORY.md
+
+Changes:
+- Compared every dedicated Sticker/Decal PHP class method pair: service, renderer, template service, page, status panel, card, add/edit/import/template modals all have identical normalized method sets.
+- Compared seven paired Sticker/Decal Blade files after normalized naming; all are byte-equivalent.
+- Added Decal support to shared delete, edit-keyword, review-image activity/error logging, Idea Etsy/Amazon creation, and admin template management.
+
+Affected modules: Decal workspace and all shared paths a Sticker item can reach.
+
+Deploy impact: Deploy the listed PHP/Blade code and Decal import template. No additional migration beyond the already-run Decal product migration.
+
+Queue impact: Decal fallback command remains separate; verified it is registered as `decal:local-mockup-fallback`.
+
+Validation: PHP lint passed for all changed shared classes, Blade cache passed, Decal fallback command is listed, and targeted scan found no remaining shared product allow-list missing Decal.
+
+Follow-up notes: Visual UI review still requires an authenticated browser session; behavior parity was verified by source-level method, template, event, and shared-entry-point audit.
+## 2026-09-28 - Match Decal STT badge to SKU indigo treatment
+
+Root cause: Decal card SKU used the requested indigo badge while STT retained the neutral slate badge.
+
+Files changed:
+- resources/views/livewire/pages/decal/product-design-card.blade.php
+- .design/decal-module/DESIGN_BRIEF.md
+- AI_MEMORY.md
+
+Changes: Updated the Decal STT badge from slate to the same indigo background/text treatment as SKU. No data or workflow behavior changed.
+
+Affected modules: Decal card header only.
+Deploy impact: Deploy Blade and rebuilt frontend assets. Queue impact: None.
+Validation: `php artisan view:cache`, `npm run build`, and diff check passed.
+Follow-up notes: No authenticated browser was available for visual capture; hard-refresh `/offorest/decal` to verify the badge.
+## 2026-09-28 - Standardize STT and SKU badge colors across product workspaces
+
+Root cause: Product cards used indigo for SKU but neutral slate for STT, while the requested visual treatment is the same indigo identifier style everywhere.
+
+Files changed:
+- resources/views/livewire/pages/sticker/product-design-card.blade.php
+- resources/views/livewire/pages/decal/product-design-card.blade.php
+- resources/views/livewire/pages/glass/product-design-card.blade.php
+- resources/views/livewire/pages/ornament-etsy/product-design-card.blade.php
+- resources/views/livewire/pages/ornament-amazon-two/product-design-card.blade.php
+- resources/views/livewire/pages/suncatcher/product-design-card.blade.php
+- .design/decal-module/DESIGN_BRIEF.md
+- AI_MEMORY.md
+
+Changes: Applied the same `bg-indigo-50 text-indigo-600` badge treatment to STT and SKU across every product card workspace. No layout, data, authorization, or workflow behavior changed.
+
+Affected modules: Sticker, Decal, Glass, Ornament Etsy, Ornament Amazon 2, and Suncatcher card headers.
+Deploy impact: Deploy Blade files and rebuilt frontend assets. Queue impact: None.
+Validation: Verified no remaining STT badge uses the previous slate class; `php artisan view:cache`, `npm run build`, and targeted diff check passed.
+Follow-up notes: Visual screenshot evidence remains unavailable without an authenticated browser; hard-refresh product pages to load the rebuilt assets.
+### 2026-09-28 (Make uploaded Glass bounds guide the dynamic source of truth)
+
+**User request:** The current bounds is correct, but future bounds uploads must update the app automatically without editing hard-coded coordinates each time.
+
+**Root cause:** Admin upload only replaced `bounds-guide.png`; the Glass editor still contained hard-coded canvas, Template, and safezone numbers. Replacing the guide image therefore did not change crop behavior.
+
+**Changed files:**
+- `app/Services/Glass/GlassBoundsGuideAnalyzer.php`
+- `app/Livewire/Modals/Admin/EditGlassBoundsGuide.php`
+- `app/Livewire/Modals/Image/ReviewImage.php`
+- `resources/views/livewire/modals/admin/edit-glass-bounds-guide.blade.php`
+- `resources/views/livewire/modals/image/review-image.blade.php`
+- `tests/Unit/Services/Glass/GlassBoundsGuideAnalyzerTest.php`
+- `AI_MEMORY.md`
+
+**Changes:** Added a GD-based analyzer that normalizes uploads to PNG, detects the outer blue/cyan/purple Template bbox and green safezone bbox, and stores `admin/glass/bounds-guide.json`. Admin upload now validates detection before replacing the active guide and logs the detected geometry. The image review modal loads this JSON dynamically for canvas size, final crop target, and safezone. If an existing guide has no JSON, the app analyzes it once and creates the config automatically. The admin modal displays detected Canvas, Template, and Safezone sizes and explains the color convention.
+
+**Current detected production/local-storage config:** Public disk root is `D:\FFACTORY\XLAP_LOCAL_STORAGE\public`. Active guide is `1203x1203`; Template is `{x:0,y:0,width:1203,height:1203}`; safezone is `{x:37,y:38,width:1130,height:1129}`. Config was written to `D:\FFACTORY\XLAP_LOCAL_STORAGE\public\admin\glass\bounds-guide.json`.
+
+**Affected modules:** Admin Glass bounds upload, Glass Create Master bounds editor, saved bounds PNG geometry.
+
+**Deploy impact:** Deploy the new analyzer, two Livewire components, two Blade views, and test. Ensure PHP GD remains enabled. No migration, env, secret, or dependency changes.
+
+**Queue impact:** None. Existing mockups are not regenerated automatically; newly saved bounds use the uploaded configuration.
+
+**Verification:** Analyzer unit test passed (1 test, 4 assertions). PHP lint passed for analyzer and both Livewire components. Blade cache passed. Targeted diff check passed. The active storage guide/config were inspected and match the detected values above. Better Design review calls were attempted but the account quota returned HTTP 402.
+
+**Follow-up:** For future updates, use Admin > Ảnh bounds Glass and upload an image whose outer Template is blue/cyan/purple and safezone is green. The app rejects an unreadable guide instead of silently retaining wrong geometry. Hard-refresh any already-open bounds modal after replacing the guide.
+
+### 2026-09-28 (Preserve uploaded Glass guide colors in bounds preview)
+
+**User-reported issue:** The dark/black ring and custom colors visible in the uploaded bounds image disappeared in the Create Master bounds editor.
+
+**Root cause:** The editor used only the detected JSON geometry, then reconstructed a generic red/green/cyan guide. It never drew the uploaded guide image itself, so custom dark rings, dots, colors, and details were lost.
+
+**Changed files:**
+- `resources/views/livewire/modals/image/review-image.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:** The editor now loads the active `bounds-guide.png` and draws the exact uploaded guide over the source image using the Guide opacity slider. All uploaded colors and marks, including dark/black rings, are preserved in the preview. The generic generated guide remains only as a fallback if the uploaded image cannot load. `Save bounds` still renders only the transformed source clipped to the detected Template; the guide image, dark ring, colors, and transform lines are not embedded in the saved PNG.
+
+**Affected modules:** Glass Create Master bounds preview only. Export geometry and backend storage remain unchanged.
+
+**Deploy impact:** Blade-only deployment. No migration, env, dependency, renderer, or secret changes.
+
+**Queue impact:** None.
+
+**Verification:** Blade cache, PHP lint, and targeted diff check passed. Better Design guidance was attempted but the account quota returned HTTP 402. Runtime browser capture remains pending because no authenticated XLAP browser tab was available.
+
+**Follow-up:** Hard-refresh and reopen Chỉnh bounds. Increase Guide opacity toward 100% to see the uploaded colors exactly; lower it to see the source artwork more clearly. Save bounds remains clean and transparent without guide colors.
+
+### 2026-09-28 (Use contextual footer actions while editing Glass bounds)
+
+**User request:** When Chỉnh bounds is active, the modal footer should change from `Close / Save Selection` to `Cancel / Save Bounds` instead of showing unrelated selection actions.
+
+**Root cause:** The bounds editor added its own floating Cancel/Save buttons over the image, while the original modal footer remained visible with Close/Save Selection. `Save Selection` selects the current generated image as the Glass redesign; it does not save the current bounds transform, so displaying it during bounds editing was misleading.
+
+**Changed files:**
+- `resources/views/livewire/modals/image/review-image.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:** Removed the floating bounds action buttons. The sticky footer now switches by `boundsEditing`: normal mode shows Close and Save Selection; bounds mode shows Cancel and Save Bounds. Cancel exits the bounds editor without closing the review modal. Save Bounds exports and persists the current transform.
+
+**Affected modules:** Glass image review modal footer and bounds workflow UI. Sticker, Decal, and Ornament selection behavior remains unchanged because boundsEditing is never activated there.
+
+**Deploy impact:** Blade-only deployment. No migration, env, dependency, renderer, or secret changes.
+
+**Queue impact:** None.
+
+**Verification:** Blade cache, PHP lint, and targeted diff check passed; no duplicate floating bounds buttons remain. Better Design comprehension review was attempted but quota returned HTTP 402.
+
+**Follow-up:** Hard-refresh and open Chỉnh bounds. Confirm footer switches to Cancel/Save Bounds and returns to Close/Save Selection after Cancel.
+
+## 2026-09-28 - Reset product pagination when searching
+
+Root cause: Glass, Sticker, and Decal keep pagination inside reactive StatusPanel children while search lives in the parent list. A parent search update did not reliably invoke the child `updatedSearch()` hook, leaving stale query-string pages such as `3/1` after filtering.
+
+Files changed:
+- app/Livewire/Pages/Glass/ListGlass.php
+- app/Livewire/Pages/Glass/GlassStatusPanel.php
+- app/Livewire/Pages/Sticker/ListSticker.php
+- app/Livewire/Pages/Sticker/StickerStatusPanel.php
+- app/Livewire/Pages/Decal/ListDecal.php
+- app/Livewire/Pages/Decal/DecalStatusPanel.php
+- .design/pagination-search-reset/DESIGN_BRIEF.md
+- AI_MEMORY.md
+
+Changes: Parent lists now dispatch a dedicated search-change event; every matching StatusPanel explicitly resets its named paginator to page 1. The existing reactive hook remains as a safeguard.
+
+Affected modules: Glass, Sticker, and Decal search and pagination only.
+Deploy impact: Deploy PHP code. No migration, cache clear, frontend asset build, or queue change is required.
+Queue impact: None.
+Validation: PHP lint passed for all six changed classes and targeted diff check passed. Blade-cache rebuild was deliberately not run while the local web server is active because concurrent Blade compilation is currently producing Windows rename locks.
+Follow-up notes: From page 3, search a value with one result page and confirm it immediately shows `1/1`. Visual capture remains unavailable without an authenticated browser.
+### 2026-09-28 (Hide unrelated prompt/actions during Glass bounds editing)
+
+**User request:** Do not show Custom Prompt or Quick Actions while the Glass bounds editor is active.
+
+**Root cause:** The bounds mode only covered the image area; the sidebar still rendered the prompt and quick-action sections, creating unrelated competing actions during a focused crop task.
+
+**Changed files:**
+- `resources/views/livewire/modals/image/review-image.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:** Added Alpine visibility conditions to the exact Custom Prompt and Quick Actions sections so both hide when `boundsEditing` is true and return after Cancel. Source preview/listing information remains unchanged.
+
+**Affected modules:** Glass bounds editor sidebar only; other product review flows are unchanged.
+
+**Deploy impact:** Blade-only deployment. No migration, env, dependency, renderer, or secret changes.
+
+**Queue impact:** None.
+
+**Verification:** Blade cache, PHP lint, targeted diff check, and section-selector review passed. Better Design comprehension review was attempted but account quota returned HTTP 402.
+
+**Follow-up:** Hard-refresh, open Chỉnh bounds, confirm Custom Prompt and Quick Actions disappear; press Cancel and confirm they return.
+
+### 2026-09-28 (Toggle bounds guide across Create Master)
+
+**User request:** Add a control in `2. Create Master` to show or hide the uploaded cyan bounds guide across all master images, and make the master preview slightly smaller so the full image is visible.
+
+**Root cause:** The Create Master cards had no shared visibility control for the uploaded guide, and the main preview used a large image area that could visually crop the full master inside the card.
+
+**Changed files:**
+- `app/Livewire/Pages/Glass/ProductDesignCard.php`
+- `resources/views/livewire/pages/glass/product-design-card.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:** `ProductDesignCard::render()` now exposes the active uploaded `admin/glass/bounds-guide.png` URL. The Create Master header has a global `Hiện bounds` / `Ẩn bounds` toggle using Alpine state, browser `localStorage`, and a window event so every Glass product card stays synchronized. The actual uploaded guide image overlays the main master preview and gallery thumbnails when enabled. The main preview uses `object-contain` inside an 88% square area so the full master is easier to inspect instead of appearing clipped.
+
+**Affected modules:** Glass Create Master preview and gallery only. Bounds editing, transform math, transparent export, and other product types are unchanged.
+
+**Deploy impact:** Blade/PHP application code only. No migration, environment, dependency, renderer, or secret changes.
+
+**Queue impact:** None.
+
+**Verification:** `php artisan view:cache`, PHP lint for `ProductDesignCard.php`, and targeted `git diff --check` passed. Better Design review/comprehension calls were unavailable because the account quota returned HTTP 402.
+
+**Follow-up:** Hard-refresh with `Ctrl+F5`, open `2. Create Master`, and use `Hiện bounds` / `Ẩn bounds`. The preference persists in the current browser. If a master needs adjustment, leave bounds visible; hide it after checking alignment.
+
+### 2026-09-28 (Move Create Master bounds toggle beside status filters)
+
+**User request:** Move the global bounds visibility control beside `Tat ca`, `Chua duyet`, and `Da duyet` so it is easier to find.
+
+**Changed files:**
+- `resources/views/livewire/pages/glass/glass-status-panel.blade.php`
+- `resources/views/livewire/pages/glass/product-design-card.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:** Added the shared `Hien bounds` / `An bounds` button to the Glass status-filter toolbar. It keeps the existing localStorage preference and `glass-master-bounds-changed` browser event, so every Create Master card remains synchronized. Removed the duplicated per-card button while preserving the card-level listener and overlay behavior.
+
+**Affected modules:** Glass status filter toolbar and Create Master bounds guide visibility only.
+
+**Deploy impact:** Blade-only deployment. No migration, environment, dependency, renderer, or secret changes.
+
+**Queue impact:** None.
+
+**Verification:** `php artisan view:cache`, PHP lint, and targeted `git diff --check` passed.
+
+### 2026-09-28 (Refine Glass item header and STT badge)
+
+**User request:** Match the Glass item interface more closely to the supplied dashboard layout and set the STT badge to `bg-gray-600`.
+
+**Changed file:** `resources/views/livewire/pages/glass/product-design-card.blade.php`
+
+**Changes:** Refined the item header into a compact bordered light-gray control block, tightened spacing between STT/SKU/title/actions, kept Delete as a restrained secondary destructive action, and changed the STT badge to `bg-gray-600` with white text. Existing bounds toggle synchronization, Create Master preview, and image workflows remain unchanged.
+
+**Affected modules:** Glass item card header only.
+
+**Deploy impact:** Blade/PHP view change only. No migration, dependency, environment, renderer, or queue changes.
+
+**Verification:** Blade view cache, PHP lint, and targeted diff check passed.
+
+### 2026-09-28 (Use black text on Gray STT badge)
+
+**User request:** Change the STT badge text from white to black.
+
+**Changed file:** `resources/views/livewire/pages/glass/product-design-card.blade.php`
+
+**Changes:** Replaced `text-white` with `text-black` on the STT badge while keeping `bg-gray-600` unchanged.
+
+**Verification:** Blade view cache and targeted diff check passed.
+
+### 2026-09-28 (White inactive Glass status tabs)
+
+**User request:** Make unselected `Tat ca`, `Chua duyet`, and `Da duyet` status tabs use the same white background as the STT badge area, avoiding bright gray fills that look harsh in dark-mode context.
+
+**Changed file:** `resources/views/livewire/pages/glass/glass-status-panel.blade.php`
+
+**Changes:** Unselected tabs now use `bg-white` with a subtle gray border and darker neutral text. Their count badges also use `bg-white` instead of `bg-slate-200`; selected cyan styling remains unchanged.
+
+**Verification:** Blade view cache and targeted diff check passed.
+
+### 2026-09-28 (Tone down Glass dark-mode surfaces)
+
+**User request:** The Glass status/filter UI and item cards look too bright when dark mode is enabled.
+
+**Changed files:**
+- `resources/views/livewire/pages/glass/glass-status-panel.blade.php`
+- `resources/views/livewire/pages/glass/product-design-card.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:** Added dark-mode surface, border, text, hover, and count-badge variants to the status toolbar and tabs. Added dark surfaces to Glass item cards, item header, Delete action, source/gallery panels, mockup panel, loading overlay, and empty state so fixed white blocks no longer glare against the dark page. Selected cyan states remain visually distinct.
+
+**Affected modules:** Glass list filters and Glass product card presentation only. Bounds logic and image transforms are unchanged.
+
+**Deploy impact:** Blade/PHP view changes only. No migration, environment, dependency, renderer, or queue changes.
+
+**Verification:** Blade view cache and targeted diff check passed.
+
+### 2026-09-28 (Fix Glass dark-mode header glare at CSS specificity root)
+
+**User report:** The Glass item header still appeared as a bright gray block in dark mode even after adding local `dark:` classes.
+
+**Root cause:** Broad dark-mode compatibility selectors in `resources/css/app.css`, including `[class*="bg-gray-50"]` and related selectors with `!important`, overrode the item header surface.
+
+**Changed files:**
+- `resources/css/app.css`
+- `resources/views/livewire/pages/glass/glass-status-panel.blade.php`
+- `resources/views/livewire/pages/glass/product-design-card.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:** Added dedicated `glass-status-toolbar`, `glass-item-card`, and `glass-item-header` hooks. Dark mode now applies controlled `#111c2e` and `#1a2940` surfaces with subtle borders at the end of the stylesheet, taking precedence over broad compatibility rules. The item header is no longer rendered as a bright gray panel.
+
+**Affected modules:** Glass list toolbar and Glass item card dark-mode presentation only. Bounds, images, and workflow behavior are unchanged.
+
+**Deploy impact:** CSS/Blade assets only. No migration, environment, dependency, renderer, or queue changes.
+
+**Verification:** Blade view cache and targeted diff check passed.
+
+**Follow-up:** Hard-refresh with `Ctrl+F5` after assets reload, then test both light and dark themes. If the old surface remains, rebuild frontend assets so the updated `resources/css/app.css` is loaded.
+
+### 2026-09-28 (Use white STT badge with dark-mode variant)
+
+**User request:** Style the STT badge with a white surface, dark text, and the requested compact inline-flex shape.
+
+**Changed file:** `resources/views/livewire/pages/glass/product-design-card.blade.php`
+
+**Changes:** Replaced the invalid `bg-white-600`/previous gray STT surface with `bg-white`, `text-slate-950`, and `shadow-sm`; added `dark:bg-slate-800 dark:text-slate-100` so the badge remains readable without a bright white block in dark mode. The existing `inline-flex h-8 shrink-0 items-center rounded-lg px-3 text-xs font-bold` shape remains.
+
+**Verification:** Blade view cache and targeted diff check passed.
+
+### 2026-09-28 (Outline-only Create Master bounds with opacity control)
+
+**User request:** In `2. Create Master`, hide the green guide fill and add a slider to adjust bounds intensity.
+
+**Root cause:** The card was overlaying the full uploaded bounds-guide image, which included the green safezone fill. That made the Master artwork difficult to inspect and offered no shared opacity control.
+
+**Changed files:**
+- `app/Livewire/Pages/Glass/ProductDesignCard.php`
+- `resources/views/livewire/pages/glass/product-design-card.blade.php`
+- `resources/views/livewire/pages/glass/glass-status-panel.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:** The Create Master card now receives only the analyzed canvas and Template geometry from `bounds-guide.json` and renders an outline-only cyan Template overlay instead of the full guide image. The green safezone is therefore not shown in Create Master. Added a shared `Đậm` range slider beside `Hiện bounds`/`Ẩn bounds`; it stores opacity in localStorage and broadcasts changes to every Glass item card and thumbnail. The uploaded guide remains available for the dedicated bounds editor and export math is unchanged.
+
+**Affected modules:** Glass Create Master preview/gallery bounds display and toolbar only.
+
+**Deploy impact:** PHP/Blade changes only. No migration, environment, dependency, renderer, or queue changes.
+
+**Verification:** PHP lint, Blade view cache, and targeted diff check passed.
+
+**Follow-up:** Hard-refresh, open Glass, click `Hiện bounds`, then adjust `Đậm`. Confirm the cyan Template outline remains while the green fill is absent. The opacity preference persists in the current browser.
+
+### 2026-09-28 (Rollback outline-only bounds and opacity slider)
+
+**User request:** Roll back the immediately preceding Create Master bounds overlay change.
+
+**Changed files:**
+- `app/Livewire/Pages/Glass/ProductDesignCard.php`
+- `resources/views/livewire/pages/glass/product-design-card.blade.php`
+- `resources/views/livewire/pages/glass/glass-status-panel.blade.php`
+- `AI_MEMORY.md`
+
+**Rollback:** Removed the Create Master-only geometry config and cyan outline renderer. Removed the shared bounds opacity slider and opacity event/localStorage handling. Restored the previous full uploaded `bounds-guide.png` overlay for the main Create Master preview and gallery thumbnails. Existing bounds toggle, dark-mode styling, STT styling, and export/edit bounds logic remain unchanged.
+
+**Verification:** PHP lint and Blade view cache passed; targeted diff check completed without findings.
+
+### 2026-09-28 (Show bounds opacity control only when bounds are visible)
+
+**User request:** Show the bounds intensity slider only while bounds are displayed; hide it when bounds are off.
+
+**Changed files:**
+- `resources/views/livewire/pages/glass/product-design-card.blade.php`
+- `resources/views/livewire/pages/glass/glass-status-panel.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:** Restored shared `masterBoundsOpacity` state with a 0.72 default and localStorage persistence. The uploaded guide overlay now binds its opacity to that value across main and gallery previews. The `Đậm` range control uses `x-show="showMasterBounds"`, so it appears only when `Hiện bounds` is active and disappears with the bounds toggle. Opacity updates broadcast through the existing `glass-master-bounds-changed` event to every Glass card.
+
+**Affected modules:** Glass Create Master bounds visibility toolbar and guide preview only.
+
+**Deploy impact:** Blade/PHP view changes only. No migration, environment, dependency, renderer, or queue changes.
+
+**Verification:** PHP lint, Blade view cache, and targeted diff check passed.
+
+### 2026-09-28 (Persist selected Glass AI provider across logout/login)
+
+**User report:** Selecting CheapKeyAI in Glass reverted to Vertex after reload or logging out and back in.
+
+**Root cause:** `ListGlass::$selectedAiProvider` was stored only through Livewire session state. After logout/login the session value was gone, and `render()` fell back to `array_key_first($providerOptions)`, which is usually Vertex.
+
+**Changed files:**
+- `app/Models/User.php`
+- `app/Livewire/Pages/Glass/ListGlass.php`
+- `AI_MEMORY.md`
+
+**Changes:** Added `User::setDefaultAiProvider()` to persist the selected enabled provider in `user_ai_providers.is_default`. Glass now saves the provider whenever the dropdown changes or a provider key modal selects CheapKeyAI/v98Store. On a new session, Glass first restores the user's persisted enabled default before falling back to the first available provider.
+
+**Affected modules:** Glass AI provider selection and session restoration only.
+
+**Deploy impact:** PHP application code only. No migration required because the existing `user_ai_providers` table already stores `is_default`.
+
+**Queue impact:** None.
+
+**Verification:** PHP lint passed for `User.php` and `ListGlass.php`; Blade cache and targeted diff check passed.
+
+**Follow-up:** Select CheapKeyAI once, reload Glass, then logout/login and verify the provider remains CheapKeyAI. If CheapKeyAI is disabled or its credential is removed, the app intentionally falls back to an available provider.
+
+### 2026-09-28 (Optional Glass safezone and grouped item header controls)
+
+**User request:** Match the Glass item header to the supplied two-group layout and allow bounds guides without a green safezone when it is not needed.
+
+**Root cause:** `GlassBoundsGuideAnalyzer` treated the green safezone as mandatory, so valid Template-only guide images were rejected. The item header also presented metadata and actions in one loose flex group instead of the two visual groups shown by the reference.
+
+**Changed files:**
+- `app/Services/Glass/GlassBoundsGuideAnalyzer.php`
+- `resources/views/livewire/modals/admin/edit-glass-bounds-guide.blade.php`
+- `resources/views/livewire/pages/glass/product-design-card.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:** Safezone detection remains recorded when present, but its absence no longer throws an error; Template remains mandatory. The admin modal labels missing safezone as `Không dùng` and explains that green safezone is optional. The Glass item header now groups STT/SKU/name/edit/status on the left and the Delete action on the right, with compact bordered surfaces matching the user's reference.
+
+**Affected modules:** Glass bounds-guide upload validation/modal and Glass item card header only.
+
+**Deploy impact:** PHP/Blade changes only. No migration, environment, dependency, renderer, or queue changes.
+
+**Verification:** PHP lint for the analyzer and modal, Blade view cache, and targeted diff check passed.
+
+**Follow-up:** Upload a Template-only bounds image to Admin > Ảnh bounds Glass and confirm it saves successfully. Existing config files with a safezone continue to display their dimensions.
+
+### 2026-09-28 (Dong bo Tailwind dark mode voi theme-dark)
+
+**Muc tieu:** Sua dark mode toan website de cac utility `dark:` cua Tailwind hoat dong dung theo tai lieu Tailwind.
+
+**Root cause:** XLAP dang dung `theme-dark`/`theme-light` lam class goc, trong khi Tailwind `dark:` can class `dark`; vi vay cac component dung `dark:` khong dong bo voi theme hien tai.
+
+**File da sua/tao:** `tailwind.config.js`, `resources/views/layouts/app.blade.php`, `resources/views/livewire/layout/navigation.blade.php`, `.design/dark-mode/DESIGN_BRIEF.md`.
+
+**Thay doi chinh:** Bat `darkMode: 'class'`; them va dong bo class `dark` cung `theme-dark` khi khoi tao, chuyen theme, va tai lai trang. Giữ nguyen persistence localStorage/user va cac CSS dark-mode hien co.
+
+**Affected modules:** Layout goc, navigation/theme toggle, shared Tailwind UI utilities.
+
+**Deploy impact:** Tailwind config, Blade va CSS asset; can build lai frontend assets.
+
+**Queue impact:** None.
+
+**Verification:** `npm run build` pass; PHP lint va Blade cache can chay trong moi truong khong co request concurrent. Screenshot authenticated chua co.
+
+**Follow-up:** Hard-refresh sau deploy va kiem tra mot trang co `dark:` utility o ca light/dark.
+### 2026-09-28 (Dong bo nut trong modal review anh voi dark mode)
+
+**Muc tieu:** Sua cac nut va panel trong modal Image Review theo dark mode, theo anh user cung cap.
+
+**Root cause:** Modal dung nhieu `bg-white`, `bg-white/90`, `bg-slate-50` co dinh nhung chua co bien the `dark:`; cac nut Download, Zoom, Fullscreen, Chinh bounds, Close/Cancel va cac panel ben phai bi sang.
+
+**File da sua:** `resources/views/livewire/modals/image/review-image.blade.php`.
+
+**Thay doi chinh:** Them dark variants cho khung modal, nut dong, counter, Zoom/Fullscreen, Chinh bounds, Download, panel Image Information/Quick Actions va footer Close/Cancel. Nut Save Selection/Generate Variation da co mau dam nen tiep tuc giu tuong phan.
+
+**Affected modules:** Image Review modal dung cho Glass, Sticker, Decal va Ornament redesign.
+
+**Deploy impact:** Blade/CSS asset only; khong migration, secrets hay queue.
+
+**Verification:** `npm run build`, `php artisan view:cache`, va `git diff --check` pass. Chua co screenshot authenticated de xac nhan tren trinh duyet.
+### 2026-09-28 (Sua nut qua lai trong Image Review modal)
+
+**User request:** Hai nut Previous/Next trong anh mau van hien vong tron trang khi dark mode.
+
+**Changed file:** `resources/views/livewire/modals/image/review-image.blade.php`.
+
+**Changes:** Them dark variants cho nen, border, icon va hover cua hai nut `previous`/`next`, giu nguyen kich thuoc, vi tri va Livewire actions.
+
+**Verification:** `npm run build` va `php artisan view:cache` pass.

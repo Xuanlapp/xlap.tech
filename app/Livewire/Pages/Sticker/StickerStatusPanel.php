@@ -114,6 +114,12 @@ class StickerStatusPanel extends Component
         $this->resetPage($this->pageName());
     }
 
+    #[On('sticker-search-updated')]
+    public function resetPageForSearch(): void
+    {
+        $this->resetPage($this->pageName());
+    }
+
     #[On('product-design-created')]
     #[On('sticker-product-design-updated')]
     #[On('sticker-product-design-approval-updated')]

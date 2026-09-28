@@ -64,10 +64,10 @@
     @endphp
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div class="flex min-w-0 flex-1 flex-wrap items-center gap-3">
-            <span class="inline-flex h-8 shrink-0 items-center rounded-lg bg-indigo-50 px-3 text-xs font-bold text-indigo-600">
+            <span class="inline-flex h-8 shrink-0 items-center rounded-lg bg-indigo-50 px-3 text-xs font-bold text-gray-600">
                 STT: {{ $asset->item_number }}
             </span>
-            <span class="inline-flex h-8 shrink-0 items-center rounded-lg bg-slate-100 px-3 text-xs font-bold text-slate-600">
+            <span class="inline-flex h-8 shrink-0 items-center rounded-lg bg-indigo-50 px-3 text-xs font-bold text-indigo-600">
                 SKU: {{ $asset->sku ?: '-' }}
             </span>
             <span class="inline-flex h-8 shrink-0 items-center rounded-lg bg-slate-100 px-3 text-xs font-bold text-slate-600">
@@ -157,6 +157,9 @@
             <h2 class="min-w-0 truncate text-lg font-bold text-slate-950">
                 {{ $asset->keyword ?: 'Suncatcher item' }}
             </h2>
+            @if (! $asset->is_approved)
+                <button type="button" wire:click="$dispatch('openModal', { component: 'modals.product.edit-keyword', arguments: { assetId: {{ $asset->id }}, productSlug: 'suncatcher' } })" class="rounded-lg border border-slate-200 px-3 py-1 text-xs font-bold text-slate-700">Edit</button>
+            @endif
         </div>
 
         <button
@@ -821,13 +824,13 @@
                             "
                             x-bind:aria-busy="promptCreating ? 'true' : 'false'"
                             x-bind:disabled="promptCreating || @js((bool) $promptCreateDisabledReason)"
-                            class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-transparent bg-transparent px-3 py-2 text-xs font-medium text-orange-600 transition hover:bg-orange-50 focus:outline-none focus:ring-4 focus:ring-orange-200 disabled:cursor-not-allowed disabled:opacity-50"
+                            class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-transparent bg-transparent px-3 py-2 text-xs font-medium text-indigo-600 transition hover:bg-indigo-50 focus:outline-none focus:ring-4 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-50"
                             title="{{ $promptCreateDisabledReason ?: 'Generate prompt create' }}"
                             @disabled((bool) $promptCreateDisabledReason)
                         >
                             <span x-show="! promptCreating">Generate</span>
                             <span x-cloak x-show="promptCreating" class="flex items-center gap-1.5">
-                                <span class="h-3 w-3 animate-spin rounded-full border-2 border-orange-200 border-t-orange-700"></span>
+                                <span class="h-3 w-3 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-700"></span>
                                 <span>Writing...</span>
                             </span>
                         </button>
@@ -1261,7 +1264,7 @@
             }"            class="min-w-0 {{ $asset->redesign ? '' : 'opacity-55' }}"
         >
             <div class="mb-2 flex h-5 items-center justify-between gap-2">
-                <x-label class="truncate text-xs font-bold uppercase text-orange-600">6. Mockup</x-label>
+                <x-label class="truncate text-xs font-bold uppercase text-indigo-600">6. Mockup</x-label>
                 @if (! $asset->is_approved)
                     <div class="flex min-w-0 items-center gap-2">
                         @if ($mockupDoneCount >= 6)
@@ -1285,13 +1288,13 @@
                             x-on:click="generateAll()"
                             x-bind:aria-busy="running ? 'true' : 'false'"
                             x-bind:disabled="running || Boolean(disabledReason)"
-                            class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-transparent bg-transparent px-3 py-2 text-xs font-medium text-orange-600 transition hover:bg-orange-50 focus:outline-none focus:ring-4 focus:ring-orange-200 disabled:cursor-not-allowed disabled:opacity-50"
+                            class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-transparent bg-transparent px-3 py-2 text-xs font-medium text-indigo-600 transition hover:bg-indigo-50 focus:outline-none focus:ring-4 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-50"
                             title="{{ $generateDisabledReason ?: 'Regenerate all 6 mockup images' }}"
                             @disabled($mockupCreateDisabled)
                         >
                             <span x-show="! running">Generate all</span>
                             <span x-cloak x-show="running" class="flex items-center gap-1.5">
-                                <span class="h-3 w-3 animate-spin rounded-full border-2 border-orange-200 border-t-orange-700"></span>
+                                <span class="h-3 w-3 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-700"></span>
                                 <span>Generating...</span>
                             </span>
                         </button>
@@ -1299,7 +1302,7 @@
                 @endif
             </div>
 
-            <div class="relative aspect-[4/4.45] overflow-hidden rounded-xl border border-orange-100 bg-white shadow-sm ring-1 ring-orange-950/[0.03]">
+            <div class="relative aspect-[4/4.45] overflow-hidden rounded-xl border border-indigo-100 bg-white shadow-sm ring-1 ring-indigo-950/[0.03]">
 
                 <div class="h-full w-full p-2">
                     <div class="flex h-full min-h-0 flex-col">
@@ -1308,14 +1311,14 @@
                                 <span x-text="doneImageCount()"></span>/6 MOCKUP
                             </span>
 
-                            <span x-cloak x-show="running" class="inline-flex items-center gap-1.5 text-[11px] font-bold text-orange-600">
-                                <span class="h-3 w-3 animate-spin rounded-full border-2 border-orange-200 border-t-orange-600"></span>
+                            <span x-cloak x-show="running" class="inline-flex items-center gap-1.5 text-[11px] font-bold text-indigo-600">
+                                <span class="h-3 w-3 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600"></span>
                                 <span x-text="`Generating ${doneCount}/${targetCount || promptSlots.length}`"></span>
                             </span>
                             <span x-show="! running" class="text-[11px] font-medium text-slate-400">Ready</span>
                         </div>
 
-                        <div x-cloak x-show="statusMessage" class="mb-2 rounded-md border border-orange-200 bg-orange-50 px-2 py-1 text-[10px] font-semibold text-orange-700" x-text="statusMessage"></div>
+                        <div x-cloak x-show="statusMessage" class="mb-2 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 text-[10px] font-semibold text-indigo-700" x-text="statusMessage"></div>
 
                         <div x-cloak x-show="! running && errorCount > 0" class="mb-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-semibold text-amber-700">
                             Da xong mot so mockup, nhung co <span x-text="errorCount"></span> anh loi.
@@ -1331,12 +1334,12 @@
                                             : 'Need master';
                                     @endphp
 
-                                    <div class="suncatcher-mockup-slot relative aspect-[4/3] overflow-hidden rounded-lg border border-slate-100 bg-slate-50 shadow-sm transition-all duration-200 ease-out hover:border-orange-200">
+                                    <div class="suncatcher-mockup-slot relative aspect-[4/3] overflow-hidden rounded-lg border border-slate-100 bg-slate-50 shadow-sm transition-all duration-200 ease-out hover:border-indigo-200">
                                         <button
                                             type="button"
                                             x-show="imageUrl(@js($slotKey))"
                                             x-on:click="previewSlot($dispatch, @js($slotKey))"
-                                            class="relative h-full w-full overflow-hidden transition-all duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500"
+                                            class="relative h-full w-full overflow-hidden transition-all duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
                                         >
                                             <img
                                                 x-bind:src="imageUrl(@js($slotKey)) || ''"
@@ -1353,7 +1356,7 @@
                                             x-show="! imageUrl(@js($slotKey))"
                                             x-on:click="previewSlot($dispatch, @js($slotKey))"
                                             x-bind:disabled="! promptForSlot(@js($slotKey)) && ! originalUrl(@js($slotKey))"
-                                            class="relative h-full w-full overflow-hidden transition-all duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500 disabled:cursor-not-allowed disabled:opacity-70"
+                                            class="relative h-full w-full overflow-hidden transition-all duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 disabled:cursor-not-allowed disabled:opacity-70"
                                         >
                                             <div class="flex h-full items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 px-2 text-center">
                                                 <div class="flex flex-col items-center gap-1.5 text-slate-400">
@@ -1368,8 +1371,8 @@
                                             x-show="['queued', 'waiting', 'generating'].includes(slotStates[@js($slotKey)])"
                                             class="suncatcher-mockup-slot-spinner absolute inset-0 z-20 flex items-center justify-center bg-white/90 backdrop-blur-sm"
                                         >
-                                            <div class="flex flex-col items-center gap-2 text-center text-orange-700">
-                                                <span class="h-7 w-7 animate-spin rounded-full border-4 border-orange-200 border-t-orange-700"></span>
+                                            <div class="flex flex-col items-center gap-2 text-center text-indigo-700">
+                                                <span class="h-7 w-7 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-700"></span>
                                                 <span class="text-[10px] font-bold uppercase tracking-wide" x-text="slotStates[@js($slotKey)] === 'queued' ? 'Queued' : 'Generating'"></span>
                                             </div>
                                         </div>

@@ -18,7 +18,7 @@ class PromptService
     public const ORNAMENT_AMAZON_TWO_MAX_PROMPTS = 1;
 
     /** Sticker and Glass use only the Create Master prompt slot. */
-    public const SINGLE_CREATE_MASTER_PROMPT_PRODUCTS = ['sticker', 'glass'];
+    public const SINGLE_CREATE_MASTER_PROMPT_PRODUCTS = ['sticker', 'decal', 'glass'];
 
     public function __construct(
         private readonly ProductRepository $products,

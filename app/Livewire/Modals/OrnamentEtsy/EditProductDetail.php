@@ -125,12 +125,7 @@ class EditProductDetail extends Component
             return;
         }
 
-        app(OrnamentEtsyService::class)->updateProductDetail(
-            auth()->user(),
-            $this->assetId,
-            $validated['keyword'],
-            $validated['imageLink'],
-        );
+        app(OrnamentEtsyService::class)->updateKeyword(auth()->user(), $this->assetId, $validated['keyword']);
 
         $this->dispatch('ornament-etsy-product-design-updated', assetId: $this->assetId);
         $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da cap nhat item Ornament Etsy.');

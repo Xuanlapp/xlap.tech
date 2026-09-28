@@ -247,6 +247,7 @@
     <livewire:modals.ornament-amazon-two.edit-import-sheet />
     <livewire:modals.ornament-amazon-two.edit-product-detail />
     <livewire:modals.ornament-amazon-two.psd-mockup-template />
+    <livewire:modals.product.edit-keyword />
     <livewire:modals.product-design.delete-idea-confirm />
     <livewire:modals.prompt.detail-prompt />
     <livewire:modals.ai.change-v98-store-key function-key="ornament-amazon-2" />

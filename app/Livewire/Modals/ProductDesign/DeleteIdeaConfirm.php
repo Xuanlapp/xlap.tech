@@ -11,6 +11,8 @@ use App\Livewire\Pages\OrnamentEtsy\ListOrnamentEtsy;
 use App\Livewire\Pages\OrnamentEtsy\OrnamentEtsyStatusPanel;
 use App\Livewire\Pages\Sticker\ListSticker;
 use App\Livewire\Pages\Sticker\StickerStatusPanel;
+use App\Livewire\Pages\Decal\ListDecal;
+use App\Livewire\Pages\Decal\DecalStatusPanel;
 use App\Livewire\Pages\Glass\ListGlass;
 use App\Livewire\Pages\Glass\GlassStatusPanel;
 use App\Models\ProductDesignAsset;
@@ -19,6 +21,7 @@ use App\Services\Suncatcher\SuncatcherService;
 use App\Services\OrnamentAmazonTwo\OrnamentAmazonTwoService;
 use App\Services\OrnamentEtsy\OrnamentEtsyService;
 use App\Services\Sticker\StickerService;
+use App\Services\Decal\DecalService;
 use App\Services\Glass\GlassService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Log;
@@ -54,7 +57,7 @@ class DeleteIdeaConfirm extends Component
         $assetId = (int) ($arguments['assetId'] ?? 0);
         $productSlug = (string) ($arguments['productSlug'] ?? '');
 
-        if ($assetId < 1 || ! in_array($productSlug, ['sticker', 'glass', 'suncatcher', 'ornament-etsy', 'ornament-amazon-2'], true)) {
+        if ($assetId < 1 || ! in_array($productSlug, ['sticker', 'decal', 'glass', 'suncatcher', 'ornament-etsy', 'ornament-amazon-2'], true)) {
             return;
         }
 
@@ -115,6 +118,7 @@ class DeleteIdeaConfirm extends Component
     {
         return match ($this->productSlug) {
             'sticker' => app(StickerService::class)->deleteAsset(auth()->user(), $this->assetId),
+            'decal' => app(DecalService::class)->deleteAsset(auth()->user(), $this->assetId),
             'glass' => app(GlassService::class)->deleteAsset(auth()->user(), $this->assetId),
             'suncatcher' => app(SuncatcherService::class)->deleteAsset(auth()->user(), $this->assetId),
             'ornament-etsy' => app(OrnamentEtsyService::class)->deleteAsset(auth()->user(), $this->assetId),
@@ -127,6 +131,7 @@ class DeleteIdeaConfirm extends Component
     {
         return match ($productSlug) {
             'sticker' => 'Sticker Workspace',
+            'decal' => 'Decal Workspace',
             'glass' => 'Glass Workspace',
             'suncatcher' => 'Suncatcher',
             'ornament-etsy' => 'Ornament Etsy',
@@ -139,6 +144,7 @@ class DeleteIdeaConfirm extends Component
     {
         $event = match ($this->productSlug) {
             'sticker' => 'sticker.item_deleted',
+            'decal' => 'decal.item_deleted',
             'glass' => 'glass.item_deleted',
             'suncatcher' => 'suncatcher.item_deleted',
             'ornament-etsy' => 'ornament_etsy.item_deleted',
@@ -158,6 +164,7 @@ class DeleteIdeaConfirm extends Component
     {
         match ($this->productSlug) {
             'sticker' => $this->dispatchStickerEvents(),
+            'decal' => $this->dispatchDecalEvents(),
             'glass' => $this->dispatchGlassEvents(),
             'suncatcher' => $this->dispatchSuncatcherEvents(),
             'ornament-etsy' => $this->dispatchOrnamentEtsyEvents(),
@@ -172,6 +179,14 @@ class DeleteIdeaConfirm extends Component
         $this->dispatch('sticker-product-design-workflow-updated')->to(StickerStatusPanel::class);
         $this->dispatch('sticker-counts-updated')->to(ListSticker::class);
         $this->dispatch('sticker-counts-updated')->to(StickerStatusPanel::class);
+    }
+
+    private function dispatchDecalEvents(): void
+    {
+        $this->dispatch('decal-product-design-workflow-updated')->to(ListDecal::class);
+        $this->dispatch('decal-product-design-workflow-updated')->to(DecalStatusPanel::class);
+        $this->dispatch('decal-counts-updated')->to(ListDecal::class);
+        $this->dispatch('decal-counts-updated')->to(DecalStatusPanel::class);
     }
 
     private function dispatchGlassEvents(): void

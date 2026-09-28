@@ -233,6 +233,7 @@
     <livewire:modals.sticker.edit-product-detail />
     <livewire:modals.sticker.psd-mockup-template />
     <livewire:modals.sticker.excel-import-sticker />
+    <livewire:modals.product.edit-keyword />
     <livewire:modals.product-design.delete-idea-confirm />
     <livewire:modals.prompt.detail-prompt />
     <livewire:modals.ai.change-v98-store-key function-key="sticker" />

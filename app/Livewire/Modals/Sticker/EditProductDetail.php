@@ -127,12 +127,7 @@ class EditProductDetail extends Component
             return;
         }
 
-        app(StickerService::class)->updateProductDetail(
-            auth()->user(),
-            $this->assetId,
-            $validated['keyword'],
-            $validated['imageLink'],
-        );
+        app(StickerService::class)->updateKeyword(auth()->user(), $this->assetId, $validated['keyword']);
 
         $this->dispatch('sticker-product-design-updated', assetId: $this->assetId);
         $this->dispatch('sticker-product-design-updated')->to(ListSticker::class);

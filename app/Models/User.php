@@ -37,7 +37,8 @@ class User extends Authenticatable
             'can_generate_amazon_listing' => 'boolean',
             'can_generate_etsy_listing' => 'boolean',
             'can_access_wali' => 'boolean',
-            'can_view_all_proxy', 'theme_mode' => 'boolean',
+            'can_view_all_proxy' => 'boolean',
+            'theme_mode' => 'string',
         ];
     }
 
@@ -152,6 +153,29 @@ class User extends Authenticatable
 
         return $enabledProviders->firstWhere('is_default', true)?->provider_key
             ?: $enabledProviders->first()?->provider_key;
+    }
+
+    /**
+     * Persist the user's preferred AI provider for future sessions.
+     */
+    public function setDefaultAiProvider(string $providerKey): bool
+    {
+        $provider = $this->aiProviders()
+            ->where('provider_key', $providerKey)
+            ->where('is_enabled', true)
+            ->first();
+
+        if (! $provider) {
+            return false;
+        }
+
+        $this->aiProviders()
+            ->where('is_default', true)
+            ->update(['is_default' => false]);
+
+        $provider->forceFill(['is_default' => true])->save();
+
+        return true;
     }
 
     /**

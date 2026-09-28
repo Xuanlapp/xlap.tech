@@ -8,6 +8,7 @@ use App\Services\Suncatcher\SuncatcherService;
 use App\Services\OrnamentAmazonTwo\OrnamentAmazonTwoService;
 use App\Services\OrnamentEtsy\OrnamentEtsyService;
 use App\Services\Sticker\StickerService;
+use App\Services\Decal\DecalService;
 use App\Services\Glass\GlassService;
 use App\Models\UserIdeaHistory;
 use Illuminate\Contracts\View\View;
@@ -123,7 +124,7 @@ class IdeaAmazon extends Component
             'productLink' => $productLink,
             'approvalImageUpload' => $this->approvalImageUpload,
         ], [
-            'productSlug' => ['required', 'string', Rule::in(['sticker', 'glass', 'suncatcher', 'ornament-etsy', 'ornament-amazon-2'])],
+            'productSlug' => ['required', 'string', Rule::in(['sticker', 'decal', 'glass', 'suncatcher', 'ornament-etsy', 'ornament-amazon-2'])],
             'keyword' => ['required', 'string', 'max:255'],
             'imageLink' => ['nullable', 'string', 'max:1000'],
             'forceKeyword' => ['boolean'],
@@ -159,6 +160,7 @@ class IdeaAmazon extends Component
         try {
             match ($validated['productSlug']) {
                 'sticker' => app(StickerService::class)->createAsset($user, $keyword, $imageSource, $validated['sku']),
+                'decal' => app(DecalService::class)->createAsset($user, $keyword, $imageSource, $validated['sku']),
                 'glass' => app(GlassService::class)->createAsset($user, $keyword, $imageSource, $validated['sku']),
                 'suncatcher' => app(SuncatcherService::class)->createAsset($user, $keyword, $imageSource, [], ['link' => $validated['productLink'], 'product_link' => $validated['productLink']], $validated['sku']),
                 'ornament-etsy' => app(OrnamentEtsyService::class)->createAsset($user, $keyword, $imageSource, $validated['sku']),
@@ -193,7 +195,7 @@ class IdeaAmazon extends Component
         $targetProducts = auth()->user()
             ? auth()->user()
                 ->products()
-                ->whereIn('slug', ['sticker', 'glass', 'suncatcher', 'ornament-etsy', 'ornament-amazon-2'])
+                ->whereIn('slug', ['sticker', 'decal', 'glass', 'suncatcher', 'ornament-etsy', 'ornament-amazon-2'])
                 ->where('is_active', true)
                 ->orderBy('name')
                 ->get(['products.name', 'products.slug'])

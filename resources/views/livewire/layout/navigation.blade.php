@@ -77,7 +77,7 @@ new class extends Component
     $iconClass = 'h-5 w-5 shrink-0';
     $isAdminUser = auth()->user()?->role === 'admin' || (bool) auth()->user()?->is_admin;
     $isWaliUser = (bool) (auth()->user()?->can_access_wali) && ! $isAdminUser && ! auth()->user()?->isManager();
-    $pageProducts = $products->whereIn('slug', $isAdminUser ? ['suncatcher', 'ornament', 'ornament-etsy', 'ornament-amazon-2', 'sticker', 'glass', 'proxy', 'camp'] : ['suncatcher', 'ornament', 'ornament-etsy', 'ornament-amazon-2', 'sticker', 'glass', 'proxy', 'camp']);
+    $pageProducts = $products->whereIn('slug', $isAdminUser ? ['decal', 'suncatcher', 'ornament', 'ornament-etsy', 'ornament-amazon-2', 'sticker', 'glass', 'proxy', 'camp'] : ['decal', 'suncatcher', 'ornament', 'ornament-etsy', 'ornament-amazon-2', 'sticker', 'glass', 'proxy', 'camp']);
     $ideaProducts = $products->whereIn('slug', ['ytrends', 'idea-etsy', 'idea-amazon']);
     $avatarPalettes = [
         'bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-600',
@@ -91,7 +91,7 @@ new class extends Component
     $avatarClass = $avatarPalettes[$avatarSeed % count($avatarPalettes)];
 @endphp
 
-<div class="pt-[4.75rem]" x-data="{ sidebarOpen: false, userMenuOpen: false, isDark: {{ $themeMode === 'dark' ? 'true' : 'false' }}, scrolled: window.scrollY > 70 }" @scroll.window="scrolled = window.scrollY > 70" x-init="document.documentElement.classList.toggle('theme-dark', isDark); document.documentElement.classList.toggle('theme-light', !isDark)" x-on:keydown.escape.window="sidebarOpen = false; userMenuOpen = false">
+<div class="pt-[4.75rem]" x-data="{ sidebarOpen: false, userMenuOpen: false, isDark: document.documentElement.dataset.themeMode === 'dark' || localStorage.getItem('offorest.theme') === 'dark', scrolled: window.scrollY > 70 }" @scroll.window="scrolled = window.scrollY > 70" x-init="document.documentElement.classList.toggle('theme-dark', isDark); document.documentElement.classList.toggle('theme-light', !isDark); document.documentElement.classList.toggle('dark', isDark); document.documentElement.dataset.themeMode = isDark ? 'dark' : 'light'" x-on:keydown.escape.window="sidebarOpen = false; userMenuOpen = false">
     <div class="fixed left-3 right-3 top-1 z-50 border-b border-slate-200 bg-gray-100 px-3 py-2 text-slate-950">
         <div class="relative flex h-11 items-center rounded-xl border border-slate-300 bg-white px-2 shadow-sm">
         <button
@@ -122,7 +122,7 @@ new class extends Component
 <button
             type="button"
             class="ml-auto flex h-9 w-9 items-center justify-center rounded-full border border-slate-200/80 bg-white/90 text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white hover:text-slate-950 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:border-white/20 dark:hover:bg-white/10"
-            x-on:click="isDark = !isDark; document.documentElement.classList.toggle('theme-dark', isDark); document.documentElement.classList.toggle('theme-light', !isDark); $wire.setThemeMode(isDark ? 'dark' : 'light')"
+            x-on:click="isDark = !isDark; localStorage.setItem('offorest.theme', isDark ? 'dark' : 'light'); document.documentElement.dataset.themeMode = isDark ? 'dark' : 'light'; document.documentElement.classList.toggle('theme-dark', isDark); document.documentElement.classList.toggle('theme-light', !isDark); document.documentElement.classList.toggle('dark', isDark); $wire.setThemeMode(isDark ? 'dark' : 'light')"
             aria-label="Toggle theme"
         >
             <svg x-show="!isDark" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">

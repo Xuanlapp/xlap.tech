@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 use Throwable;
@@ -310,7 +311,7 @@ class GlassService
     public function updateKeyword(User $user, int $assetId, string $keyword): void
     {
         $asset = $this->assetForUser($user, $assetId);
-        $this->ensureSourceDetailsEditable($asset);
+        $this->ensureNotApproved($asset);
         $asset->update(['keyword' => $this->normalizeKeyword($keyword)]);
     }
 
@@ -319,6 +320,59 @@ class GlassService
         $asset = $this->assetForUser($user, $assetId);
         $this->ensureSourceDetailsEditable($asset);
         $asset->update(['image_link' => $this->normalizeImageLink($imageLink)]);
+    }
+
+    /** Save a client-cropped PNG as the Glass source or Create Master image. */
+    public function saveBoundedImage(User $user, int $assetId, string $pngBytes, bool $asRedesign = false): ProductDesignAsset
+    {
+        $asset = $this->assetForUser($user, $assetId);
+        if ($asRedesign) {
+            $this->ensureNotApproved($asset);
+            $this->ensureMasterEditable($asset);
+        } else {
+            // Bounds editing replaces the source PNG only; unlike editing the
+            // source URL/keyword, it remains allowed after Create Master exists.
+            $this->ensureNotApproved($asset);
+        }
+
+        if ($pngBytes === '' || strlen($pngBytes) > 40 * 1024 * 1024) {
+            throw new InvalidArgumentException('Anh crop khong hop le hoac qua lon.');
+        }
+
+        $image = @imagecreatefromstring($pngBytes);
+        if (! $image) {
+            throw new InvalidArgumentException('Khong doc duoc PNG sau khi crop.');
+        }
+
+        $width = imagesx($image);
+        $height = imagesy($image);
+        if ($width < 1 || $height < 1 || $width > 12000 || $height > 12000) {
+            imagedestroy($image);
+            throw new InvalidArgumentException('Kich thuoc anh crop khong hop le.');
+        }
+
+        imagealphablending($image, false);
+        imagesavealpha($image, true);
+        ob_start();
+        imagepng($image, null, 6);
+        $normalizedPng = ob_get_clean();
+        imagedestroy($image);
+
+        if (! is_string($normalizedPng) || $normalizedPng === '') {
+            throw new RuntimeException('Khong the tao PNG moi.');
+        }
+
+        $path = 'generated/glass/bounds/'.$user->id.'/'.$asset->id.'/'.now()->format('YmdHis').'-'.bin2hex(random_bytes(4)).'.png';
+        Storage::disk('public')->put($path, $normalizedPng);
+        $imageLink = '/storage/'.$path;
+        if ($asRedesign) {
+            $candidates = collect($asset->redesign_candidates ?: [])->push($imageLink)->filter()->unique()->values()->all();
+            $asset->update(['redesign' => $imageLink, 'redesign_candidates' => $candidates]);
+        } else {
+            $asset->update(['image_link' => $imageLink]);
+        }
+
+        return $asset->refresh();
     }
 
     /**
@@ -552,6 +606,37 @@ class GlassService
         return $asset;
     }
 
+    /**
+     * Remove generated PSD mockups while keeping the Glass item and Create Master intact.
+     */
+    public function clearPsdMockups(User $user, int $assetId): ProductDesignAsset
+    {
+        $asset = $this->assetForUser($user, $assetId);
+        $job = $this->latestLocalMockupJob($asset);
+
+        if (in_array($job?->status, ['waiting', 'processing'], true)) {
+            throw new RuntimeException('Mockup dang render, khong the xoa luc nay.');
+        }
+
+        $paths = collect(range(1, 6))
+            ->map(fn (int $slot): mixed => $asset->getAttribute("mockup{$slot}"))
+            ->filter(fn (mixed $url): bool => is_string($url) && str_starts_with($url, '/storage/'))
+            ->map(fn (string $url): string => ltrim(substr($url, strlen('/storage/')), '/'))
+            ->values()
+            ->all();
+
+        if ($paths !== []) {
+            Storage::disk('public')->delete($paths);
+        }
+
+        $updates = [];
+        for ($slot = 1; $slot <= 6; $slot++) {
+            $updates["mockup{$slot}"] = null;
+        }
+        $asset->update($updates);
+
+        return $asset->refresh();
+    }
     /**
      * Delete one Glass item owned by the user.
      */

@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 @php($initialThemeMode = auth()->check() ? (auth()->user()->theme_mode ?? 'light') : 'light')
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="{{ $initialThemeMode === 'dark' ? 'theme-dark' : 'theme-light' }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="{{ $initialThemeMode === 'dark' ? 'theme-dark dark' : 'theme-light' }}" data-theme-mode="{{ $initialThemeMode }}">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,6 +8,17 @@
 
         <title>{{ config('app.name', 'Offorest') }}</title>
         <link rel="icon" type="image/jpeg" href="{{ asset('images/offorest-logo.jpg') }}">
+
+        <script>
+            (() => {
+                const saved = window.localStorage.getItem('offorest.theme');
+                const mode = saved === 'dark' || saved === 'light' ? saved : @js($initialThemeMode === 'dark' ? 'dark' : 'light');
+                document.documentElement.dataset.themeMode = mode;
+                document.documentElement.classList.toggle('theme-dark', mode === 'dark');
+                document.documentElement.classList.toggle('theme-light', mode !== 'dark');
+                document.documentElement.classList.toggle('dark', mode === 'dark');
+            })();
+        </script>
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">

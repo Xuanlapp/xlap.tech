@@ -125,12 +125,7 @@ class EditProductDetail extends Component
             return;
         }
 
-        app(OrnamentAmazonTwoService::class)->updateProductDetail(
-            auth()->user(),
-            $this->assetId,
-            $validated['keyword'],
-            $validated['imageLink'],
-        );
+        app(OrnamentAmazonTwoService::class)->updateKeyword(auth()->user(), $this->assetId, $validated['keyword']);
 
         $this->dispatch('ornament-amazon-two-product-design-updated', assetId: $this->assetId);
         $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da cap nhat item Ornament.');

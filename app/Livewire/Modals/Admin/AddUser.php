@@ -44,6 +44,7 @@ class AddUser extends Component
 
     public bool $can_access_wali = false;
 
+
     /** @var array<int, int|string> */
     public array $selectedProducts = [];
 
