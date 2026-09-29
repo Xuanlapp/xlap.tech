@@ -42,6 +42,8 @@ class ReviewImage extends Component
 
     public ?string $src = null;
 
+    public ?string $boundsCachedSourceUrl = null;
+
     public ?string $original = null;
 
     public string $title = 'Review image';
@@ -667,8 +669,53 @@ class ReviewImage extends Component
         }
     }
 
+    public function prepareGlassBoundsEditor(): void
+    {
+        if ($this->productSlug !== 'glass' || $this->action !== 'glass-redesign' || ! $this->assetId) return;
+        try {
+            $asset = app(GlassService::class)->useCachedOriginalForBounds(auth()->user(), $this->assetId, $this->original ?: $this->src);
+            $this->original = $asset->redesign;
+            $this->src = app(ImageLinkPreviewService::class)->previewUrl($asset->redesign);
+            if (isset($this->gallery[$this->currentIndex])) {
+                $this->gallery[$this->currentIndex]['original'] = $this->original;
+                $this->gallery[$this->currentIndex]['src'] = $this->src;
+            }
+            $this->dispatch('glass-bounds-editor-ready');
+        } catch (Throwable $exception) {
+            $this->reportUserActionError($exception, 'glass.prepare_bounds_editor', ['asset_id' => $this->assetId]);
+            $this->dispatch('toast', type: 'error', title: 'Bounds failed', message: $exception->getMessage());
+        }
+    }
+
+    public function saveGlassBoundsFromTransform(array $transform): void
+    {
+        if ($this->productSlug !== 'glass' || $this->action !== 'glass-redesign' || ! $this->assetId) return;
+        try {
+            app(GlassService::class)->saveBoundedCacheImage(auth()->user(), $this->assetId, $transform, true);
+            $this->dispatch('glass-product-design-updated')->to(ListGlass::class);
+            $this->dispatch('glass-product-design-workflow-updated')->to(GlassStatusPanel::class);
+            $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da luu anh Glass theo bounds moi.');
+            $this->close();
+        } catch (Throwable $exception) {
+            $this->reportUserActionError($exception, 'glass.save_source_bounds_server', ['asset_id' => $this->assetId]);
+            $this->dispatch('toast', type: 'error', title: 'Save failed', message: $exception->getMessage());
+        }
+    }
+
     public function render(): View
     {
+        if ($this->productSlug === 'glass' && $this->assetId && auth()->check()) {
+            try {
+                $this->boundsCachedSourceUrl = app(GlassService::class)->boundsOriginalUrl(
+                    auth()->user(),
+                    $this->assetId,
+                    $this->original ?: $this->src,
+                );
+            } catch (Throwable $exception) {
+                Log::warning('Glass bounds original cache failed.', ['asset_id' => $this->assetId, 'message' => $exception->getMessage()]);
+                $this->boundsCachedSourceUrl = null;
+            }
+        }
         $path = 'admin/glass/bounds-guide.png';
         $disk = Storage::disk('public');
         if ($disk->exists($path)) {

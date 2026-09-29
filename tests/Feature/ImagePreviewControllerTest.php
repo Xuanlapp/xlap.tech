@@ -21,6 +21,7 @@ class ImagePreviewControllerTest extends TestCase
 
         $this->get($url)
             ->assertOk()
-            ->assertHeader('content-type', 'image/png');
+            ->assertHeader('content-type', 'image/png')
+            ->assertHeader('access-control-allow-origin', '*');
     }
 }

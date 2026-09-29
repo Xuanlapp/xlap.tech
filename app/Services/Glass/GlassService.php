@@ -17,6 +17,7 @@ use App\Services\Product\ProductBackgroundRemovalService;
 use App\Services\Product\ProductDesignAssetFileCleanupService;
 use App\Services\Product\ProductDriveUploadQueueService;
 use App\Services\Vertex\VertexImageGenerator;
+use App\Services\Google\GoogleDriveService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
@@ -32,6 +33,98 @@ class GlassService
     private const MAX_KEYWORD_LENGTH = 255;
 
     private const MAX_IMAGE_LINK_LENGTH = 1000;
+
+    /** Cache a remote source locally so browser canvas never touches Drive/CORS. */
+    public function boundsOriginalUrl(User $user, int $assetId, ?string $sourceUrl = null): ?string
+    {
+        $asset = $this->assetForUser($user, $assetId);
+        $sourceUrl = trim((string) ($sourceUrl ?: $asset->image_link));
+        if ($sourceUrl === '') return null;
+
+        $extension = 'png';
+        $cacheKey = substr(sha1($sourceUrl), 0, 12);
+        $cachePath = 'generated/glass/original-cache/'.$user->id.'/'.$asset->id.'/'.$cacheKey.'.'.$extension;
+        $disk = Storage::disk('public');
+        if (! $disk->exists($cachePath)) {
+            $path = parse_url($sourceUrl, PHP_URL_PATH) ?: '';
+            $driveId = null;
+            if (preg_match('#/file/d/([^/]+)#', (string) $path, $m)) $driveId = $m[1];
+            parse_str((string) parse_url($sourceUrl, PHP_URL_QUERY), $query);
+            $driveId = $driveId ?: ($query['id'] ?? null);
+            if ($driveId) {
+                $download = app(GoogleDriveService::class)->downloadImageFile((string) $driveId);
+                $bytes = $download['body'];
+            } elseif (str_starts_with((string) $path, '/storage/')) {
+                $local = ltrim(substr((string) $path, strlen('/storage/')), '/');
+                if (! $disk->exists($local)) return null;
+                $bytes = $disk->get($local);
+            } else {
+                $response = Http::timeout(30)->retry(1, 250)->get($sourceUrl);
+                if (! $response->successful() || ! str_starts_with(strtolower($response->header('Content-Type', '')), 'image/')) return null;
+                $bytes = $response->body();
+            }
+            if ($bytes === '' || strlen($bytes) > 52_428_800) return null;
+            $disk->put($cachePath, $bytes);
+        }
+        return '/storage/'.$cachePath.'?v='.$disk->lastModified($cachePath);
+    }
+
+    /** Render Bounds on the server when a browser canvas is tainted by an external image. */
+    public function saveBoundedCacheImage(User $user, int $assetId, array $transform, bool $asRedesign = true): ProductDesignAsset
+    {
+        $cachedUrl = $this->boundsOriginalUrl($user, $assetId);
+        $path = parse_url((string) $cachedUrl, PHP_URL_PATH) ?: '';
+        $relativePath = ltrim(substr($path, strlen('/storage/')), '/');
+        $bytes = Storage::disk('public')->get($relativePath);
+        $source = @imagecreatefromstring($bytes);
+        if (! $source) throw new RuntimeException('Khong doc duoc XLAP Original cache de luu bounds.');
+
+        $canvasWidth = max(1, min(12000, (int) ($transform['canvasWidth'] ?? 1203)));
+        $canvasHeight = max(1, min(12000, (int) ($transform['canvasHeight'] ?? 1204)));
+        $target = is_array($transform['target'] ?? null) ? $transform['target'] : [];
+        $targetX = (float) ($target['x'] ?? 0);
+        $targetY = (float) ($target['y'] ?? 0);
+        $targetWidth = (float) ($target['width'] ?? $canvasWidth);
+        $targetHeight = (float) ($target['height'] ?? $canvasHeight);
+        $scale = max(0.01, (float) ($transform['scale'] ?? 1));
+        $offsetX = (float) ($transform['offsetX'] ?? 0);
+        $offsetY = (float) ($transform['offsetY'] ?? 0);
+
+        $output = imagecreatetruecolor($canvasWidth, $canvasHeight);
+        imagealphablending($output, false);
+        imagesavealpha($output, true);
+        $transparent = imagecolorallocatealpha($output, 0, 0, 0, 127);
+        imagefill($output, 0, 0, $transparent);
+        imagealphablending($output, true);
+        imagecopyresampled($output, $source, (int) round($offsetX), (int) round($offsetY), 0, 0, (int) round(imagesx($source) * $scale), (int) round(imagesy($source) * $scale), imagesx($source), imagesy($source));
+        imagedestroy($source);
+
+        $centerX = $targetX + $targetWidth / 2;
+        $centerY = $targetY + $targetHeight / 2;
+        $radius = min($targetWidth, $targetHeight) / 2;
+        for ($y = 0; $y < $canvasHeight; $y++) {
+            for ($x = 0; $x < $canvasWidth; $x++) {
+                if (($x - $centerX) ** 2 + ($y - $centerY) ** 2 > $radius ** 2) imagesetpixel($output, $x, $y, $transparent);
+            }
+        }
+        ob_start(); imagepng($output, null, 6); $png = ob_get_clean(); imagedestroy($output);
+        if (! is_string($png) || $png === '') throw new RuntimeException('Khong the render PNG bounds tu XLAP Original.');
+        return $this->saveBoundedImage($user, $assetId, $png, $asRedesign);
+    }
+
+    /** Promote the server-cached original to the active Create Master before editing bounds. */
+    public function useCachedOriginalForBounds(User $user, int $assetId, ?string $sourceUrl = null): ProductDesignAsset
+    {
+        $asset = $this->assetForUser($user, $assetId);
+        $this->ensureNotApproved($asset);
+        $this->ensureMasterEditable($asset);
+        $cachedUrl = $this->boundsOriginalUrl($user, $assetId, $sourceUrl);
+        if (! $cachedUrl) throw new RuntimeException('Khong tai duoc anh goc ve XLAP Original.');
+        $cachedPath = strtok($cachedUrl, '?');
+        $candidates = collect($asset->redesign_candidates ?: [])->push($cachedPath)->filter()->unique()->values()->all();
+        $asset->update(['redesign' => $cachedPath, 'redesign_candidates' => $candidates]);
+        return $asset->refresh();
+    }
 
     private const MAX_CUSTOM_PROMPT_LENGTH = 4000;
 

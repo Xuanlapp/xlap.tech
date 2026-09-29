@@ -45,7 +45,7 @@
             // the raw source URL may be private or blocked while the preview works.
             // Use the original asset first. The visible preview may be a temporary
             // proxy URL and is not guaranteed to be readable by the canvas.
-            $boundsSourceUrl = $normalizeAssetUrl($original ?: $src);
+            $boundsSourceUrl = $normalizeAssetUrl($boundsCachedSourceUrl ?: ($original ?: $src));
             // Always proxy Bounds Editor source images through XLAP so local storage is read
             // from the configured public disk instead of a browser request that can be denied.
             if ($boundsSourceUrl && ! str_contains($boundsSourceUrl, '/image-preview?')) {
@@ -77,6 +77,7 @@
                 boundsImage: null,
                 boundsGuideImage: null,
                 boundsGuideAvailable: @js((bool) $boundsGuideDataUrl),
+                boundsSaving: false,
                 boundsLoading: false,
                 boundsCanvasWidth: @js((int) data_get($glassBoundsConfig, 'canvas.width', 1203)),
                 boundsCanvasHeight: @js((int) data_get($glassBoundsConfig, 'canvas.height', 1204)),
@@ -161,10 +162,11 @@
 
                     window.open(@js($displayOriginalUrl ?: $src), '_blank', 'noreferrer');
                 },
-                startBoundsEditor() {
+                async startBoundsEditor() {
                     this.boundsEditing = true;
                     this.boundsLoading = true;
                     this.boundsImage = null;
+                    await this.$wire.prepareGlassBoundsEditor();
                     this.$nextTick(() => this.initBoundsEditor());
                 },
                 initBoundsEditor() {
@@ -381,13 +383,16 @@
                 endBoundsDrag() { this.boundsDragging = false; },
                 cancelBoundsEditor() { this.boundsEditing = false; this.boundsImage = null; },
                 async saveBoundsEditor() {
-                    if (! this.boundsImage) return;
+                    if (! this.boundsImage || this.boundsSaving) return;
+                    this.boundsSaving = true;
+                    try {
                     const canvas = document.createElement('canvas');
                     canvas.width = this.boundsCanvasWidth;
                     canvas.height = this.boundsCanvasHeight;
                     const context = canvas.getContext('2d');
-                    const center = this.boundsCenter();
-                    const radius = Math.min(this.boundsTarget.width, this.boundsTarget.height) / 2;
+                    const target = this.boundsTarget || { x: 0, y: 0, width: this.boundsCanvasWidth, height: this.boundsCanvasHeight };
+                    const center = { x: target.x + target.width / 2, y: target.y + target.height / 2 };
+                    const radius = Math.min(target.width, target.height) / 2;
                     context.save();
                     context.beginPath();
                     context.arc(center.x, center.y, radius, 0, Math.PI * 2);
@@ -402,8 +407,29 @@
                     context.restore();
 
                     const dataUrl = canvas.toDataURL('image/png');
-                    this.boundsEditing = false;
+                    if (! dataUrl || dataUrl.length < 100) {
+                        throw new Error('Canvas export returned an empty image.');
+                    }
                     await this.$wire.saveGlassBounds(dataUrl);
+                    this.boundsEditing = false;
+                    } catch (error) {
+                        console.error('Glass bounds save failed', error);
+                        if (error?.name === 'SecurityError') {
+                            await this.$wire.saveGlassBoundsFromTransform({
+                                canvasWidth: this.boundsCanvasWidth,
+                                canvasHeight: this.boundsCanvasHeight,
+                                target: this.boundsTarget,
+                                scale: this.boundsScale,
+                                offsetX: this.boundsOffsetX,
+                                offsetY: this.boundsOffsetY,
+                            });
+                            this.boundsEditing = false;
+                            return;
+                        }
+                        this.notifyProcessing('Save failed', 'Khong the gui anh bounds len may chu. Hay thu lai sau khi tai lai modal.');
+                    } finally {
+                        this.boundsSaving = false;
+                    }
                 },            }"
             x-show="modalVisible"
             x-transition.opacity.duration.150ms

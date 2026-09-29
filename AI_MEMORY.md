@@ -11387,3 +11387,79 @@ Follow-up notes: From page 3, search a value with one result page and confirm it
 **Changes:** Doi `boundsStage` sang nen trang duy nhat, giu nguyen guide upload va anh master.
 
 **Verification:** `php artisan view:cache`, `npm run build`, `git diff --check` pass.
+### 2026-09-29 (Fix Save Bounds JavaScript syntax)
+
+**User report:** Nut Save Bounds khong su dung duoc.
+
+**Root cause:** `saveBoundsEditor()` khai bao trung `const center` trong cung scope, lam Alpine JavaScript parse error va ngan toan bo ham save; state `boundsSaving` cung chua khoi tao.
+
+**Changed file:** `resources/views/livewire/modals/image/review-image.blade.php`.
+
+**Changes:** Xoa khai bao trung `center`, khoi tao `boundsSaving`, giu lock chong double-submit va try/catch khi xuat PNG/goi Livewire.
+
+**Verification:** `php artisan view:cache`, `npm run build`, `php artisan test tests/Feature/ImagePreviewControllerTest.php`, `git diff --check` pass.
+### 2026-09-29 (Chan loi Save Bounds do thieu bang sessions)
+
+**User report:** Save Bounds hien thong bao khong tao duoc anh bounds cho asset STT 1 SKU s.
+
+**Root cause:** Laravel log xac nhan Livewire POST bi fail truoc khi vao `saveGlassBounds()` do SQLite production thieu bang `sessions` (`no such table: sessions`). Frontend catch loi nay thanh thong bao chung ve tao anh.
+
+**Changed/verified:** Migration `database/migrations/2026_09_28_000002_create_sessions_table_if_missing.php` da ton tai va da chay thanh cong tren moi truong local (`migrate:status` = Ran); khong can sua logic render PNG.
+
+**Deploy impact:** Bat buoc chay `php artisan migrate --force` tren production, sau do `php artisan optimize:clear`; queue khong thay doi.
+
+**Verification:** Migration status local = Ran; Save request se khong con bi chan boi missing sessions sau khi migration duoc deploy.
+### 2026-09-29 (Fix CORS khi luu Bounds tu anh Drive)
+
+**User report:** Anh upload local luu duoc, anh tu link Drive xem duoc nhung Save Bounds fail.
+
+**Root cause:** Anh proxy tu image-preview khong tra header CORS, nen canvas bi tainted khi xuat `toDataURL()`.
+
+**Changed files:** `app/Http/Controllers/ImagePreviewController.php`, `tests/Feature/ImagePreviewControllerTest.php`, `resources/views/livewire/modals/image/review-image.blade.php`.
+
+**Changes:** Them `Access-Control-Allow-Origin: *` cho local/remote image preview; editor luon tai source qua proxy CORS-safe thay vi dung preview DOM.
+
+**Verification:** `php artisan view:cache`, `npm run build`, `php artisan test tests/Feature/ImagePreviewControllerTest.php` (5 assertions), PHP lint, `git diff --check` pass.
+
+**Deploy impact:** Deploy controller/test/view, clear cache; production van can `php artisan migrate --force` neu bang sessions chua co.
+### 2026-09-29 (Chan doan Save Bounds va thong bao loi CORS ro rang)
+
+**User report:** Save Bounds van hien thong bao chung, nghi anh Drive.
+
+**Root cause analysis:** Local automated tests khong tai duoc browser canvas/Drive; loi co the xay o `toDataURL()` (SecurityError/CORS) hoac Livewire request. Thong bao cu che mat nguyen nhan.
+
+**Changed file:** `resources/views/livewire/modals/image/review-image.blade.php`.
+
+**Changes:** Them kiem tra data URL rong, ghi `console.error`, phan biet SecurityError CORS voi loi gui Livewire; giu proxy image-preview CORS-safe.
+
+**Verification:** `php artisan view:cache`, `npm run build`, `php artisan test tests/Feature/ImagePreviewControllerTest.php` (5 assertions), `git diff --check` pass.
+
+**Follow-up:** Neu van fail tren production, xem Console dong `Glass bounds save failed` va Network Livewire response; migration `sessions` phai da chay.
+### 2026-09-29 (Them XLAP Original cache theo Asset ID cho Glass Bounds)
+
+**User request:** Trien khai luong URL online/Drive -> Laravel download -> XLAP ORIGINAL -> cache -> canvas -> Save Bounds; cache mat thi tao lai.
+
+**Changed files:** `app/Services/Glass/GlassService.php`, `app/Livewire/Modals/Image/ReviewImage.php`, `resources/views/livewire/modals/image/review-image.blade.php`.
+
+**Changes:** Them `boundsOriginalUrl()` tao cache server-side theo user/asset/hash source; ho tro Drive qua `GoogleDriveService`, storage local va URL online; ReviewImage tao cache khi render va editor uu tien URL cache noi bo. Cache mat se tai lai tu `asset.image_link`.
+
+**Affected modules:** Glass Bounds Editor and source image loading.
+
+**Verification:** `php artisan view:cache`, `npm run build`, `php artisan test tests/Feature/ImagePreviewControllerTest.php`, PHP lint, `git diff --check` pass.
+
+**Deploy impact:** Deploy PHP/Blade moi; production can `php artisan optimize:clear`, `php artisan migrate --force` neu sessions chua co. Queue khong thay doi.
+
+**Follow-up:** Test production voi mot asset Drive that; lan dau se download/cache, lan sau doc file cache.
+### 2026-09-29 (Fallback server-side Save Bounds khi canvas bi CORS)
+
+**User report:** Console xac nhan `SecurityError: Tainted canvases may not be exported` voi anh Drive.
+
+**Root cause:** Browser canvas van co the bi taint boi image response/preview cu du da co proxy; khong the dam bao `toDataURL` tren moi production proxy.
+
+**Changed files:** `app/Services/Glass/GlassService.php`, `app/Livewire/Modals/Image/ReviewImage.php`, `resources/views/livewire/modals/image/review-image.blade.php`.
+
+**Changes:** Them server render fallback: neu client `toDataURL()` gap SecurityError, gui scale/offset/target; Laravel doc XLAP Original cache, render PNG bang GD, crop circle va luu redesign. Them cache source theo asset/source hash, ho tro Drive API/local/online.
+
+**Verification:** `php artisan view:cache`, `npm run build`, `php artisan test tests/Feature/ImagePreviewControllerTest.php`, PHP lint, `git diff --check` pass.
+
+**Deploy impact:** Deploy PHP/Blade moi, `php artisan optimize:clear`; queue khong thay doi.

@@ -34,6 +34,7 @@ class ImagePreviewController extends Controller
 
             return response()->file($localPath, [
                 'Cache-Control' => 'private, max-age=1800',
+                'Access-Control-Allow-Origin' => '*',
             ]);
         }
 
@@ -48,6 +49,7 @@ class ImagePreviewController extends Controller
         if ($localPath !== null && is_file($localPath)) {
             return response()->file($localPath, [
                 'Cache-Control' => 'public, max-age=604800, stale-while-revalidate=86400',
+                'Access-Control-Allow-Origin' => '*',
             ]);
         }
 
@@ -95,6 +97,7 @@ class ImagePreviewController extends Controller
 
         return response($body, 200)
             ->header('Content-Type', $contentType)
+            ->header('Access-Control-Allow-Origin', '*')
             ->header('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400');
     }
 
