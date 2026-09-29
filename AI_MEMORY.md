@@ -11487,3 +11487,26 @@ Follow-up notes: From page 3, search a value with one result page and confirm it
 **Verification:** `php artisan view:cache`, feature test (5 assertions), PHP lint, `git diff --check` pass.
 
 **Deploy impact:** Deploy service moi, migrate/clear cache; existing Drive links chi duoc thay sau lan bam Chinh bounds dau tien.
+### 2026-09-29 (Fix Glass custom mockup cards showing broken images after completion)
+
+**User report:** Custom PSD mockup cards did not appear correctly after generation; the card showed MOCKUP 1–6 with broken image icons while other card sections refreshed.
+
+**Root cause:** Glass generated local storage previews are Laravel signed URLs. `ProductDesignCard::withPreviewVersion()` appended `local_mockup_refresh` after the URL was signed, invalidating the signature and causing the browser image requests to fail even though the database contained mockup paths.
+
+**Changed files:**
+- `app/Livewire/Pages/Glass/ProductDesignCard.php`
+- `.design/glass-mockup-auto-refresh/DESIGN_BRIEF.md`
+- `.design/glass-mockup-auto-refresh/DESIGN_REVIEW.md`
+- `AI_MEMORY.md`
+
+**Changes:** Signed preview URLs now pass through unchanged. Local storage previews already carry file-mtime versioning in their signed URL, so no post-signing cache-bust parameter is needed. Existing polling and mockup rendering workflow remains unchanged.
+
+**Affected modules:** Glass custom PSD mockup preview URL generation only.
+
+**Deploy impact:** PHP/Blade application code only. No migration, storage path, worker, renderer, or queue changes.
+
+**Queue impact:** None.
+
+**Verification:** PHP lint, Blade view cache, and targeted diff check passed. `tests/Unit/ImageLinkPreviewServiceTest.php` ran with 4 passing and 2 pre-existing/unrelated Google Drive URL failures.
+
+**Follow-up:** Generate a new Glass PSD mockup, wait for local completion, and confirm MOCKUP cards load without broken-image icons. If an old browser tab still shows broken images, hard-refresh once because the old invalid signed URLs remain in the DOM until Livewire rerenders.

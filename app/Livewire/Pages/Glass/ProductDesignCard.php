@@ -233,6 +233,13 @@ class ProductDesignCard extends Component
             return $url;
         }
 
+        // Laravel signed preview URLs already include the file mtime as `v`.
+        // Appending a query after signing invalidates the signature and causes
+        // freshly rendered mockups to show as broken images.
+        if (str_contains($url, 'signature=')) {
+            return $url;
+        }
+
         return $url.(str_contains($url, '?') ? '&' : '?').'local_mockup_refresh='.$version;
     }
 }
