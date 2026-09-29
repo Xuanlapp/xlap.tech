@@ -25,7 +25,7 @@ class ImagePreviewController extends Controller
         // Local storage paths are already constrained below. Remote proxy URLs must
         // remain signed so this public image endpoint cannot become an open proxy.
         if (! empty($validated['url'])) {
-            abort_unless($request->hasValidSignature(), 403);
+            abort_unless($request->hasValidSignature(false), 403);
         }
 
         if (! empty($validated['path'])) {

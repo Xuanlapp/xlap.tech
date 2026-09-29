@@ -673,9 +673,11 @@ class ReviewImage extends Component
     {
         if ($this->productSlug !== 'glass' || $this->action !== 'glass-redesign' || ! $this->assetId) return;
         try {
-            $asset = app(GlassService::class)->useCachedOriginalForBounds(auth()->user(), $this->assetId, $this->original ?: $this->src);
-            $this->original = $asset->redesign;
-            $this->src = app(ImageLinkPreviewService::class)->previewUrl($asset->redesign);
+            $sourceBefore = $this->original ?: $this->src;
+            $asset = app(GlassService::class)->useCachedOriginalForBounds(auth()->user(), $this->assetId, $sourceBefore);
+            $currentUrl = $sourceBefore === (string) $asset->image_link ? $asset->image_link : $asset->redesign;
+            $this->original = $currentUrl;
+            $this->src = app(ImageLinkPreviewService::class)->previewUrl($currentUrl);
             if (isset($this->gallery[$this->currentIndex])) {
                 $this->gallery[$this->currentIndex]['original'] = $this->original;
                 $this->gallery[$this->currentIndex]['src'] = $this->src;

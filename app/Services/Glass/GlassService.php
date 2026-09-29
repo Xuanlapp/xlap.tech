@@ -41,12 +41,25 @@ class GlassService
         $sourceUrl = trim((string) ($sourceUrl ?: $asset->image_link));
         if ($sourceUrl === '') return null;
 
+        // XLAP storage is already same-origin and safe for canvas; do not create
+        // another copy when the source is already local.
+        $sourcePath = parse_url($sourceUrl, PHP_URL_PATH) ?: '';
+        if (str_starts_with((string) $sourcePath, '/storage/')) {
+            return $sourceUrl;
+        }
+
         $extension = 'png';
-        $cacheKey = substr(sha1($sourceUrl), 0, 12);
-        $cachePath = 'generated/glass/original-cache/'.$user->id.'/'.$asset->id.'/'.$cacheKey.'.'.$extension;
+        // One stable cache per asset prevents repeated Drive downloads when the
+        // same source is represented by different preview URLs.
+        $cachePath = 'generated/glass/original-cache/'.$user->id.'/'.$asset->id.'/original.'.$extension;
         $disk = Storage::disk('public');
+        $existing = collect($disk->files('generated/glass/original-cache/'.$user->id.'/'.$asset->id))
+            ->first(fn (string $path): bool => preg_match('/\.(png|jpe?g|webp)$/i', $path) === 1);
+        if ($existing && ! $disk->exists($cachePath)) {
+            $cachePath = $existing;
+        }
         if (! $disk->exists($cachePath)) {
-            $path = parse_url($sourceUrl, PHP_URL_PATH) ?: '';
+            $path = $sourcePath;
             $driveId = null;
             if (preg_match('#/file/d/([^/]+)#', (string) $path, $m)) $driveId = $m[1];
             parse_str((string) parse_url($sourceUrl, PHP_URL_QUERY), $query);
@@ -121,8 +134,18 @@ class GlassService
         $cachedUrl = $this->boundsOriginalUrl($user, $assetId, $sourceUrl);
         if (! $cachedUrl) throw new RuntimeException('Khong tai duoc anh goc ve XLAP Original.');
         $cachedPath = strtok($cachedUrl, '?');
-        $candidates = collect($asset->redesign_candidates ?: [])->push($cachedPath)->filter()->unique()->values()->all();
-        $asset->update(['redesign' => $cachedPath, 'redesign_candidates' => $candidates]);
+        $source = trim((string) ($sourceUrl ?: $asset->image_link));
+        $isSourceImage = $source !== '' && $source === (string) $asset->image_link;
+        if ($isSourceImage) {
+            $asset->update(['image_link' => $cachedPath]);
+        } else {
+            $candidates = collect($asset->redesign_candidates ?: [])->map(
+                fn ($candidate) => ($candidate['original'] ?? $candidate) === $source
+                    ? (is_array($candidate) ? array_merge($candidate, ['original' => $cachedPath, 'src' => $cachedPath]) : $cachedPath)
+                    : $candidate
+            )->push($cachedPath)->filter()->unique()->values()->all();
+            $asset->update(['redesign' => $cachedPath, 'redesign_candidates' => $candidates]);
+        }
         return $asset->refresh();
     }
 

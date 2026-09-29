@@ -73,7 +73,14 @@ class ImageLinkPreviewService
         $previewUrl = $url;
 
         if (str_contains($host, 'drive.google.com')) {
-            return $this->googleDrivePreviewUrl($url) ?? $url;
+            // Do not expose Drive thumbnail URLs to the browser. Route through the
+            // authenticated Laravel proxy so Drive files render reliably.
+            return URL::temporarySignedRoute(
+                'image-preview.show',
+                now()->addHours(12),
+                ['url' => $url],
+                absolute: false,
+            );
         }
 
         if (str_contains($host, 'dropbox.com')) {

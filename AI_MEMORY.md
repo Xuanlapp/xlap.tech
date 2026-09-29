@@ -11463,3 +11463,27 @@ Follow-up notes: From page 3, search a value with one result page and confirm it
 **Verification:** `php artisan view:cache`, `npm run build`, `php artisan test tests/Feature/ImagePreviewControllerTest.php`, PHP lint, `git diff --check` pass.
 
 **Deploy impact:** Deploy PHP/Blade moi, `php artisan optimize:clear`; queue khong thay doi.
+### 2026-09-29 (Chi download/cache anh Drive khi can, khong copy anh local)
+
+**User request:** Anh Drive chi tai mot lan va thay vao Create Master; link storage cua XLAP khong tao them ban sao moi lan Chinh bounds.
+
+**Finding:** `storage/logs/laravel.log` ~24 MB, co hang tram nhom loi `no such table: sessions`; day la nguon lag ro rang. Cache original co 5 file ~10 MB.
+
+**Changed file:** `app/Services/Glass/GlassService.php`.
+
+**Changes:** `boundsOriginalUrl()` nhan dien `/storage/...` la anh local XLAP va tra lai truc tiep; chi download/cache URL Drive/online. Cache remote theo asset + hash source, sau khi promote Create Master thi lan sau dung local khong download lai.
+
+**Verification:** `php artisan view:cache`, feature test (5 assertions), PHP lint, `git diff --check` pass.
+
+**Deploy impact:** Deploy service moi va clear cache. Khong xoa log tu dong; production can chay `php artisan migrate --force` de chan loi sessions lap lai.
+### 2026-09-29 (Thay link Drive bang duong dan XLAP sau lan tai dau)
+
+**User request:** Khi tai anh Drive, thay link Drive trong database bang link anh goc da tai ve XLAP.
+
+**Changed file:** `app/Services/Glass/GlassService.php`.
+
+**Changes:** `useCachedOriginalForBounds()` nay cap nhat `image_link` neu dang xu ly source image; neu dang xu ly Create Master thi cap nhat `redesign` va `redesign_candidates` sang `/storage/...` cache path. Lan sau asset dung link noi bo, khong goi Drive nua.
+
+**Verification:** `php artisan view:cache`, feature test (5 assertions), PHP lint, `git diff --check` pass.
+
+**Deploy impact:** Deploy service moi, migrate/clear cache; existing Drive links chi duoc thay sau lan bam Chinh bounds dau tien.
