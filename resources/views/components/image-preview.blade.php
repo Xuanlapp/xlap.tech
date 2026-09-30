@@ -14,7 +14,8 @@
 ])
 
 <div
-    x-data="{ failed: false, currentSrc: @js($src) }"
+    x-data="{ failed: false, currentSrc: @js($src), visible: false }"
+    x-init="new IntersectionObserver(function (entries) { if (entries[0].isIntersecting) { visible = true } }, { rootMargin: '320px 0px' }).observe($el)"
     x-effect="if (currentSrc !== @js($src)) { currentSrc = @js($src); failed = false; }"
     {{ $attributes->merge(['class' => 'flex items-center justify-center overflow-hidden rounded-md bg-slate-50']) }}
 >
@@ -29,7 +30,7 @@
                 <img
                     x-on:load="failed = false"
                     x-on:error="failed = true"
-                    x-bind:src="currentSrc"
+                    x-bind:src="visible ? currentSrc : null"
                     alt="{{ $alt }}"
                     loading="lazy"
                     decoding="async"
@@ -42,7 +43,7 @@
                 x-show="! failed"
                 x-on:load="failed = false"
                 x-on:error="failed = true"
-                x-bind:src="currentSrc"
+                x-bind:src="visible ? currentSrc : null"
                 alt="{{ $alt }}"
                 loading="lazy"
                 decoding="async"

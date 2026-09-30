@@ -3,6 +3,7 @@
 namespace App\Services\Image;
 
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\URL;
 
 class ImageLinkPreviewService
@@ -75,12 +76,7 @@ class ImageLinkPreviewService
         if (str_contains($host, 'drive.google.com')) {
             // Do not expose Drive thumbnail URLs to the browser. Route through the
             // authenticated Laravel proxy so Drive files render reliably.
-            return URL::temporarySignedRoute(
-                'image-preview.show',
-                now()->addHours(12),
-                ['url' => $url],
-                absolute: false,
-            );
+            return $this->cachedSignedPreviewUrl($url, $url, false);
         }
 
         if (str_contains($host, 'dropbox.com')) {
@@ -91,11 +87,7 @@ class ImageLinkPreviewService
             return $url;
         }
 
-        return URL::temporarySignedRoute(
-            'image-preview.show',
-            now()->addHours(12),
-            ['url' => $previewUrl],
-        );
+        return $this->cachedSignedPreviewUrl($url, $previewUrl);
     }
 
     public function looksLikeImageUrl(string $url): bool
@@ -176,6 +168,18 @@ class ImageLinkPreviewService
             ['path' => $path, 'v' => File::lastModified($publicPath)],
             absolute: false,
         );
+    }
+
+    private function cachedSignedPreviewUrl(string $sourceUrl, string $previewUrl, bool $absolute = true): string
+    {
+        $cacheKey = 'image-preview-url:'.sha1($sourceUrl.'|'.$previewUrl.'|'.($absolute ? 'absolute' : 'relative'));
+
+        return Cache::remember($cacheKey, now()->addMinutes(10), fn (): string => URL::temporarySignedRoute(
+            'image-preview.show',
+            now()->addHours(12),
+            ['url' => $previewUrl],
+            absolute: $absolute,
+        ));
     }
 
     /**

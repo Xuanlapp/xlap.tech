@@ -11560,3 +11560,42 @@ Follow-up notes: From page 3, search a value with one result page and confirm it
 **Verification:** PHP lint for all three status panels, Blade view cache, and targeted diff check passed.
 
 **Follow-up:** Deploy the three PHP files, clear Laravel views/cache if needed, hard-refresh Sticker, then move from page 3 to page 4. Confirm no HTTP 500 and counts remain visible.
+
+### 2026-09-30
+
+**Muc tieu:**
+Toi uu man hinh Glass co the hien hon 500 anh de giam RAM/network va tang toc do load.
+
+**File da sua:**
+- `resources/views/components/image-preview.blade.php`
+- `resources/views/livewire/pages/glass/product-design-card.blade.php`
+- `app/Services/Image/ImageLinkPreviewService.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Chi gan `src` cho anh khi container sap vao viewport bang `IntersectionObserver`, van giu URL goc cho review/mo anh.
+- Ap dung lazy-load cho source, Create Master gallery va PSD mockup gallery cua Glass.
+- Cache signed preview URL 10 phut de tranh ky lai cung mot URL trong cac lan render/chuyen trang.
+
+**Validation:**
+- `php -l app/Services/Image/ImageLinkPreviewService.php` pass.
+- `git diff --check` pass.
+- Chua co browser capture trong moi truong hien tai, nen can do lai Network/TTFB voi trang thuc te sau deploy.
+
+**Deploy impact:**
+- Khong doi schema, queue, storage path hay URL anh goc.
+- Can build/deploy Blade/PHP changes; khong can restart queue.
+### 2026-09-30 - Glass mockup card refresh
+
+**Thay doi:**
+- Bo polling 8 giay tren toan bo Glass ProductDesignCard.
+- Them `wire:poll.30s` chi tren vung `3. Mockup Tu Chon`, de moi card tu re-render va doc anh PSD moi nhat sau khi local/Syncthing cap nhat.
+
+**Validation:**
+- PHP syntax pass va `git diff --check` pass.
+- Khong doi source image/Create Master, khong doi queue hay database.
+### 2026-09-30 - Glass mockup polling interval
+
+- Changed Mockup Tu Chon polling from `wire:poll.30s` to `wire:poll.visible.5s` for faster local/Syncthing result refresh.
+- Polling is scoped to the visible Mockup section; no source/Create Master polling change.
+- This increases Livewire request frequency and should be monitored on the VPS with 50 cards.
