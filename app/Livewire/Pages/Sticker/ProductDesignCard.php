@@ -22,6 +22,8 @@ class ProductDesignCard extends Component
 
     public int $assetId;
 
+    public int $mockupAutoRefreshCount = 0;
+
     #[Reactive]
     public ?string $activePsdTemplateName = null;
 
@@ -131,6 +133,15 @@ class ProductDesignCard extends Component
     {
         $this->activePsdTemplateName = app(PsdMockupTemplateService::class)
             ->activeStickerTemplateForUser(auth()->user())?->name;
+    }
+
+    public function refreshMockups(): void
+    {
+    }
+
+    public function refreshMockupsAutomatically(): void
+    {
+        $this->mockupAutoRefreshCount = min(2, $this->mockupAutoRefreshCount + 1);
     }
 
     public function render(): View

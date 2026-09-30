@@ -11620,3 +11620,16 @@ Toi uu man hinh Glass co the hien hon 500 anh de giam RAM/network va tang toc do
 - Affected modules: Glass product-design card source-image preview only. No database, storage, queue, or bounds-editor behavior changed.
 - Validation: `php artisan view:cache`, targeted `ImagePreviewControllerTest` (5 assertions), and `git diff --check` passed.
 - Deploy impact: Blade/PHP deploy only; clear compiled views if the deployment process does not do so automatically. Queue impact: none.
+### 2026-09-30 - Apply mockup card refresh to all PSD mockup modules
+
+- Applied the database-driven visible polling and per-card spinning refresh control to Glass, Sticker and Decal product design cards.
+- Automatic polling is scoped to the Mockup Tu Chon section, runs only for waiting/processing local jobs, and uses a 10-second interval while visible.
+- Removed legacy whole-card 3-second polling from Sticker and Decal.
+- Suncatcher and Ornament workflow polling was intentionally unchanged because their cards do not contain this Mockup Tu Chon PSD section.
+- Validation: PHP syntax, Blade cache and diff check pass.
+### 2026-09-30 - Limit automatic mockup refreshes
+
+- Glass, Sticker and Decal cards now keep an auto-refresh counter and invoke the visible 10-second poll at most twice while their local mockup job is waiting/processing.
+- Existing per-card manual refresh button remains available and is not limited by the automatic counter; its icon spins during the Livewire request.
+- No changes to Suncatcher/Ornament workflow polling because they do not expose the same `3. Mockup Tu Chon` card section.
+- Validation: PHP syntax for all three card components, Blade cache, and diff check pass.

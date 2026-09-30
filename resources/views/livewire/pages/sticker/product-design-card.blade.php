@@ -1,4 +1,4 @@
-<article @if(in_array($localMockupJob?->status, ['waiting', 'processing'], true) || ($localMockupJob?->status === 'completed' && $localMockupJob->completed_at?->gte(now()->subMinute()))) wire:poll.3s @endif class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/[0.02]">
+<article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/[0.02]">
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div class="flex min-w-0 flex-1 flex-wrap items-center gap-3">
             <span class="inline-flex h-8 shrink-0 items-center rounded-lg bg-indigo-50 px-3 text-xs font-bold text-gray-600">
@@ -146,9 +146,12 @@
             @endif
         </div>
 
-        <div class="min-w-0 {{ $asset->redesign ? '' : 'opacity-55' }}">
+        <div @if ($mockupAutoRefreshCount < 2 && in_array($localMockupJob?->status, ['waiting', 'processing'], true)) wire:poll.visible.10s="refreshMockupsAutomatically" @endif class="min-w-0 {{ $asset->redesign ? '' : 'opacity-55' }}">
             <div class="mb-2 flex h-5 items-center justify-between gap-2">
                 <x-label class="truncate text-xs font-bold uppercase text-indigo-600">3. Mockup Tu Chon</x-label>
+                <button type="button" wire:click="refreshMockups" wire:loading.attr="disabled" wire:target="refreshMockups" aria-label="Lam moi mockup cua item nay" title="Lam moi mockup cua item nay" class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 disabled:opacity-50 dark:hover:bg-slate-800">
+                    <svg class="h-4 w-4" wire:loading.class="animate-spin" wire:target="refreshMockups" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M20 11a8 8 0 1 0-2.4 6.6M20 4v7h-7" /></svg>
+                </button>
                 @if ($asset->redesign && ! $asset->is_approved && ! in_array($localMockupJob?->status, ['waiting', 'processing'], true))
                     <button
                         type="button"
