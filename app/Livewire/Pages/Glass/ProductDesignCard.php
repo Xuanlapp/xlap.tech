@@ -165,6 +165,10 @@ class ProductDesignCard extends Component
             ->activeGlassTemplateForUser(auth()->user())?->name;
     }
 
+    public function refreshMockups(): void
+    {
+    }
+
     public function render(): View
     {
         $asset = app(GlassService::class)->assetForUser(auth()->user(), $this->assetId);

@@ -11599,3 +11599,24 @@ Toi uu man hinh Glass co the hien hon 500 anh de giam RAM/network va tang toc do
 - Changed Mockup Tu Chon polling from `wire:poll.30s` to `wire:poll.visible.5s` for faster local/Syncthing result refresh.
 - Polling is scoped to the visible Mockup section; no source/Create Master polling change.
 - This increases Livewire request frequency and should be monitored on the VPS with 50 cards.
+### 2026-09-30 - Bounded mockup refresh
+
+- Replaced unbounded `wire:poll.visible.5s` with a two-refresh limit per card, five seconds apart while the Mockup section is visible.
+- Added a refresh icon/button that invokes only the current card's `refreshMockups` action; it re-renders the card and reads the latest synced mockup URLs without refreshing the page.
+- Updated `.design/glass-mockup-auto-refresh/DESIGN_BRIEF.md` acceptance criteria.
+- Validation: PHP syntax, Blade view cache, and diff check pass.
+### 2026-09-30 - Database-driven mockup refresh
+
+- Automatic polling now runs only while this item has a database local mockup job in `waiting` or `processing`, at 10-second intervals and only while the Mockup section is visible.
+- Polling stops automatically when the database reports `completed` or `failed`; items without an active job make no polling requests.
+- Manual refresh remains available per item and uses Livewire loading state to spin the refresh icon.
+- Validation: PHP syntax, Blade cache, and diff check pass.
+### 2026-09-30 - Glass source image reopen
+
+- User report: Card Glass STT 2 / SKU `lap` could display the source preview, but clicking `Xem anh nguon` again was unreliable.
+- Root cause: The secondary source-image action used a Livewire `wire:click` request and passed the rendered preview URL directly. After a card refresh or an expired/missing preview URL, the action could submit an empty/stale `src`; it also did not stop propagation explicitly.
+- Changed files: `resources/views/livewire/pages/glass/product-design-card.blade.php`, `AI_MEMORY.md`.
+- Change: Dispatch `review-image` from Alpine in the browser, stop propagation, and fall back to `image_link` when `image_preview_url` is unavailable. The original URL remains the modal source/fallback.
+- Affected modules: Glass product-design card source-image preview only. No database, storage, queue, or bounds-editor behavior changed.
+- Validation: `php artisan view:cache`, targeted `ImagePreviewControllerTest` (5 assertions), and `git diff --check` passed.
+- Deploy impact: Blade/PHP deploy only; clear compiled views if the deployment process does not do so automatically. Queue impact: none.

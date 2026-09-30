@@ -90,7 +90,7 @@
                 @if ($asset->image_link)
                     <button
                         type="button"
-                        wire:click="$dispatch('review-image', { src: @js($asset->image_preview_url), original: @js($asset->image_link), title: 'Source image', productSlug: 'glass', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
+                        x-on:click.stop="$dispatch('review-image', { src: @js($asset->image_preview_url ?: $asset->image_link), original: @js($asset->image_link), title: 'Source image', productSlug: 'glass', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
                         class="text-xs font-semibold text-blue-600 hover:text-blue-700"
                     >
                         Xem anh nguon
@@ -191,9 +191,12 @@
             @endif
         </div>
 
-        <div wire:poll.visible.5s class="min-w-0 {{ $asset->redesign ? '' : 'opacity-55' }}">
+        <div @if (in_array($localMockupJob?->status, ['waiting', 'processing'], true)) wire:poll.visible.10s @endif class="min-w-0 {{ $asset->redesign ? '' : 'opacity-55' }}">
             <div class="mb-2 flex h-5 items-center justify-between gap-2">
                 <x-label class="truncate text-xs font-bold uppercase text-indigo-600">3. Mockup Tu Chon</x-label>
+                <button type="button" wire:click="refreshMockups" wire:loading.attr="disabled" wire:target="refreshMockups" aria-label="Làm mới mockup của item này" title="Làm mới mockup của item này" class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 disabled:opacity-50 dark:hover:bg-slate-800">
+                    <svg class="h-4 w-4" wire:loading.class="animate-spin" wire:target="refreshMockups" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M20 11a8 8 0 1 0-2.4 6.6M20 4v7h-7" /></svg>
+                </button>
                 @if ($asset->redesign && ! $asset->is_approved && ! in_array($localMockupJob?->status, ['waiting', 'processing'], true))
                     <button
                         type="button"
