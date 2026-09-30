@@ -115,10 +115,20 @@ class GlassService
         $centerX = $targetX + $targetWidth / 2;
         $centerY = $targetY + $targetHeight / 2;
         $radius = min($targetWidth, $targetHeight) / 2;
+        // Clear outside the circular target by scanlines instead of touching every
+        // pixel; this reduces a 1.4M-pixel PHP loop to roughly one row operation.
         for ($y = 0; $y < $canvasHeight; $y++) {
-            for ($x = 0; $x < $canvasWidth; $x++) {
-                if (($x - $centerX) ** 2 + ($y - $centerY) ** 2 > $radius ** 2) imagesetpixel($output, $x, $y, $transparent);
+            $dy = $y - $centerY;
+            $span = $radius * $radius - $dy * $dy;
+            if ($span <= 0) {
+                imagefilledrectangle($output, 0, $y, $canvasWidth - 1, $y, $transparent);
+                continue;
             }
+            $dx = sqrt($span);
+            $left = max(0, (int) floor($centerX - $dx));
+            $right = min($canvasWidth - 1, (int) ceil($centerX + $dx));
+            if ($left > 0) imagefilledrectangle($output, 0, $y, $left - 1, $y, $transparent);
+            if ($right < $canvasWidth - 1) imagefilledrectangle($output, $right + 1, $y, $canvasWidth - 1, $y, $transparent);
         }
         ob_start(); imagepng($output, null, 6); $png = ob_get_clean(); imagedestroy($output);
         if (! is_string($png) || $png === '') throw new RuntimeException('Khong the render PNG bounds tu XLAP Original.');

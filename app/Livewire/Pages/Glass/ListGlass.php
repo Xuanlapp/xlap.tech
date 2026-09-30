@@ -5,13 +5,14 @@ namespace App\Livewire\Pages\Glass;
 use App\Services\Glass\GlassService;
 use App\Services\Glass\PsdMockupTemplateService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Session;
 use Livewire\Component;
 
 class ListGlass extends Component
 {
-    private const PER_PAGE_OPTIONS = [5, 10, 20, 50, 100, 200, 400];
+    private const PER_PAGE_OPTIONS = [5, 10, 20, 50];
 
     #[Session(key: 'glass.per-page')]
     public int $perPage = 5;
@@ -106,8 +107,9 @@ class ListGlass extends Component
         }
         $imageModelOptions = $service->imageModelOptionsForProvider($this->selectedAiProvider);
         $this->selectedImageModel = array_key_exists((string) $this->selectedImageModel, $imageModelOptions) ? $this->selectedImageModel : array_key_first($imageModelOptions);
-        $v98StoreBalance = $service->v98StoreBalanceForUser(auth()->user(), $this->selectedAiProvider);
-        $cheapKeyAiBalance = $service->cheapKeyAiBalanceForUser(auth()->user(), $this->selectedAiProvider);
+        $userId = auth()->id();
+        $v98StoreBalance = Cache::remember("glass:v98-balance:{$userId}:{$this->selectedAiProvider}", 60, fn () => $service->v98StoreBalanceForUser(auth()->user(), $this->selectedAiProvider));
+        $cheapKeyAiBalance = Cache::remember("glass:cheapkey-balance:{$userId}:{$this->selectedAiProvider}", 60, fn () => $service->cheapKeyAiBalanceForUser(auth()->user(), $this->selectedAiProvider));
 
         return view('livewire.pages.glass.list-glass', [
             'statusCounts' => $service->statusCountsForUser(auth()->user(), $this->search),

@@ -11510,3 +11510,30 @@ Follow-up notes: From page 3, search a value with one result page and confirm it
 **Verification:** PHP lint, Blade view cache, and targeted diff check passed. `tests/Unit/ImageLinkPreviewServiceTest.php` ran with 4 passing and 2 pre-existing/unrelated Google Drive URL failures.
 
 **Follow-up:** Generate a new Glass PSD mockup, wait for local completion, and confirm MOCKUP cards load without broken-image icons. If an old browser tab still shows broken images, hard-refresh once because the old invalid signed URLs remain in the DOM until Livewire rerenders.
+
+### 2026-09-30 (Giam CPU render Bounds server-side)
+
+**User report:** Web nhe nhung CPU server bi ngốn cao.
+
+**Finding:** `saveBoundedCacheImage()` dung vong lap PHP qua tung pixel de xoa ngoai vong tron (~1.4M `imagesetpixel` moi lan), trong khi log sessions lap lai lam tang I/O.
+
+**Changed file:** `app/Services/Glass/GlassService.php`.
+
+**Optimization:** Thay nested pixel loop bang scanline: moi hang tinh span hinh tron va xoa hai doan trai/phai bang `imagefilledrectangle`, giam so phep xu ly xuong xap xi 1,200 hang.
+
+**Verification:** Feature test 5 assertions, PHP lint, `git diff --check` pass.
+
+**Follow-up:** Production can migrate sessions, restart PHP workers, va chuyen download Drive sang queue neu luu luong lon.
+### 2026-09-30 (Giam tai Glass list va giu preview day du)
+
+**User request:** Toi uu server cho nhieu nguoi dung nhung khong lam mat preview/chuc nang.
+
+**Changed files:** `app/Livewire/Pages/Glass/ListGlass.php`, `resources/views/livewire/pages/glass/product-design-card.blade.php`, `app/Services/Glass/GlassService.php`.
+
+**Changes:** Gioi han page size Glass toi da 50 item de tranh render 200/400 card dong thoi; cache balance API 60 giay thay vi goi remote moi lan Livewire render; giam polling card dang xu ly tu 3s xuong 8s va bo poll them sau completed; toi uu scanline crop server-side thay vong lap tung pixel.
+
+**Preserved:** Preview URLs, lazy image loading, pagination, search, generation workflow va bounds behavior van giu nguyen.
+
+**Verification:** view cache, feature test 5 assertions, PHP lint, diff check pass.
+
+**Deploy impact:** Clear cache/restart PHP workers; run sessions migration tren production. Queue khong thay doi.

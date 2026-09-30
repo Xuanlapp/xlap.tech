@@ -14,7 +14,7 @@
             window.dispatchEvent(new CustomEvent('glass-master-bounds-changed', { detail: { visible: this.showMasterBounds } }));
         },
     }"
-    @if(in_array($localMockupJob?->status, ['waiting', 'processing'], true) || ($localMockupJob?->status === 'completed' && $localMockupJob->completed_at?->gte(now()->subMinute()))) wire:poll.3s @endif
+    @if(in_array($localMockupJob?->status, ['waiting', 'processing'], true)) wire:poll.8s @endif
     class="glass-item-card rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/[0.02] dark:border-slate-700 dark:bg-slate-900 dark:ring-white/[0.03]"
 >
     <div class="glass-item-header mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-2 dark:border-slate-700 dark:bg-slate-800/70">
