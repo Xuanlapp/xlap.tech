@@ -41,7 +41,6 @@ class StickerStatusPanel extends Component
     /**
      * @var array{all?: int, unapproved?: int, approved?: int}
      */
-    #[Reactive]
     public array $statusCounts = [];
 
     /**

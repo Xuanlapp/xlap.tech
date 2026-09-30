@@ -11537,3 +11537,26 @@ Follow-up notes: From page 3, search a value with one result page and confirm it
 **Verification:** view cache, feature test 5 assertions, PHP lint, diff check pass.
 
 **Deploy impact:** Clear cache/restart PHP workers; run sessions migration tren production. Queue khong thay doi.
+### 2026-09-30 (Fix Livewire reactive status count mutation)
+
+**User report:** Sticker page returned HTTP 500 while moving to the next pagination page.
+
+**Root cause:** `StickerStatusPanel::$statusCounts` was declared `#[Reactive]`, but `render()` assigned fresh counts directly to the child property. Livewire forbids mutating reactive props inside the child and threw `CannotMutateReactivePropException` during `nextPage`.
+
+**Changed files:**
+- `app/Livewire/Pages/Sticker/StickerStatusPanel.php`
+- `app/Livewire/Pages/Glass/GlassStatusPanel.php`
+- `app/Livewire/Pages/Decal/DecalStatusPanel.php`
+- `AI_MEMORY.md`
+
+**Changes:** Removed `#[Reactive]` from the locally recalculated `statusCounts` property in all three status panels. Parent-provided reactive inputs remain unchanged; each panel can now recalculate its own status counts during render without violating Livewire's reactive prop contract.
+
+**Affected modules:** Sticker, Glass, and Decal status tabs/pagination only.
+
+**Deploy impact:** PHP application code only. No migration, environment, dependency, storage, renderer, or queue changes.
+
+**Queue impact:** None.
+
+**Verification:** PHP lint for all three status panels, Blade view cache, and targeted diff check passed.
+
+**Follow-up:** Deploy the three PHP files, clear Laravel views/cache if needed, hard-refresh Sticker, then move from page 3 to page 4. Confirm no HTTP 500 and counts remain visible.
