@@ -11660,3 +11660,10 @@ Toi uu man hinh Glass co the hien hon 500 anh de giam RAM/network va tang toc do
 - The command only creates missing WebP derivatives for local storage-backed asset URLs; existing originals and external/Drive URLs are untouched.
 - Validation: `php -l app/Livewire/Pages/Admin/ListUser.php`, Blade cache and diff check pass.
 - Follow-up: for very large libraries, move this action to a queued job so the admin request is not held open.
+### 2026-10-01 - Thumbnail backfill resilience review
+
+- Found the backfill stopped on `generated/sticker/mockups/3350/MOCKUP 1.png` because Imagick raised `improper image header`; this indicates a corrupt/incomplete PNG, not a database failure.
+- Updated `ImageThumbnailService` to catch per-file Imagick errors, return a boolean, clean temporary files, and write WebP to a temporary path before atomic rename.
+- Updated backfill output to continue through invalid files and report created vs skipped/invalid counts.
+- Existing originals remain untouched; rerunning the command resumes safely because existing current thumbnails are skipped.
+- Validation: PHP syntax for service/command, Blade cache, and diff check pass. VPS rerun still required.

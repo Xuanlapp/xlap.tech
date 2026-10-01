@@ -6,24 +6,33 @@ use Illuminate\Support\Facades\Storage;
 
 class ImageThumbnailService
 {
-    public function ensureForUrl(?string $url, int $width = 640): void
+    public function ensureForUrl(?string $url, int $width = 640): bool
     {
         $path = $this->storagePath($url);
-        if ($path === null || ! extension_loaded('imagick')) return;
+        if ($path === null || ! extension_loaded('imagick')) return false;
         $disk = Storage::disk('public');
         $source = $disk->path($path);
         $thumbnailPath = $this->thumbnailPath($path);
         $thumbnail = $disk->path($thumbnailPath);
-        if (! is_file($source) || (is_file($thumbnail) && filemtime($thumbnail) >= filemtime($source))) return;
-        $image = new \Imagick($source);
-        $image->setIteratorIndex(0);
-        $image->thumbnailImage($width, $width, true, true);
-        $image->setImageFormat('webp');
-        $image->setImageCompressionQuality(82);
-        $disk->makeDirectory(dirname($thumbnailPath));
-        $image->writeImage($thumbnail);
-        $image->clear();
-        $image->destroy();
+        if (! is_file($source) || (is_file($thumbnail) && filemtime($thumbnail) >= filemtime($source))) return false;
+        $image = null;
+        $temporaryThumbnail = $thumbnail.'.'.getmypid().'.tmp';
+        try {
+            $image = new \Imagick($source);
+            $image->setIteratorIndex(0);
+            $image->thumbnailImage($width, $width, true, true);
+            $image->setImageFormat('webp');
+            $image->setImageCompressionQuality(82);
+            $disk->makeDirectory(dirname($thumbnailPath));
+            $image->writeImage($temporaryThumbnail);
+            rename($temporaryThumbnail, $thumbnail);
+            return true;
+        } catch (\Throwable) {
+            return false;
+        } finally {
+            if ($image instanceof \Imagick) { $image->clear(); $image->destroy(); }
+            if (is_file($temporaryThumbnail)) @unlink($temporaryThumbnail);
+        }
     }
 
     public function thumbnailUrlForPath(string $url): ?string

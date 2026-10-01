@@ -21,14 +21,18 @@ class BackfillImageThumbnails extends Command
         $columns = ['image_link', 'redesign'];
         for ($slot = 1; $slot <= 11; $slot++) $columns[] = 'mockup'.$slot;
         $count = 0;
-        ProductDesignAsset::query()->select(array_merge(['id'], $columns))->chunkById(max(1, (int) $this->option('chunk')), function ($assets) use ($thumbnails, $columns, &$count): void {
+        $created = 0;
+        $skipped = 0;
+        ProductDesignAsset::query()->select(array_merge(['id'], $columns))->chunkById(max(1, (int) $this->option('chunk')), function ($assets) use ($thumbnails, $columns, &$count, &$created, &$skipped): void {
             foreach ($assets as $asset) {
-                foreach ($columns as $column) $thumbnails->ensureForUrl($asset->{$column});
+                foreach ($columns as $column) {
+                    $thumbnails->ensureForUrl($asset->{$column}) ? $created++ : $skipped++;
+                }
                 $count++;
             }
             $this->line("Processed {$count} assets...");
         });
-        $this->info("Finished {$count} assets.");
+        $this->info("Finished {$count} assets. Created: {$created}. Skipped or invalid: {$skipped}.");
         return self::SUCCESS;
     }
 }
