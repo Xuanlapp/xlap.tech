@@ -29,7 +29,7 @@
             >
                 <img
                     x-on:load="failed = false"
-                    x-on:error="failed = true"
+                    x-on:error="if (currentSrc !== @js($original ?: $src)) { currentSrc = @js($original ?: $src); failed = false } else { failed = true }"
                     x-bind:src="visible ? currentSrc : null"
                     alt="{{ $alt }}"
                     loading="lazy"
@@ -42,7 +42,7 @@
             <img
                 x-show="! failed"
                 x-on:load="failed = false"
-                x-on:error="failed = true"
+                x-on:error="if (currentSrc !== @js($original ?: $src)) { currentSrc = @js($original ?: $src); failed = false } else { failed = true }"
                 x-bind:src="visible ? currentSrc : null"
                 alt="{{ $alt }}"
                 loading="lazy"

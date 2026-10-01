@@ -558,8 +558,12 @@
                                         x-bind:class="zoomed ? 'scale-110 cursor-zoom-out' : 'scale-100 cursor-zoom-in hover:scale-[1.035]'"
                                         x-on:click="zoomed = ! zoomed"
                                         x-on:load="dimensions = `${$event.target.naturalWidth} x ${$event.target.naturalHeight} px`"
+                                        x-on:error="if (@js($original) && $event.target.src !== @js($original)) { $event.target.src = @js($original); }"
                                         src="{{ $src }}"
                                         alt="{{ $title }}"
+                                        loading="eager"
+                                        decoding="async"
+                                        fetchpriority="high"
                                         class="max-h-[calc(100%-8rem)] max-w-[calc(100%-8rem)] object-contain drop-shadow-sm transition duration-300 ease-out"
                                     >
                                 @else

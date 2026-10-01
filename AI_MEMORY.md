@@ -11667,3 +11667,10 @@ Toi uu man hinh Glass co the hien hon 500 anh de giam RAM/network va tang toc do
 - Updated backfill output to continue through invalid files and report created vs skipped/invalid counts.
 - Existing originals remain untouched; rerunning the command resumes safely because existing current thumbnails are skipped.
 - Validation: PHP syntax for service/command, Blade cache, and diff check pass. VPS rerun still required.
+### 2026-10-01
+
+**Muc tieu:** Fix modal preview mo anh Mockup cham.
+
+**Thay doi:** Bo resolve/cache anh goc Bounds khoi render modal; chi resolve lazy khi mo Bounds. Preview dung thumbnail voi eager/decode async/fetchpriority cao va fallback ve original neu thumbnail loi.
+
+**Kiem tra:** php -l ReviewImage.php, php artisan view:cache, git diff --check pass. Chua co browser/VPS network timing.

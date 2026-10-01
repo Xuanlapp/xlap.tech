@@ -706,18 +706,7 @@ class ReviewImage extends Component
 
     public function render(): View
     {
-        if ($this->productSlug === 'glass' && $this->assetId && auth()->check()) {
-            try {
-                $this->boundsCachedSourceUrl = app(GlassService::class)->boundsOriginalUrl(
-                    auth()->user(),
-                    $this->assetId,
-                    $this->original ?: $this->src,
-                );
-            } catch (Throwable $exception) {
-                Log::warning('Glass bounds original cache failed.', ['asset_id' => $this->assetId, 'message' => $exception->getMessage()]);
-                $this->boundsCachedSourceUrl = null;
-            }
-        }
+
         $path = 'admin/glass/bounds-guide.png';
         $disk = Storage::disk('public');
         if ($disk->exists($path)) {
