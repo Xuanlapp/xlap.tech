@@ -1,4 +1,4 @@
-# AI MEMORY
+﻿# AI MEMORY
 
 File nÃ y dÃ¹ng Ä‘á»ƒ lÆ°u láº¡i quÃ¡ trÃ¬nh AI Ä‘Ã£ lÃ m trong project.
 TrÆ°á»›c khi lÃ m tiáº¿p, AI pháº£i Ä‘á»c file nÃ y trÆ°á»›c.
@@ -6533,11 +6533,11 @@ umber_format(balance, 3, '.', '') de 0.995 hien dung thanh $0.995.
 **Follow-up:**
 - Sau khi user xac nhan retention an toan, co the them scheduler chay dinh ky voi `--execute`.
 
-## 2026-08-19 - Ch?n tr�n RAM khi t�ch n?n Sticker
+## 2026-08-19 - Ch?n tr�n RAM khi t�ch n?n Sticker
 
 **Root cause:**
 - `BackgroundRemovalService::cleanAlphaNoise()` t?o nhi?u PHP array (`visible`, `visited`, `components`, `pixels`) theo t?ng pixel.
-- ?nh l?n l�m vu?t gi?i h?n PHP 512MB t?i d�ng x? l� `$pixels[]`, khi?n Livewire tr? HTTP 500 v� giao di?n hi?n trang l?i/den.
+- ?nh l?n l�m vu?t gi?i h?n PHP 512MB t?i d�ng x? l� `$pixels[]`, khi?n Livewire tr? HTTP 500 v� giao di?n hi?n trang l?i/den.
 
 **Files changed:**
 - `app/Services/Image/BackgroundRemovalService.php`
@@ -6545,13 +6545,13 @@ umber_format(balance, 3, '.', '') de 0.995 hien dung thanh $0.995.
 - `tests/Unit/BackgroundRemovalServiceTest.php`
 
 **Changes:**
-- Th�m gi?i h?n `services.background_removal.max_cleanup_pixels`, m?c d?nh `300000`.
-- N?u ?nh vu?t gi?i h?n, b? qua bu?c l?c alpha n�ng cao nhung v?n gi? PNG d?u ra h?p l? t? engine, tr�nh l�m s?p request.
-- Th�m unit test cho ?nh vu?t ngu?ng.
+- Th�m gi?i h?n `services.background_removal.max_cleanup_pixels`, m?c d?nh `300000`.
+- N?u ?nh vu?t gi?i h?n, b? qua bu?c l?c alpha n�ng cao nhung v?n gi? PNG d?u ra h?p l? t? engine, tr�nh l�m s?p request.
+- Th�m unit test cho ?nh vu?t ngu?ng.
 
 **Deploy/queue impact:**
-- Kh�ng migration, kh�ng queue. Push code l�n VPS, ch?y `php artisan optimize:clear`; worker kh�ng c?n d?i c?u h�nh.
-- C� th? di?u ch?nh b?ng env `OFFOREST_BACKGROUND_REMOVAL_MAX_CLEANUP_PIXELS`, nhung kh�ng c?n s?a env d? d�ng m?c d?nh m?i.
+- Kh�ng migration, kh�ng queue. Push code l�n VPS, ch?y `php artisan optimize:clear`; worker kh�ng c?n d?i c?u h�nh.
+- C� th? di?u ch?nh b?ng env `OFFOREST_BACKGROUND_REMOVAL_MAX_CLEANUP_PIXELS`, nhung kh�ng c?n s?a env d? d�ng m?c d?nh m?i.
 
 **Validation:**
 - PHP lint pass.
@@ -6585,7 +6585,7 @@ umber_format(balance, 3, '.', '') de 0.995 hien dung thanh $0.995.
 ## 2026-08-19 - Fix Livewire admin cleanup methods
 
 **Root cause:**
-- Trang `offorest/admin/users` render Blade c� `$orphanImageCleanupOutput`, nhung Livewire component `ListUser` ban dau chua co public property/method tuong ung trong code dang chay.
+- Trang `offorest/admin/users` render Blade c� `$orphanImageCleanupOutput`, nhung Livewire component `ListUser` ban dau chua co public property/method tuong ung trong code dang chay.
 - Khi bam `scanOrphanImages`, Livewire nem `MethodNotFoundException`.
 
 **Files changed:**
@@ -11674,3 +11674,29 @@ Toi uu man hinh Glass co the hien hon 500 anh de giam RAM/network va tang toc do
 **Thay doi:** Bo resolve/cache anh goc Bounds khoi render modal; chi resolve lazy khi mo Bounds. Preview dung thumbnail voi eager/decode async/fetchpriority cao va fallback ve original neu thumbnail loi.
 
 **Kiem tra:** php -l ReviewImage.php, php artisan view:cache, git diff --check pass. Chua co browser/VPS network timing.
+
+### 2026-10-01 — Glass No Mockup filter
+
+- Root cause: Existing status tabs only filtered approval, not empty Mockup Tu Chon outputs.
+- Changed: app/Repositories/Product/ProductDesignAssetRepository.php, app/Livewire/Pages/Glass/GlassStatusPanel.php, resources/views/livewire/pages/glass/list-glass.blade.php, resources/views/livewire/pages/glass/glass-status-panel.blade.php, .design/glass-no-mockup-filter/DESIGN_BRIEF.md.
+- Logic: No Mockup requires mockup1 through mockup11 all NULL or empty; count uses the same condition; current Glass tab and pagination preserve existing behavior.
+- Deploy impact: PHP and Blade change; no migration. Queue impact: none. Follow-up: verify authenticated mobile/desktop view and live database counts on deployment.
+
+### 2026-10-01 — Performance pass
+
+- Removed duplicate Glass status-count query from each status panel; parent-provided counts are reused.
+- Added five-second cache around Glass status counts to reduce repeated reload queries while keeping updates near real time.
+- No queue/storage/original image changes. VPS process audit still required before changing Syncthing/PHP-FPM.
+
+### 2026-10-01 — Original-only mockup previews
+
+- User chose to stop using thumbnails for display because transparent-background images can be misread against white UI surfaces.
+- Changed ImageLinkPreviewService local storage previews to use original URLs; existing thumbnail files remain untouched and database paths remain original.
+- Changed Glass, Sticker and Decal mockup images to lazy loading and kept original fallback.
+- Mockup polling now continues while waiting/processing and performs at most two visible refreshes after completed, using the completion timestamp for cache versioning.
+- Validation: PHP syntax for changed services/cards, Blade cache and diff check pass. Browser/VPS synchronization timing still needs live verification.
+
+### 2026-10-01 — Original-only display decision
+
+User chose to remove thumbnail display to preserve reliable transparency semantics. Local storage preview URLs now point to original source; card mockup images are lazy. Existing thumbnails remain on disk but are no longer used by display code. Polling keeps waiting/processing visible and performs two post-completion refreshes. 
+

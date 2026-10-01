@@ -112,7 +112,11 @@ class ListGlass extends Component
         $cheapKeyAiBalance = Cache::remember("glass:cheapkey-balance:{$userId}:{$this->selectedAiProvider}", 60, fn () => $service->cheapKeyAiBalanceForUser(auth()->user(), $this->selectedAiProvider));
 
         return view('livewire.pages.glass.list-glass', [
-            'statusCounts' => $service->statusCountsForUser(auth()->user(), $this->search),
+            'statusCounts' => Cache::remember(
+                'glass:status-counts:'.auth()->id().':'.sha1(trim($this->search)),
+                now()->addSeconds(5),
+                fn () => $service->statusCountsForUser(auth()->user(), $this->search),
+            ),
             'activePsdTemplateName' => app(PsdMockupTemplateService::class)->activeGlassTemplateForUser(auth()->user())?->name,
             'perPageOptions' => self::PER_PAGE_OPTIONS,
             'providerOptions' => $providerOptions,

@@ -1,6 +1,6 @@
 <div
     x-data="{
-        activeTab: ['all', 'unapproved', 'approved'].includes(localStorage.getItem('glass.status-filter'))
+        activeTab: ['all', 'unapproved', 'approved', 'no_mockup'].includes(localStorage.getItem('glass.status-filter'))
             ? localStorage.getItem('glass.status-filter')
             : ['pending_review', 'not_started'].includes(localStorage.getItem('glass.status-filter'))
                 ? 'unapproved'
@@ -196,7 +196,7 @@
         </div>
 
         <div class="mt-4">
-            @foreach (['all', 'unapproved', 'approved'] as $status)
+            @foreach (['all', 'unapproved', 'approved', 'no_mockup'] as $status)
                 <div
                     x-show="activeTab === '{{ $status }}'"
                     x-transition.opacity.duration.150ms

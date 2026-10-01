@@ -6,6 +6,7 @@
                 'all' => 'Tat ca',
                 'unapproved' => 'Chua duyet',
                 'approved' => 'Da duyet',
+                'no_mockup' => 'No Mockup',
             ] as $tabStatus => $label)
                 <button
                     type="button"

@@ -19,7 +19,7 @@ class GlassStatusPanel extends Component
     use WithPagination;
     use ReportsUserActionErrors;
 
-    private const STATUS_OPTIONS = ['all', 'unapproved', 'approved'];
+    private const STATUS_OPTIONS = ['all', 'unapproved', 'approved', 'no_mockup'];
 
     public string $status;
 
@@ -39,12 +39,12 @@ class GlassStatusPanel extends Component
     public ?string $imageModel = null;
 
     /**
-     * @var array{all?: int, unapproved?: int, approved?: int}
+     * @var array{all?: int, unapproved?: int, approved?: int, no_mockup?: int}
      */
     public array $statusCounts = [];
 
     /**
-     * @param array{all?: int, unapproved?: int, approved?: int} $statusCounts
+     * @param array{all?: int, unapproved?: int, approved?: int, no_mockup?: int} $statusCounts
      */
     public function mount(string $status, int $perPage, string $search = '', ?string $activePsdTemplateName = null, ?string $providerKey = null, ?string $imageModel = null, array $statusCounts = []): void
     {
@@ -142,7 +142,6 @@ class GlassStatusPanel extends Component
 
     public function render(): View
     {
-        $this->statusCounts = app(GlassService::class)->statusCountsForUser(auth()->user(), $this->search);
 
         return view('livewire.pages.glass.glass-status-panel', [
             'assets' => app(GlassService::class)->paginatedAssetsForUser(

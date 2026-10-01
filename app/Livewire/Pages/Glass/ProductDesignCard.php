@@ -173,7 +173,11 @@ class ProductDesignCard extends Component
 
     public function refreshMockupsAutomatically(): void
     {
-        $this->mockupAutoRefreshCount = min(2, $this->mockupAutoRefreshCount + 1);
+        $asset = app(GlassService::class)->assetForUser(auth()->user(), $this->assetId);
+        $job = app(GlassService::class)->latestLocalMockupJob($asset);
+        if ($job?->status === 'completed') {
+            $this->mockupAutoRefreshCount = min(2, $this->mockupAutoRefreshCount + 1);
+        }
     }
 
     public function render(): View
@@ -224,18 +228,18 @@ class ProductDesignCard extends Component
 
         for ($slot = 1; $slot <= 11; $slot++) {
             $previewUrl = $imagePreview->previewUrl($asset->{"mockup{$slot}"});
-            $asset->setAttribute("mockup{$slot}_preview_url", $this->withPreviewVersion($previewUrl, $mockupPreviewVersion));
+            $asset->setAttribute("mockup{$slot}_preview_url", $this->withPreviewVersion($previewUrl));
         }
     }
 
     private function mockupPreviewVersion(?\App\Models\GlassLocalMockupJob $job): ?string
     {
-        if ($job?->status !== 'completed' || ! $job->completed_at || $job->completed_at->lt(now()->subMinute())) {
+        if ($job?->status !== 'completed' || ! $job->completed_at) {
             return null;
         }
 
         // Keep polling briefly after local completion so files that are still syncing become visible without a page reload.
-        return (string) now()->timestamp;
+        return (string) $job->completed_at->timestamp;
     }
 
     private function withPreviewVersion(?string $url, ?string $version): ?string
@@ -251,6 +255,6 @@ class ProductDesignCard extends Component
             return $url;
         }
 
-        return $url.(str_contains($url, '?') ? '&' : '?').'local_mockup_refresh='.$version;
+        return $url;
     }
 }

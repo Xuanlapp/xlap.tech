@@ -191,7 +191,7 @@
             @endif
         </div>
 
-        <div @if ($mockupAutoRefreshCount < 2 && in_array($localMockupJob?->status, ['waiting', 'processing'], true)) wire:poll.visible.10s="refreshMockupsAutomatically" @endif class="min-w-0 {{ $asset->redesign ? '' : 'opacity-55' }}">
+        <div @if (in_array($localMockupJob?->status, ['waiting', 'processing'], true) || ($localMockupJob?->status === 'completed' && $mockupAutoRefreshCount < 2)) wire:poll.visible.10s="refreshMockupsAutomatically" @endif class="min-w-0 {{ $asset->redesign ? '' : 'opacity-55' }}">
             <div class="mb-2 flex h-5 items-center justify-between gap-2">
                 <x-label class="truncate text-xs font-bold uppercase text-indigo-600">3. Mockup Tu Chon</x-label>
                 <button type="button" wire:click="refreshMockups" wire:loading.attr="disabled" wire:target="refreshMockups" aria-label="Làm mới mockup của item này" title="Làm mới mockup của item này" class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 disabled:opacity-50 dark:hover:bg-slate-800">
@@ -277,7 +277,7 @@
                                         wire:click="$dispatch('review-image', { src: @js($mockup['src']), original: @js($mockup['original']), title: @js('MOCKUP '.$mockup['slot']), gallery: @js($psdMockupGallery), currentIndex: {{ $loop->index }}, productSlug: 'glass', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
                                         class="aspect-[4/3] overflow-hidden rounded-lg border border-slate-100 bg-slate-50 shadow-sm transition hover:border-indigo-300 hover:ring-2 hover:ring-indigo-100"
                                     >
-                                        <img wire:key="glass-mockup-{{ $asset->id }}-{{ $mockup['slot'] }}-{{ md5($mockup['src']) }}" src="{{ $mockup['src'] }}" alt="MOCKUP {{ $mockup['slot'] }}" loading="eager" decoding="async" fetchpriority="low" data-original="{{ $mockup['original'] }}" x-on:error="if ($el.dataset.original && $el.src !== $el.dataset.original) $el.src = $el.dataset.original" class="h-full w-full object-cover">
+                                        <img wire:key="glass-mockup-{{ $asset->id }}-{{ $mockup['slot'] }}-{{ md5($mockup['src']) }}" src="{{ $mockup['src'] }}" alt="MOCKUP {{ $mockup['slot'] }}" loading="lazy" decoding="async" fetchpriority="low" data-original="{{ $mockup['original'] }}" x-on:error="if ($el.dataset.original && $el.src !== $el.dataset.original) $el.src = $el.dataset.original" class="h-full w-full object-cover">
                                     </button>
                                 @endforeach
                             </div>

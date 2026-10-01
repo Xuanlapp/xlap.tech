@@ -41,6 +41,7 @@ class ProductDesignAssetRepository
             ->where('product_id', $productId)
             ->when($status === 'unapproved', fn ($query) => $query->where('is_approved', false))
             ->when($status === 'approved', fn ($query) => $query->where('is_approved', true))
+            ->when($status === 'no_mockup', fn (Builder $query) => $this->applyNoMockupFilter($query))
             ->when($this->normalizedSearch($search) !== null, fn (Builder $query) => $this->applySearch($query, $this->normalizedSearch($search)))
             ->orderBy('item_number')
             ->paginate($perPage, ['*'], $pageName);
@@ -58,13 +59,26 @@ class ProductDesignAssetRepository
             ->selectRaw('COUNT(*) as all_count')
             ->selectRaw('SUM(CASE WHEN is_approved = 0 THEN 1 ELSE 0 END) as unapproved_count')
             ->selectRaw('SUM(CASE WHEN is_approved = 1 THEN 1 ELSE 0 END) as approved_count')
+            ->selectRaw("SUM(CASE WHEN (mockup1 IS NULL OR mockup1 = '') AND (mockup2 IS NULL OR mockup2 = '') AND (mockup3 IS NULL OR mockup3 = '') AND (mockup4 IS NULL OR mockup4 = '') AND (mockup5 IS NULL OR mockup5 = '') AND (mockup6 IS NULL OR mockup6 = '') AND (mockup7 IS NULL OR mockup7 = '') AND (mockup8 IS NULL OR mockup8 = '') AND (mockup9 IS NULL OR mockup9 = '') AND (mockup10 IS NULL OR mockup10 = '') AND (mockup11 IS NULL OR mockup11 = '') THEN 1 ELSE 0 END) as no_mockup_count")
             ->first();
 
         return [
             'all' => (int) $counts->all_count,
             'unapproved' => (int) $counts->unapproved_count,
             'approved' => (int) $counts->approved_count,
+            'no_mockup' => (int) $counts->no_mockup_count,
         ];
+    }
+
+    private function applyNoMockupFilter(Builder $query): Builder
+    {
+        for ($slot = 1; $slot <= 11; $slot++) {
+            $query->where(function (Builder $slotQuery) use ($slot): void {
+                $slotQuery->whereNull("mockup{$slot}")->orWhere("mockup{$slot}", '');
+            });
+        }
+
+        return $query;
     }
 
     private function ensureSkuUniqueForUserAndProduct(int $userId, int $productId, ?string $sku, ?int $ignoreAssetId = null): void

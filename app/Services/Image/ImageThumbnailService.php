@@ -40,7 +40,11 @@ class ImageThumbnailService
         $path = ltrim(parse_url($url, PHP_URL_PATH) ?: $url, '/');
         if (! str_starts_with($path, 'storage/')) return null;
         $thumbnailPath = $this->thumbnailPath(substr($path, 8));
-        return Storage::disk('public')->exists($thumbnailPath) ? '/storage/'.$thumbnailPath : null;
+         $disk = Storage::disk('public');
+        if (! $disk->exists($thumbnailPath) || ! $disk->exists(substr($path, 8))) return null;
+        return $disk->lastModified($thumbnailPath) >= $disk->lastModified(substr($path, 8))
+            ? '/storage/'.$thumbnailPath
+            : null;
     }
 
     private function storagePath(?string $url): ?string
