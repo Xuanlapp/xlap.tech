@@ -194,7 +194,7 @@ class ProductDesignCard extends Component
         return (string) $job->completed_at->timestamp;
     }
 
-    private function withPreviewVersion(?string $url, ?string $version): ?string
+    private function withPreviewVersion(?string $url, ?string $version = null): ?string
     {
         if (! $url || ! $version) {
             return $url;

@@ -11698,5 +11698,11 @@ Toi uu man hinh Glass co the hien hon 500 anh de giam RAM/network va tang toc do
 
 ### 2026-10-01 — Original-only display decision
 
-User chose to remove thumbnail display to preserve reliable transparency semantics. Local storage preview URLs now point to original source; card mockup images are lazy. Existing thumbnails remain on disk but are no longer used by display code. Polling keeps waiting/processing visible and performs two post-completion refreshes. 
+User chose to remove thumbnail display to preserve reliable transparency semantics. Local storage preview URLs now point to original source; card mockup images are lazy. Existing thumbnails remain on disk but are no longer used by display code. Polling keeps waiting/processing visible and performs two post-completion refreshes.
 
+### 2026-10-01 — Fixed preview version argument error
+
+- Root cause: ProductDesignCard called withPreviewVersion() with one argument after original-only preview change, while its method still required two arguments.
+- Changed: app/Livewire/Pages/Glass/ProductDesignCard.php, app/Livewire/Pages/Sticker/ProductDesignCard.php, app/Livewire/Pages/Decal/ProductDesignCard.php; version parameter is now optional.
+- Impact: fixes Livewire 500 during lazy card mount and allows Sticker/Glass/Decal cards to render again.
+- Validation: PHP lint for all three cards, Blade cache and diff check pass.
