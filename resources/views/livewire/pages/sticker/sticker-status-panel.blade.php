@@ -36,7 +36,7 @@
 
     <div class="space-y-5">
         @forelse ($assets as $asset)
-            <livewire:pages.sticker.product-design-card
+            <livewire:pages.sticker.product-design-card lazy
                 :asset-id="$asset->id"
                 :active-psd-template-name="$activePsdTemplateName"
                 :provider-key="$providerKey"

@@ -37,7 +37,7 @@
     <div class="space-y-5">
         @forelse ($assets as $asset)
             <div wire:key="suncatcher-{{ $status }}-asset-{{ $asset->id }}">
-                <livewire:pages.suncatcher.product-design-card
+                <livewire:pages.suncatcher.product-design-card lazy
                     :asset-id="$asset->id"
                     :active-psd-template-name="$activePsdTemplateName"
                     :provider-key="$providerKey"

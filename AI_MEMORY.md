@@ -11633,3 +11633,9 @@ Toi uu man hinh Glass co the hien hon 500 anh de giam RAM/network va tang toc do
 - Existing per-card manual refresh button remains available and is not limited by the automatic counter; its icon spins during the Livewire request.
 - No changes to Suncatcher/Ornament workflow polling because they do not expose the same `3. Mockup Tu Chon` card section.
 - Validation: PHP syntax for all three card components, Blade cache, and diff check pass.
+### 2026-10-01 - Lazy mount all product cards
+
+- Added Livewire `lazy` to product-design-card children in Glass, Sticker, Decal, Suncatcher, Ornament Etsy and Ornament Amazon Two status panels.
+- Cards below the viewport now render through Livewire lazy mounting instead of querying/rendering full card data on initial page load; scrolling near an item mounts that card and its existing image lazy-loading takes over.
+- Existing pagination, card actions, keys, mockup polling and image URLs were preserved.
+- Validation: Blade cache and diff check pass. Browser scroll/Network/RAM evidence is still needed after deployment.

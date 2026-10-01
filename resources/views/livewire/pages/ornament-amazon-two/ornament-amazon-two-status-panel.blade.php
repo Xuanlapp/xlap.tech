@@ -50,7 +50,7 @@
     <div class="space-y-5">
         @forelse ($assets as $asset)
             <div wire:key="ornament-{{ $status }}-asset-{{ $asset->id }}">
-                <livewire:pages.ornament-amazon-two.product-design-card
+                <livewire:pages.ornament-amazon-two.product-design-card lazy
                     :asset-id="$asset->id"
                     :active-psd-template-name="$activePsdTemplateName"
                     :provider-key="$providerKey"
