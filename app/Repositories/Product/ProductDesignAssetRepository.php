@@ -3,6 +3,7 @@
 namespace App\Repositories\Product;
 
 use App\Models\ProductDesignAsset;
+use App\Services\Image\ImageThumbnailService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -352,7 +353,14 @@ class ProductDesignAssetRepository
 
     public function updatePsdMockups(ProductDesignAsset $asset, array $mockups): ProductDesignAsset
     {
-        return $this->replacePsdMockups($asset, $mockups);
+        $asset = $this->replacePsdMockups($asset, $mockups);
+        $thumbnails = app(ImageThumbnailService::class);
+
+        foreach ($mockups as $mockup) {
+            $thumbnails->ensureForUrl($mockup);
+        }
+
+        return $asset;
     }
 
     /**

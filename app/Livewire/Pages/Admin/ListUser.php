@@ -122,6 +122,20 @@ class ListUser extends Component
         $this->orphanImageCleanupOutput = $this->runOrphanImageCleanup(false);
     }
 
+    public function createMissingImageThumbnails(): void
+    {
+        $this->authorizeAdmin();
+
+        try {
+            Artisan::call('images:backfill-thumbnails', ['--chunk' => 20]);
+            $this->orphanImageCleanupOutput = trim(Artisan::output());
+            $this->dispatch('toast', type: 'success', title: 'Thumbnail ready', message: 'Da tao thumbnail cho anh local chua co.');
+        } catch (Throwable $exception) {
+            $this->orphanImageCleanupOutput = 'Thumbnail error: '.$exception->getMessage();
+            $this->dispatch('toast', type: 'error', title: 'Thumbnail failed', message: $exception->getMessage());
+        }
+    }
+
     public function deleteOrphanImages(): void
     {
         $this->authorizeAdmin();

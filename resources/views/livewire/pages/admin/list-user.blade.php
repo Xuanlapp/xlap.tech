@@ -17,6 +17,10 @@
 
                 <div class="flex flex-col items-start gap-2 sm:items-end">
                 <div class="flex flex-wrap gap-2">
+                    <button type="button" wire:click="createMissingImageThumbnails" wire:loading.attr="disabled" wire:target="createMissingImageThumbnails" class="inline-flex h-9 items-center justify-center rounded-md border border-cyan-200 bg-cyan-50 px-3 text-xs font-bold text-cyan-700 transition hover:bg-cyan-100 disabled:cursor-not-allowed disabled:opacity-60">
+                        <span wire:loading.remove wire:target="createMissingImageThumbnails">Tao Thumbnail</span>
+                        <span wire:loading wire:target="createMissingImageThumbnails">Dang tao...</span>
+                    </button>
                     <a
                         href="{{ route('offorest.admin.google-drive.connect', [], false) }}"
                         class="inline-flex h-9 items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"

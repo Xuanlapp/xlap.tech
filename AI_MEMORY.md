@@ -11639,3 +11639,24 @@ Toi uu man hinh Glass co the hien hon 500 anh de giam RAM/network va tang toc do
 - Cards below the viewport now render through Livewire lazy mounting instead of querying/rendering full card data on initial page load; scrolling near an item mounts that card and its existing image lazy-loading takes over.
 - Existing pagination, card actions, keys, mockup polling and image URLs were preserved.
 - Validation: Blade cache and diff check pass. Browser scroll/Network/RAM evidence is still needed after deployment.
+### 2026-10-01 - Fix lazy-mounted card images stuck blank
+
+- Root cause: direct mockup images inside the card's nested `overflow-y-auto` viewport used an observer/lazy state on `<img>` elements without a stable source/size; they could remain blank after the Livewire card mounted.
+- Kept Livewire card-level `lazy` mounting across all product pages, but restored direct `src` for the mounted card's mockup images and used eager loading there so the visible card's inner mockup grid renders reliably.
+- Source/Create Master and external image preview behavior remains unchanged; only the already-mounted card loads its mockup set.
+- Validation: Blade cache and diff check pass; browser screenshot still needed after deployment.
+### 2026-10-01 - Web-generated mockup thumbnails
+
+- Added `app/Services/Image/ImageThumbnailService.php` to create a 640px WebP derivative under `storage/app/public/thumbnails/...` from existing local storage URLs.
+- PSD mockup originals remain unchanged; `ProductDesignAssetRepository::updatePsdMockups()` keeps the original URLs and creates thumbnails when new mockups are published.
+- `ImageLinkPreviewService` uses the thumbnail for local `/storage/...` previews when present and falls back to the original when absent, so existing images remain functional.
+- External/Drive URLs are unchanged.
+- Existing old images are not bulk-processed in a web request; they need a separate batch/backfill command after confirming Imagick availability.
+- Validation: PHP syntax and diff check pass; browser render and server Imagick availability still need verification.
+### 2026-10-01 - Admin thumbnail backfill control
+
+- Added an admin-only `Tao Thumbnail` button to `resources/views/livewire/pages/admin/list-user.blade.php`.
+- Added `ListUser::createMissingImageThumbnails()` with admin authorization; it runs the existing batch command at chunk size 20, reports progress/output and dispatches success/error toast.
+- The command only creates missing WebP derivatives for local storage-backed asset URLs; existing originals and external/Drive URLs are untouched.
+- Validation: `php -l app/Livewire/Pages/Admin/ListUser.php`, Blade cache and diff check pass.
+- Follow-up: for very large libraries, move this action to a queued job so the admin request is not held open.

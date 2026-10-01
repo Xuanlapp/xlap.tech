@@ -54,7 +54,9 @@ class ImageLinkPreviewService
         $url = trim($url);
 
         if (str_starts_with($url, '/storage/')) {
-            return $this->versionedStorageUrl($url);
+            $thumbnail = app(ImageThumbnailService::class)->thumbnailUrlForPath($url);
+
+            return $this->versionedStorageUrl($thumbnail ?: $url);
         }
 
         $host = parse_url($url, PHP_URL_HOST);
@@ -68,7 +70,9 @@ class ImageLinkPreviewService
         $appHost = parse_url((string) config('app.url'), PHP_URL_HOST);
 
         if (is_string($appHost) && $host === strtolower($appHost) && str_starts_with($path, '/storage/')) {
-            return $this->versionedStorageUrl($path);
+            $thumbnail = app(ImageThumbnailService::class)->thumbnailUrlForPath($path);
+
+            return $this->versionedStorageUrl($thumbnail ?: $path);
         }
 
         $previewUrl = $url;

@@ -140,7 +140,7 @@
                             class="flex h-full w-full items-center justify-center p-4"
                         >
                             <span class="relative block h-[88%] max-w-[88%] aspect-square">
-                                <img x-data="{ visible: false }" x-init="new IntersectionObserver(function (entries) { if (entries[0].isIntersecting) visible = true }, { rootMargin: '320px 0px' }).observe($el)" data-src="{{ $asset->redesign_preview_url }}" x-bind:src="visible ? $el.dataset.src : null" alt="Redesign image" loading="lazy" decoding="async" fetchpriority="low" class="h-full w-full object-contain">
+                                <img src="{{ $asset->redesign_preview_url }}" alt="Redesign image" loading="lazy" decoding="async" fetchpriority="low" class="h-full w-full object-contain">
                                 @if ($glassBoundsGuideUrl)
                                     <img
                                         x-show="showMasterBounds"
@@ -172,7 +172,7 @@
                                 wire:click="$dispatch('review-image', { src: @js($image['src']), original: @js($image['original']), title: @js($image['title']), gallery: @js($redesignGallery), currentIndex: {{ $index }}, action: @js($asset->hasCustomMockupOutput() ? null : 'glass-redesign'), productSlug: 'glass', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
                                 class="relative h-16 w-16 shrink-0 overflow-hidden rounded-md border {{ ($image['original'] ?? null) === $asset->redesign ? 'border-blue-500 ring-2 ring-blue-100' : 'border-slate-200' }} bg-slate-50"
                             >
-                                <img x-data="{ visible: false }" x-init="new IntersectionObserver(function (entries) { if (entries[0].isIntersecting) visible = true }, { rootMargin: '320px 0px' }).observe($el)" data-src="{{ $image['src'] }}" x-bind:src="visible ? $el.dataset.src : null" alt="{{ $image['title'] }}" loading="lazy" decoding="async" fetchpriority="low" class="h-full w-full object-contain">
+                                <img src="{{ $image['src'] }}" alt="{{ $image['title'] }}" loading="lazy" decoding="async" fetchpriority="low" class="h-full w-full object-contain">
                                 @if ($glassBoundsGuideUrl)
                                     <img
                                         x-show="showMasterBounds"
@@ -277,7 +277,7 @@
                                         wire:click="$dispatch('review-image', { src: @js($mockup['src']), original: @js($mockup['original']), title: @js('MOCKUP '.$mockup['slot']), gallery: @js($psdMockupGallery), currentIndex: {{ $loop->index }}, productSlug: 'glass', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
                                         class="aspect-[4/3] overflow-hidden rounded-lg border border-slate-100 bg-slate-50 shadow-sm transition hover:border-indigo-300 hover:ring-2 hover:ring-indigo-100"
                                     >
-                                        <img wire:key="glass-mockup-{{ $asset->id }}-{{ $mockup['slot'] }}-{{ md5($mockup['src']) }}" x-data="{ visible: false }" x-init="new IntersectionObserver(function (entries) { if (entries[0].isIntersecting) visible = true }, { rootMargin: '320px 0px' }).observe($el)" data-src="{{ $mockup['src'] }}" x-bind:src="visible ? $el.dataset.src : null" alt="MOCKUP {{ $mockup['slot'] }}" loading="lazy" decoding="async" fetchpriority="low" class="h-full w-full object-cover">
+                                        <img wire:key="glass-mockup-{{ $asset->id }}-{{ $mockup['slot'] }}-{{ md5($mockup['src']) }}" src="{{ $mockup['src'] }}" alt="MOCKUP {{ $mockup['slot'] }}" loading="eager" decoding="async" fetchpriority="low" class="h-full w-full object-cover">
                                     </button>
                                 @endforeach
                             </div>
