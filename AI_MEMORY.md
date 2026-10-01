@@ -11706,3 +11706,10 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 - Changed: app/Livewire/Pages/Glass/ProductDesignCard.php, app/Livewire/Pages/Sticker/ProductDesignCard.php, app/Livewire/Pages/Decal/ProductDesignCard.php; version parameter is now optional.
 - Impact: fixes Livewire 500 during lazy card mount and allows Sticker/Glass/Decal cards to render again.
 - Validation: PHP lint for all three cards, Blade cache and diff check pass.
+
+### 2026-10-01 — Fixed Source Image disappearing after Livewire reload
+
+- Root cause: local preview URL regenerated as a new temporary signed image-preview URL on every Livewire render; Alpine reset the image source and intermittent proxy/signature failures showed a broken image icon.
+- Changed: ImageLinkPreviewService::versionedStorageUrl() now returns stable local /storage path with file mtime query for cache invalidation. Remote/private URLs remain signed/proxied.
+- Impact: Source Image, Create Master and local Mockup URLs remain stable across card reloads while changed files still get a new cache version.
+- Validation: PHP lint, Blade cache and diff check pass.

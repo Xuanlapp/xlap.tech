@@ -162,12 +162,10 @@ class ImageLinkPreviewService
             return $path;
         }
 
-        return URL::temporarySignedRoute(
-            'image-preview.show',
-            now()->addHours(12),
-            ['path' => $path, 'v' => File::lastModified($publicPath)],
-            absolute: false,
-        );
+        // Local files under public storage are already public assets. Keep the
+        // URL stable between Livewire morphs and use mtime for cache invalidation;
+        // regenerating a signed proxy URL on every render can reset/break images.
+        return $path.'?v='.File::lastModified($publicPath);
     }
 
     private function cachedSignedPreviewUrl(string $sourceUrl, string $previewUrl, bool $absolute = true): string
