@@ -81,6 +81,7 @@ class ProductDesignCard extends Component
     {
         try {
             $asset = app(StickerService::class)->generatePsdMockups(auth()->user(), $this->assetId);
+            $this->mockupAutoRefreshCount = 0;
             app(ActivityLogService::class)->record(
                 event: 'sticker.psd_mockups_generated',
                 description: 'User rendered Sticker PSD mockups.',
@@ -137,6 +138,7 @@ class ProductDesignCard extends Component
 
     public function refreshMockups(): void
     {
+        $this->mockupAutoRefreshCount = 0;
     }
 
     public function refreshMockupsAutomatically(): void
@@ -180,8 +182,29 @@ class ProductDesignCard extends Component
 
         for ($slot = 1; $slot <= 11; $slot++) {
             $previewUrl = $imagePreview->previewUrl($asset->{"mockup{$slot}"});
-            $asset->setAttribute("mockup{$slot}_preview_url", $this->withPreviewVersion($previewUrl));
+            $asset->setAttribute("mockup{$slot}_preview_url", $this->withPreviewVersion($previewUrl, $mockupPreviewVersion));
         }
+    }
+
+    public function awaitingMockupFiles(ProductDesignAsset $asset, ?\App\Models\GlassLocalMockupJob $job): bool
+    {
+        if ($job?->status !== 'completed' || ! $job->completed_at || $job->completed_at->lt(now()->subMinutes(5))) {
+            return false;
+        }
+
+        foreach (range(1, 11) as $slot) {
+            $url = $asset->{"mockup{$slot}"};
+            if (! is_string($url) || ! str_starts_with($url, '/storage/')) {
+                continue;
+            }
+
+            $path = parse_url($url, PHP_URL_PATH) ?: '';
+            if (! is_file(public_path(ltrim($path, '/')))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function mockupPreviewVersion(?\App\Models\GlassLocalMockupJob $job): ?string
@@ -200,6 +223,6 @@ class ProductDesignCard extends Component
             return $url;
         }
 
-        return $url;
+        return $url.(str_contains($url, '?') ? '&' : '?').'mockup_job='.$version;
     }
 }

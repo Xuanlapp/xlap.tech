@@ -191,7 +191,7 @@
             @endif
         </div>
 
-        <div @if (in_array($localMockupJob?->status, ['waiting', 'processing'], true) || ($localMockupJob?->status === 'completed' && $mockupAutoRefreshCount < 2)) wire:poll.visible.10s="refreshMockupsAutomatically" @endif class="min-w-0 {{ $asset->redesign ? '' : 'opacity-55' }}">
+        <div @if (in_array($localMockupJob?->status, ['waiting', 'processing'], true) || ($localMockupJob?->status === 'completed' && ($mockupAutoRefreshCount < 2 || $this->awaitingMockupFiles($asset, $localMockupJob)))) wire:poll.visible.10s="refreshMockupsAutomatically" @endif class="min-w-0 {{ $asset->redesign ? '' : 'opacity-55' }}">
             <div class="mb-2 flex h-5 items-center justify-between gap-2">
                 <x-label class="truncate text-xs font-bold uppercase text-indigo-600">3. Mockup Tu Chon</x-label>
                 <button type="button" wire:click="refreshMockups" wire:loading.attr="disabled" wire:target="refreshMockups" aria-label="Làm mới mockup của item này" title="Làm mới mockup của item này" class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 disabled:opacity-50 dark:hover:bg-slate-800">

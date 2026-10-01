@@ -11713,3 +11713,9 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 - Changed: ImageLinkPreviewService::versionedStorageUrl() now returns stable local /storage path with file mtime query for cache invalidation. Remote/private URLs remain signed/proxied.
 - Impact: Source Image, Create Master and local Mockup URLs remain stable across card reloads while changed files still get a new cache version.
 - Validation: PHP lint, Blade cache and diff check pass.
+
+### 2026-10-01 — Mockup visibility after sync
+
+- Root cause: manual refresh method was empty; completion cache version was calculated but never applied. Two post-completion polls could finish before Syncthing delivered files.
+- Changed Glass/Sticker/Decal ProductDesignCard PHP and Blade, plus .design/mockup-visibility-sync/DESIGN_BRIEF.md. Manual refresh resets its counter; mockup URLs include the job completion version; visible cards continue polling for missing local files for up to five minutes after completion.
+- Deploy: PHP and Blade only. Queue/DB/original image data unchanged. Follow-up: verify file arrival and Network timing on VPS; no 100% latency guarantee when transfer is slow.
