@@ -11,7 +11,7 @@ use Livewire\Component;
 
 class ListDecal extends Component
 {
-    private const PER_PAGE_OPTIONS = [5, 10, 20, 50, 100, 200, 400];
+    private const PER_PAGE_OPTIONS = [5, 10, 20, 30, 50];
 
     #[Session(key: 'decal.per-page')]
     public int $perPage = 5;

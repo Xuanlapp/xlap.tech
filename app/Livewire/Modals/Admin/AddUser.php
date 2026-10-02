@@ -79,6 +79,8 @@ class AddUser extends Component
             return;
         }
 
+        abort_unless(auth()->user()?->canCreateUsers(), 403);
+
         $this->resetForm();
         $this->isOpen = true;
     }
@@ -121,6 +123,7 @@ class AddUser extends Component
      */
     public function save(): void
     {
+        abort_unless(auth()->user()?->canCreateUsers(), 403);
         $validated = $this->validate([
             'name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'alpha_dash', 'max:255', 'unique:users,username'],
@@ -155,7 +158,9 @@ class AddUser extends Component
             hasVertexCredential: $vertexCredentialPayload !== null,
             hasV98StoreCredential: $v98StoreCredentialPayload !== null,
         );
+        abort_if($validated['role'] === 'admin' && ! auth()->user()?->isSuperAdmin(), 403);
         $validated['is_admin'] = (($validated['role'] ?? 'user') === 'admin');
+        $validated['admin_permissions'] = [];
 
         $createdUser = DB::transaction(function () use ($validated, $vertexCredentialPayload, $v98StoreCredentialPayload): User {
             $user = app(UserAccessService::class)->createUser($validated);

@@ -77,8 +77,12 @@ new class extends Component
     $iconClass = 'h-5 w-5 shrink-0';
     $isAdminUser = auth()->user()?->role === 'admin' || (bool) auth()->user()?->is_admin;
     $isWaliUser = (bool) (auth()->user()?->can_access_wali) && ! $isAdminUser && ! auth()->user()?->isManager();
-    $pageProducts = $products->whereIn('slug', $isAdminUser ? ['decal', 'suncatcher', 'ornament', 'ornament-etsy', 'ornament-amazon-2', 'sticker', 'glass', 'proxy', 'camp'] : ['decal', 'suncatcher', 'ornament', 'ornament-etsy', 'ornament-amazon-2', 'sticker', 'glass', 'proxy', 'camp']);
-    $ideaProducts = $products->whereIn('slug', ['ytrends', 'idea-etsy', 'idea-amazon']);
+    $pageProducts = $products->whereIn('slug', ['decal', 'suncatcher', 'ornament', 'ornament-etsy', 'ornament-amazon-2', 'sticker', 'glass']);
+    $supportSlugs = ['camp', 'proxy', 'ytrends', 'idea-amazon', 'idea-etsy'];
+    $supportProducts = $products
+        ->whereIn('slug', $supportSlugs)
+        ->sortBy(fn ($product) => array_search($product->slug, $supportSlugs, true))
+        ->values();
     $avatarPalettes = [
         'bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-600',
         'bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600',
@@ -269,40 +273,20 @@ new class extends Component
                     </div>
                 </div>
 
-                @if ($ideaProducts->isNotEmpty())
-                    <div class="mt-6">
-                        <p class="px-3 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Idea</p>
-                        <div class="mt-2 space-y-1">
-                            @foreach ($ideaProducts as $product)
-                                @php($productRouteSlug = $product->slug === 'ornament' ? 'suncatcher' : $product->slug)
-                                @php($isActive = request()->routeIs('offorest.products.'.$productRouteSlug))
-                                <a
-                                    href="{{ route('offorest.products.'.$productRouteSlug) }}"
-                                    class="{{ $navItemClass }} {{ $isActive ? $activeClass : $inactiveClass }}"
-                                >
-                                    <svg class="{{ $iconClass }} {{ $isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
-                                        @if ($product->slug === 'ytrends')
-                                            <path d="M4 19V5" />
-                                            <path d="M4 19h16" />
-                                            <path d="m7 14 4-4 3 3 5-6" />
-                                        @else
-                                            <path d="M4 6h16" />
-                                            <path d="M4 12h16" />
-                                            <path d="M4 18h7" />
-                                            <path d="m15 18 2 2 4-4" />
-                                        @endif
-                                    </svg>
-                                    <span class="truncate">{{ $product->display_name }}</span>
-                                </a>
-                            @endforeach
-                        </div>
-                    </div>
-                @endif
-
                 @if (! $isWaliUser)
                 <div class="mt-6">
-                    <p class="px-3 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Order</p>
+                    <p class="px-3 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Support</p>
                     <div class="mt-2 space-y-1">
+                        @foreach ($supportProducts as $product)
+                            @php($productRouteSlug = $product->slug === 'ornament' ? 'suncatcher' : $product->slug)
+                            @php($isActive = request()->routeIs('offorest.products.'.$productRouteSlug))
+                            <a href="{{ route('offorest.products.'.$productRouteSlug) }}" wire:navigate class="{{ $navItemClass }} {{ $isActive ? $activeClass : $inactiveClass }}">
+                                <svg class="{{ $iconClass }} {{ $isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                                    <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" />
+                                </svg>
+                                <span class="truncate">{{ $product->display_name }}</span>
+                            </a>
+                        @endforeach
                         <a href="{{ route('offorest.order') }}" wire:navigate class="{{ $navItemClass }} {{ request()->routeIs('offorest.order') ? $activeClass : $inactiveClass }}">
                             <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.order') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
                                 <path d="M4 5h16v14H4z" /><path d="M8 9h8" /><path d="M8 13h5" /><path d="m15 16 2 2 3-3" />
@@ -312,7 +296,7 @@ new class extends Component
                     </div>
                 </div>
                 <div class="mt-6">
-                    <p class="px-3 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Catalog</p>
+                    <p class="px-3 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">DATA</p>
                     <div class="mt-2 space-y-1">
                         <a href="{{ route('offorest.listing-metadata') }}" wire:navigate class="{{ $navItemClass }} {{ request()->routeIs('offorest.listing-metadata') ? $activeClass : $inactiveClass }}">
                             <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.listing-metadata') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
@@ -388,7 +372,7 @@ new class extends Component
                 </div>
                 @endif
 
-                @if (auth()->user()->role === 'admin' || auth()->user()->is_admin)
+                @if (auth()->user()->role === 'admin' || auth()->user()->is_admin || auth()->user()->isSuperAdmin())
                     <div class="mt-6">
                         <p class="px-3 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Admin</p>
                         <div class="mt-2 space-y-1">
@@ -447,18 +431,14 @@ new class extends Component
 
             <div class="border-t border-slate-200 p-3">
                 <div class="flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-                    <span class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl {{ $avatarClass }} text-sm font-extrabold text-white shadow-sm">
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl {{ $avatarClass }} text-sm font-extrabold text-white shadow-sm" aria-label="User avatar">
                         @if (auth()->user()->avatar_path)
                             <img src="{{ Storage::url(auth()->user()->avatar_path) }}" alt="{{ auth()->user()->name }}" class="h-full w-full object-cover">
                         @else
                             {{ $userInitials }}
                         @endif
                     </span>
-                    <span class="min-w-0 flex-1">
-                        <span class="block truncate text-sm font-bold text-slate-950">{{ auth()->user()->name }}</span>
-                        <span class="block truncate text-xs font-medium text-slate-500">{{ auth()->user()->email }}</span>
-                    </span>
-                    <span class="h-2.5 w-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-100"></span>
+                    <span class="min-w-0 truncate text-sm font-bold text-slate-950">{{ auth()->user()->name }}</span>
                 </div>
             </div>
         </div>
@@ -506,28 +486,21 @@ new class extends Component
                         </div>
                     </div>
                     @endif
-                    @if ($ideaProducts->isNotEmpty())
-                        <div class="mt-6 border-t border-slate-200 pt-3">
-                            <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Idea</p>
-                            <div class="mt-3 space-y-3">
-                                @foreach ($ideaProducts as $product)
-                                    @php($productRouteSlug = $product->slug === 'ornament' ? 'suncatcher' : $product->slug)
-                                    <a href="{{ route('offorest.products.'.$productRouteSlug) }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">
-                                        <span>{{ $product->display_name }}</span>
-                                    </a>
-                                @endforeach
-                            </div>
-                        </div>
-                    @endif
                     @if (! $isWaliUser)
                     <div class="mt-6 border-t border-slate-200 pt-3">
-                        <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Order</p>
+                        <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Support</p>
                         <div class="mt-3 space-y-3">
+                            @foreach ($supportProducts as $product)
+                                @php($productRouteSlug = $product->slug === 'ornament' ? 'suncatcher' : $product->slug)
+                                <a href="{{ route('offorest.products.'.$productRouteSlug) }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">
+                                    <span>{{ $product->display_name }}</span>
+                                </a>
+                            @endforeach
                             <a href="{{ route('offorest.order') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Order</a>
                         </div>
                     </div>
                     <div class="mt-6 border-t border-slate-200 pt-3">
-                        <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Catalog</p>
+                        <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">DATA</p>
                         <div class="mt-3 space-y-3">
                             <a href="{{ route('offorest.listing-metadata') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Listing</a>
                             <a href="{{ route('offorest.suncatcher.catalog') }}" x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Suncatcher Catalog</a>
@@ -544,6 +517,12 @@ new class extends Component
                                 <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.financial-management') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 3v18h18"/><path d="m7 14 3-3 3 2 5-6"/></svg>
                                 <span>Financial Management</span>
                             </a>
+                            @if (auth()->user()->isSuperAdmin())
+                                <a href="{{ route('offorest.admin.listing-prompts') }}" wire:navigate class="{{ $navItemClass }} {{ request()->routeIs('offorest.admin.listing-prompts') ? $activeClass : $inactiveClass }}">
+                                    <span class="{{ $iconClass }} inline-flex items-center justify-center text-xs font-black">AI</span>
+                                    <span>Listing Prompts</span>
+                                </a>
+                            @endif
                         </div>
                     </div>
                 @endif
@@ -558,13 +537,16 @@ new class extends Component
                         </div>
                     </div>
                     @endif
-                    @if (auth()->user()->role === 'admin' || auth()->user()->is_admin)
+                    @if (auth()->user()->role === 'admin' || auth()->user()->is_admin || auth()->user()->isSuperAdmin())
                         <div class="mt-6 border-t border-slate-200 pt-3">
                             <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Admin</p>
                             <div class="mt-3 space-y-3">
                                 <a href="{{ route('offorest.admin.users') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Users</a>
                                 <a href="{{ route('offorest.account-manager.notes') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Account Notes</a>
                                 <a href="{{ route('offorest.admin.logs') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Logs</a>
+                                @if (auth()->user()->isSuperAdmin())
+                                    <a href="{{ route('offorest.admin.listing-prompts') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Listing Prompts</a>
+                                @endif
                                 <a href="{{ route('offorest.admin.api-credits') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">API Credits</a>
                                 <a href="{{ route('offorest.admin.financial-management') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Financial Management</a>
                                 <a href="{{ route('offorest.admin.mail-test') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Mail Test</a>
@@ -575,18 +557,14 @@ new class extends Component
 
                 <div class="border-t border-slate-200 p-3">
                     <div class="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
-                        <span class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-50 text-sm font-semibold text-slate-950 shadow-sm">
+                        <span class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-50 text-sm font-semibold text-slate-950 shadow-sm" aria-label="User avatar">
                             @if (auth()->user()->avatar_path)
                                 <img src="{{ Storage::url(auth()->user()->avatar_path) }}" alt="{{ auth()->user()->name }}" class="h-full w-full object-cover">
                             @else
                                 {{ $userInitials }}
                             @endif
                         </span>
-                        <span class="min-w-0">
-                            <span class="block truncate text-sm font-semibold text-slate-950">{{ auth()->user()->name }}</span>
-                            <span class="block truncate text-xs font-medium text-slate-500">{{ auth()->user()->email }}</span>
-                        </span>
-                        <span class="ml-auto h-2.5 w-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-100"></span>
+                        <span class="min-w-0 truncate text-sm font-semibold text-slate-950">{{ auth()->user()->name }}</span>
                     </div>
                 </div>
             </div>

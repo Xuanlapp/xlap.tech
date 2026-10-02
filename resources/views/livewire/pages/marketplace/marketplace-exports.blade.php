@@ -27,27 +27,10 @@
                         <span class="max-w-[260px] truncate text-xs font-medium text-slate-500">{{ $currentUser->email }}</span>
                     </div>
                     <h1 class="text-lg font-semibold text-slate-950">Marketplace Export</h1>
-                    <p class="mt-1 text-sm text-slate-500">Link dang luu: @if(!empty($sheetUrl)) <a href="{{ $sheetUrl }}" target="_blank" rel="noopener noreferrer" class="font-medium text-indigo-600 hover:underline">{{ $sheetUrl }}</a> @else <span>Chua co link Google Sheet.</span> @endif</p>
+                    <p class="mt-1 text-sm text-slate-500">Dùng các nút export để tải dữ liệu theo lựa chọn hiện tại.</p>
                 </div>
 
                 <div class="flex flex-wrap items-center gap-3">
-                    @if ($currentUser->can_generate_amazon_listing && filled($sheetUrl))
-                    <button
-                        type="button"
-                        x-data="{ loading: false }"
-                        x-on:click="if (loading) return; loading = true; $dispatch('openModal', { component: 'modals.marketplace.export-to-sheet', arguments: { selectedIds: Array.from(new Set([...@js($selectedIds), ...Array.from(document.querySelectorAll('[data-marketplace-export-checkbox]:checked')).map((checkbox) => checkbox.value)])), marketplace: 'amazon' } }); setTimeout(() => loading = false, 5000)"
-                        x-bind:disabled="loading"
-                        wire:loading.attr="disabled"
-                        @disabled($selectedCount === 0 || ! filled($sheetUrl))
-                        class="inline-flex h-11 items-center gap-2 rounded-md bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 disabled:opacity-70"
-                    >
-                        <span x-show="!loading">Export to Sheet</span>
-                        <span x-show="loading" class="inline-flex items-center gap-2">
-                            <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path></svg>
-                            <span>Loading...</span>
-                        </span>
-                    </button>
-                    @endif
                     <button
                         type="button"
                         wire:click="exportSelected"
@@ -71,6 +54,17 @@
                             </svg>
                             <span>Dang export...</span>
                         </span>
+                    </button>
+                    <button
+                        type="button"
+                        wire:click="exportPattern"
+                        wire:loading.attr="disabled"
+                        wire:target="exportPattern"
+                        @disabled($selectedCount === 0 || $patternSelectionError !== null)
+                        class="inline-flex h-11 items-center gap-2 rounded-md border border-indigo-200 bg-indigo-50 px-5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                        <span wire:loading.remove wire:target="exportPattern">Export Excel Pattern</span>
+                        <span wire:loading wire:target="exportPattern">Đang chuẩn bị...</span>
                     </button>
                 </div>
             </div>
@@ -122,7 +116,7 @@
                             wire:model.live.debounce.400ms="search"
                             type="text"
                             class="h-11 w-full rounded-md border border-slate-300 bg-white pl-11 pr-4 text-sm text-slate-950 placeholder:text-slate-400"
-                            placeholder="Search..."
+                            placeholder="Search SKU..."
                         >
                     </label>
                     @if ($currentUser->is_admin || $currentUser->isManager())
@@ -147,6 +141,12 @@
                 </div>
             </div>
         </div>
+
+        @if ($patternError || $patternSelectionError)
+            <div class="rounded-lg border border-red-200 bg-red-50 px-5 py-3 text-sm font-medium text-red-700">
+                {{ $patternSelectionError ?? $patternError }}
+            </div>
+        @endif
 
         @if ($message)
             <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-medium text-emerald-700">

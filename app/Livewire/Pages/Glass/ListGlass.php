@@ -12,7 +12,7 @@ use Livewire\Component;
 
 class ListGlass extends Component
 {
-    private const PER_PAGE_OPTIONS = [5, 10, 20, 50];
+    private const PER_PAGE_OPTIONS = [5, 10, 20, 30, 50];
 
     #[Session(key: 'glass.per-page')]
     public int $perPage = 5;

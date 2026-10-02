@@ -38,6 +38,9 @@ class EditUser extends Component
 
     public bool $is_admin = false;
 
+    /** @var array<int, string> */
+    public array $adminPermissions = [];
+
     public bool $can_generate_amazon_listing = false;
 
     public bool $can_generate_etsy_listing = false;
@@ -88,10 +91,13 @@ class EditUser extends Component
 
     public function open(int $userId): void
     {
+        abort_unless(auth()->user()?->canEditUsers(), 403);
         $user = User::query()
             ->with(['products', 'vertexApiCredential'])
             ->with('aiProviders')
             ->findOrFail($userId);
+
+        abort_if($user->isSuperAdmin() && ! auth()->user()->isSuperAdmin(), 403);
 
         $this->resetValidation();
         $this->userId = $user->id;
@@ -102,6 +108,7 @@ class EditUser extends Component
         $this->status = $user->status ?: 'active';
         $this->role = $user->role ?: ((bool) $user->is_admin ? 'admin' : 'user');
         $this->is_admin = (bool) $user->is_admin;
+        $this->adminPermissions = array_values(array_intersect(array_keys(User::ADMIN_PERMISSIONS), $user->admin_permissions ?? []));
         $this->can_generate_amazon_listing = (bool) $user->can_generate_amazon_listing;
         $this->can_generate_etsy_listing = (bool) $user->can_generate_etsy_listing;
         $this->can_access_wali = (bool) $user->can_access_wali;
@@ -168,13 +175,16 @@ class EditUser extends Component
             return;
         }
 
+        $actor = auth()->user();
+        abort_unless($actor?->canEditUsers(), 403);
+
         $validated = $this->validate([
             'name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'alpha_dash', 'max:255', Rule::unique('users', 'username')->ignore($this->userId)],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique('users', 'email')->ignore($this->userId)],
             'password' => ['nullable', 'string', 'min:8'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
-            'role' => ['required', Rule::in(['user', 'manager', 'admin'])],
+            'role' => ['required', Rule::in(['user', 'manager', 'admin', 'super_admin'])],
             'is_admin' => ['boolean'],
             'can_generate_amazon_listing' => ['boolean'],
             'can_generate_etsy_listing' => ['boolean'],
@@ -196,6 +206,20 @@ class EditUser extends Component
         $this->ensureSingleMarketplace();
 
         $user = User::findOrFail($this->userId);
+        abort_if($user->isSuperAdmin() && ! $actor->isSuperAdmin(), 403);
+        if ($user->isSuperAdmin()) {
+            abort_unless($validated['role'] === 'super_admin' && $validated['status'] === 'active' && $validated['username'] === $user->username, 403);
+        } elseif (! $actor->isSuperAdmin()) {
+            abort_unless($validated['role'] === $user->role, 403);
+        } else {
+            abort_if($validated['role'] === 'super_admin', 403);
+        }
+        $validated['admin_permissions'] = $actor->isSuperAdmin()
+            ? array_values(array_intersect(array_keys(User::ADMIN_PERMISSIONS), $this->adminPermissions))
+            : ($user->admin_permissions ?? []);
+        if ($validated['role'] !== 'admin') {
+            $validated['admin_permissions'] = [];
+        }
         $vertexCredentialPayload = $this->validatedVertexCredentialPayload();
         $v98StoreCredentialPayload = $this->validatedV98StoreCredentialPayload();
         $hasCurrentV98StoreCredential = $this->activeV98StoreCredentialForUser($user->id) !== null;
@@ -264,6 +288,7 @@ class EditUser extends Component
                 'status' => $validated['status'],
                 'role' => $validated['role'],
                 'is_admin' => $validated['role'] === 'admin',
+                'admin_permissions' => $validated['admin_permissions'],
                 'can_generate_amazon_listing' => (bool) ($validated['can_generate_amazon_listing'] ?? false),
                 'can_generate_etsy_listing' => (bool) ($validated['can_generate_etsy_listing'] ?? false),
                 'can_access_wali' => (bool) ($validated['can_access_wali'] ?? false),

@@ -869,6 +869,7 @@ class ReviewImage extends Component
                 'user_id',
                 'is_approved',
                 'title',
+                'item_highlight',
                 'description',
                 'bullet_point_1',
                 'bullet_point_2',
@@ -881,7 +882,11 @@ class ReviewImage extends Component
             ->when(! auth()->user()->is_admin, fn ($query) => $query->where('user_id', auth()->id()))
             ->find($this->assetId);
 
-        if (! $asset || ! $asset->is_approved) {
+        if (! $asset) {
+            return;
+        }
+
+        if (! $asset->is_approved) {
             return;
         }
 
@@ -889,6 +894,7 @@ class ReviewImage extends Component
 
         $fields = [
             'title' => 'Title',
+            'item_highlight' => 'Item Highlight',
             'description' => 'Description',
             'bullet_point_1' => 'Bullet Point 1',
             'bullet_point_2' => 'Bullet Point 2',

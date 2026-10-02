@@ -5817,10 +5817,14 @@ Theo yeu cau admin, chuyen tat ca item dang Waiting trong Listing metadata logs 
 umber_format(balance, 2), vi vay 0.995 bi lam tron thanh 1.00.
 
 **File da sua:**
-- esources/views/livewire/pages/suncatcher/list-suncatcher.blade.php
-- esources/views/livewire/pages/ornament-amazon-two/list-ornament-amazon-two.blade.php
-- esources/views/livewire/pages/ornament-etsy/list-ornament-etsy.blade.php
-- esources/views/livewire/pages/sticker/list-sticker.blade.php
+- 
+esources/views/livewire/pages/suncatcher/list-suncatcher.blade.php
+- 
+esources/views/livewire/pages/ornament-amazon-two/list-ornament-amazon-two.blade.php
+- 
+esources/views/livewire/pages/ornament-etsy/list-ornament-etsy.blade.php
+- 
+esources/views/livewire/pages/sticker/list-sticker.blade.php
 - AI_MEMORY.md
 
 **Thay doi chinh:**
@@ -5846,10 +5850,14 @@ umber_format(..., 2) nen 0.995 bi thanh 1.00.
 - pp/Services/OrnamentAmazonTwo/OrnamentAmazonTwoService.php
 - pp/Services/OrnamentEtsy/OrnamentEtsyService.php
 - pp/Services/Sticker/StickerService.php
-- esources/views/livewire/pages/suncatcher/list-suncatcher.blade.php
-- esources/views/livewire/pages/ornament-amazon-two/list-ornament-amazon-two.blade.php
-- esources/views/livewire/pages/ornament-etsy/list-ornament-etsy.blade.php
-- esources/views/livewire/pages/sticker/list-sticker.blade.php
+- 
+esources/views/livewire/pages/suncatcher/list-suncatcher.blade.php
+- 
+esources/views/livewire/pages/ornament-amazon-two/list-ornament-amazon-two.blade.php
+- 
+esources/views/livewire/pages/ornament-etsy/list-ornament-etsy.blade.php
+- 
+esources/views/livewire/pages/sticker/list-sticker.blade.php
 - AI_MEMORY.md
 
 **Thay doi chinh:**
@@ -11719,3 +11727,251 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 - Root cause: manual refresh method was empty; completion cache version was calculated but never applied. Two post-completion polls could finish before Syncthing delivered files.
 - Changed Glass/Sticker/Decal ProductDesignCard PHP and Blade, plus .design/mockup-visibility-sync/DESIGN_BRIEF.md. Manual refresh resets its counter; mockup URLs include the job completion version; visible cards continue polling for missing local files for up to five minutes after completion.
 - Deploy: PHP and Blade only. Queue/DB/original image data unchanged. Follow-up: verify file arrival and Network timing on VPS; no 100% latency guarantee when transfer is slow.
+
+
+### 2026-10-02 — Admin tong va phan quyen Admin
+
+- Root cause: admin page and Livewire user modals previously trusted `is_admin`/`role=admin`, so every admin could open user-management actions and role assignment was not centrally controlled.
+- Changed: super-admin migration, User permission helpers, admin middleware/page, AddUser/EditUser Livewire actions, UserAccessService payload, and admin Blade views.
+- Model: `adminxlap` is promoted to `super_admin`; Admin tong has all permissions; normal Admin permissions are stored in `users.admin_permissions` JSON.
+- Enforcement: create/edit/open/save actions check permissions server-side; only Admin tong may assign Admin permissions or create an Admin; a normal Admin cannot edit the Admin tong.
+- Deploy impact: run migration and clear/cache views on the server; no `.env` changes. Queue impact: none. Existing image/mockup/sync changes preserved.
+- Follow-up: verify the exact `adminxlap` account after migration and grant individual permissions from Edit User. Browser visual review unavailable in this run.
+
+
+### 2026-10-02 — Permission review
+
+- Review found and fixed: regular Admin could still see the Add User table action; user-management page middleware still accepted legacy `is_admin`; normal Admin role changes were not fully restricted; `adminxlap` fallback by username could unintentionally elevate a renamed account.
+- Final behavior: only `role=super_admin` is Admin tong; normal Admin permissions require `role=admin` plus JSON grants; super-admin migration matches exact username or exact email.
+- Validation: PHP lint for all role files and migration passed; Blade cache passed; 12/13 existing selected tests passed. The one failure is the pre-existing Google Drive thumbnail expectation conflicting with the intentional original-URL behavior. Full feature tests were not added because the test bootstrap currently executes a MySQL-specific migration that fails on SQLite.
+- Deploy impact: migration still required on VPS; no queue changes. Browser visual review unavailable.
+
+
+### 2026-10-02 — Glass Amazon Marketplace fields
+
+- Added nullable `sku_pattern` and `item_highlight` columns to `product_design_assets`; SKU pattern is stored/exported but intentionally has no generation logic yet.
+- Added `item_highlight` to ProductDesignAsset, listing metadata persistence/sanitization, Marketplace CSV export fields, and listing status display. Existing title, description, bullets, generic keywords, tags, and image fields remain.
+- Added a Glass-specific Amazon prompt for the `glass` product slug with the requested product/keyword context, 70-75 character title, under-125-character Item Highlight, 460-480 character bullets, 230-240 character generic keywords, and 1800-1900 character description.
+- Fixed existing generic description truncation from 199 to 2000 characters so the new Glass requirement is not silently cut.
+- Deploy impact: one database migration and Blade/PHP cache refresh; queue behavior unchanged. Better Design review unavailable because the MCP quota is exhausted; visual browser evidence not captured.
+
+
+### 2026-10-02 — Strengthened Amazon trademark and copyright guardrails
+
+- Updated the Glass Amazon prompt to prohibit third-party brands, trademarks, franchises, characters, celebrities, teams, logos, slogans, copyrighted artwork, lyrics, competitor copying, and unsupported affiliation/licensing claims.
+- Added a final instruction for the model to scan every returned field and omit protected references from supplied keywords when necessary.
+- Existing title, Item Highlight, bullet, generic keyword, and description length rules remain unchanged.
+
+ # # #   2 0 2 6 - 1 0 - 0 2   -   Q u e u e   w o r k e r   c h e c k 
+ 
+ -   U s e r   r e q u e s t e d   e n a b l i n g   a   w o r k e r   f o r   E x c e l   i m p o r t s . 
+ -   Q u e u e   c o n f i g u r a t i o n   i s   ` d a t a b a s e ` ;   p e n d i n g   j o b s   w e r e   0 .   E x c e l   i m p o r t s   f o r   G l a s s / S t i c k e r / D e c a l   c u r r e n t l y   p r o c e s s   r o w s   t h r o u g h   L i v e w i r e   ` w i r e : p o l l . 8 0 0 m s ` ,   n o t   L a r a v e l   Q u e u e ,   s o   s t a r t i n g   a   w o r k e r   d o e s   n o t   c h a n g e   t h e i r   i m p o r t   t h r o u g h p u t . 
+ -   S t a r t e d   o n e   l o c a l   w o r k e r   p r o c e s s   ( P I D   1 2 1 0 8 )   f o r   e x i s t i n g   d a t a b a s e   q u e u e s :   ` d e f a u l t , s u n c a t c h e r - p r i o r i t y , s u n c a t c h e r - p i p e l i n e , o r n a m e n t - p r i o r i t y , o r n a m e n t - p i p e l i n e ` ,   t i m e o u t   3 6 0 0 s ,   m e m o r y   5 1 2   M B ,   m a x   5 0 0   j o b s . 
+ -   N o   a p p l i c a t i o n   c o d e   c h a n g e d .   A   f u t u r e   i m p o r t   r e f a c t o r   i s   r e q u i r e d   t o   m o v e   1 0 0 0 - r o w   i m p o r t s   i n t o   q u e u e d   b a t c h   j o b s . 
+### 2026-10-02 — Listing metadata and Drive upload logs
+
+- Added a Drive upload log section to the Listing metadata status page.
+- `ListingMetadataStatus` now loads up to 30 scoped `ProductDriveUpload` records with asset, product, and user relations.
+- The page shows waiting/processing/completed/failed status, timing, errors, and uploaded image count alongside existing Amazon/Etsy metadata logs.
+- No upload behavior, queue behavior, database schema, or image storage logic changed.
+- Validation: Blade cache and PHP lint passed. `git diff --check` is noisy because the pre-existing AI_MEMORY.md uses CRLF/trailing-whitespace formatting.
+### 2026-10-02 — Rollback Drive upload log panel
+
+- Removed the recently added `Upload images logs` panel from the Listing metadata page because the requested upload process was not actually running/visible there.
+- Restored the page to its prior Listing metadata-only behavior; existing marketplace fields and unrelated changes remain untouched.
+- Validation: Blade cache and PHP lint passed.
+### 2026-10-02 — Verified Drive image upload execution
+
+- User reported Image upload logs did not appear to load.
+- Confirmed the UI log panel had been rolled back; the actual upload command is separate from the Laravel queue and scheduler normally invokes it every five minutes.
+- Found one waiting Drive upload for asset 3751, manually ran `php artisan offorest:upload-approved-images-to-drive`, and it completed successfully: 1 image uploaded, record status `completed`, master URL replaced with Google Drive URL.
+- No application code changed. Follow-up: on VPS ensure the scheduler cron runs once per minute so the five-minute scheduled command is executed.
+### 2026-10-02 — Show Item Highlight in shared image preview
+
+- Added `itemHighlight` loading to `ReviewImage` from the current approved/unapproved ProductDesignAsset.
+- Added an `Item Highlight` block under `Image Information` in the shared review modal; it is hidden when no value exists and applies to all product previews using this modal.
+- Existing Listing Information, preview, bounds, and actions are unchanged.
+- Validation: `php artisan view:cache` and PHP lint for `ReviewImage.php` passed.
+### 2026-10-02 — Place Item Highlight with listing fields
+
+- Moved `Item Highlight` into the shared `Listing Information` field map beside Title, Description, Bullet Points, Generic Keyword, and Tags.
+- Removed the separate Item Highlight block from Image Information so the modal has one consistent listing metadata section.
+- Validation: Blade cache and PHP lint passed.
+
+### 2026-10-02 — Dashboard all-time statistics
+
+- Root cause: dashboard totals, page cards, and top-user ranking were scoped to the selected month; only the monthly series showed historical data.
+- Changed: DashboardStatsService now exposes all-time totals and all-time filtered totals by page, while the existing month selector and monthly comparison remain intact. Added an all-time summary section to the dashboard view.
+- Deploy impact: PHP/Blade cache only; no migration or queue change. Better Design visual review unavailable because MCP quota is exhausted.
+
+
+### 2026-10-02 — Hide SKU pattern from Marketplace export
+
+- `sku_pattern` remains stored in the database for future generation logic, but is no longer included in Marketplace CSV export or visible in the Export table.
+- `item_highlight` and all existing Marketplace fields remain exported/displayed.
+
+### 2026-10-02 — Super Admin listing prompt settings
+
+- Added `listing_prompt_overrides` table and `ListingPromptOverride` model to persist marketplace prompts by product and Amazon/Etsy marketplace.
+- Added Super Admin-only Livewire page at `/admin/listing-prompts` with product/marketplace selectors, prompt editor, Save, and Reset default actions.
+- Added navigation links visible only to Super Admin.
+- Updated `MarketplaceListingMetadataService` so generation uses the database override when present and falls back to the existing built-in product prompt when absent; existing metadata is unchanged until Retry/generation runs again.
+- Migration applied locally: `2026_10_02_000003_create_listing_prompt_overrides_table`.
+- Validation: migration pretend/actual run, Blade cache, PHP lint for new/changed classes passed. Browser visual review not captured.
+
+### 2026-10-02 — Dashboard full-year monthly series
+
+- Dashboard chart now renders all 12 months of the current year, including zero-value months, instead of only months that have records or the latest rolling 12 months.
+- Monthly detail filter and all-time summary remain available.
+- Validation: DashboardStatsService PHP lint and Blade cache passed; no migration or queue changes.
+
+
+### 2026-10-02 — Dashboard all-month filter
+
+- Added `Toan bo thang` to the dashboard month filter. Selecting it removes the date restriction from the headline totals while preserving user/product filters; the 12-month chart remains visible.
+- Added a stable filter value separate from the Carbon display month so Livewire keeps the selection after render.
+
+### 2026-10-02 — Database-only Listing metadata prompts
+
+- Listing metadata generation now requires a non-empty prompt override in `listing_prompt_overrides`; hardcoded prompts are no longer used at runtime.
+- Added `2026_10_02_000004_seed_listing_prompt_defaults` to copy current built-in Amazon/Etsy prompts into the database for all active products except `camp` and `proxy` (24 rows seeded locally).
+- Kept built-in prompt access only for the Super Admin editor's initial/default display and migration seeding.
+- Dashboard now shows a compact red warning for Admin/Super Admin users when any eligible product/marketplace prompt row is missing or null, linking to Listing Prompt Settings.
+- Missing prompt generation fails clearly with product/marketplace context instead of silently using code defaults.
+- Validation: migrations applied, prompt row count verified, Blade cache and PHP lint passed.
+
+### 2026-10-02 — Dashboard All means current-year total
+
+- Fixed the `All` dashboard filter so totals are summed across every month of the current year rather than using an unbounded all-time query.
+- Renamed the filter label from `Toan bo thang` to `All`; monthly chart remains January through December.
+
+
+### 2026-10-02 — Fix dashboard All closure scope
+
+- Root cause: `allTimeProductCards()` referenced `$year` inside a collection closure without capturing it, causing a production 500 when opening `/dashboard`.
+- Fixed the closure capture and validated PHP syntax plus Blade cache.
+
+### 2026-10-02 — Enforce Amazon Listing JSON contract in code
+
+- Added a runtime-owned Amazon required schema prompt after the database prompt override. Custom prompts can add instructions but cannot remove the required output contract.
+- Required keys are exactly: `title`, `item_highlight`, `description`, `bullet_point_1` through `bullet_point_5`, and `generic_keyword`.
+- Added strict validation after JSON decoding: missing keys, extra keys, or non-string values fail the metadata attempt with a clear schema error instead of silently saving null fields.
+- Etsy prompt flow remains unchanged because its output contract is different.
+- Validation: Blade cache and PHP lint for `MarketplaceListingMetadataService.php` passed.
+
+### 2026-10-02 — Dashboard All is lifetime total
+
+- Corrected the `All` filter semantics: it now aggregates assets from the beginning of the database until now, with user/product filters preserved.
+- The 12-month chart remains a separate current-year view; only the `All` totals and ranking use lifetime data.
+
+
+### 2026-10-02 — Fix All filter reset
+
+- Root cause: Dashboard Index `updatedSelectedMonth()` rejected the literal `all` and replaced it with the current month, so the UI showed All while the service queried only the current month.
+- Fixed the Livewire normalizer to preserve `all`, enabling lifetime totals and removing the misleading month-only values/deltas.
+
+### 2026-10-02 — Restrict Listing Prompt products to real Pages
+
+- Root cause: Prompt Settings and Dashboard queried every active row in `products`, including legacy `Mockup`, `Poster`, and `Redesign` records that are not registered product Pages.
+- Changed both screens to derive eligible products from `ProductRegistry`, excluding `camp` and `proxy` as requested.
+- Legacy product rows remain in the database but no longer appear in Listing Prompt Settings or missing-prompt warnings.
+- Validation: Blade cache and PHP lint passed.
+
+### 2026-10-02 — Normalize dashboard All selection
+
+- The lifetime summary already returned correct totals (example: 310), but month-scoped overview/page cards still showed zero because the All branch compared the selection too strictly.
+- Normalized the selection with trim/lowercase before checking `all`, so `all` and `All` both use lifetime totals and ranking.
+- Updated Top user helper copy to describe the active scope instead of always saying month.
+
+### 2026-10-02 — Exclude YTrends from Listing prompts
+
+- Removed `ytrends` from the Listing Prompt Settings product selector and Dashboard missing-prompt checks.
+- Listing prompt configuration now excludes Camp, Proxy, and YTrends.
+- Validation: Blade cache and PHP lint passed.
+### 2026-10-02 — Hide mandatory schema from prompt editor
+
+- Listing Prompt Settings now strips the system-owned Amazon JSON schema instructions and schema example from the textarea.
+- The schema remains enforced in `MarketplaceListingMetadataService` at runtime and is still appended to the AI prompt invisibly.
+- Users only see/edit the natural prompt instructions, avoiding confusion about the internal contract.
+- Validation: Blade cache and PHP lint passed.
+### 2026-10-02 — Simplify Listing prompt variables
+
+- Prompt editor now hides internal placeholders such as `{amazon_product_from_sheet}`, `{competitor_link}`, `{keyword_phrase}`, and `{product}`.
+- Metadata generation replaces legacy placeholders when present and also appends a system context block containing the current product, competitor link, and priority keywords automatically.
+- Added a small editor hint explaining that users do not need to enter or remember variables.
+- Validation: Blade cache and PHP lint passed.
+
+### 2026-10-02 — Marketplace export buttons
+
+- Hid the obsolete `Export to Sheet` Google Sheet action and removed its link text from the Marketplace Export header.
+- Added a separate `Export Excel Pattern` button with its own Livewire action and loading state; it currently shows an informational toast only until the user provides the Pattern export rules. Existing Excel/CSV export remains unchanged.
+
+### 2026-10-02 — Exclude Idea pages from Listing prompts
+
+- Removed `idea-amazon` and `idea-etsy` from the Listing Prompt Settings product selector and Dashboard missing-prompt checks.
+- Prompt configuration now applies only to actual listing-generation product pages, excluding Camp, Proxy, YTrends, Idea Amazon, and Idea Etsy.
+- Validation: Blade cache and PHP lint passed.
+
+### 2026-10-02 — Marketplace export SKU search
+
+- Marketplace Export search now matches only `product_design_assets.sku`; keyword, title, item id, user name, and email are no longer search criteria.
+- Removed Item Highlight from the Export table and CSV fields; the value remains stored and available to Marketplace listing/review screens.
+
+### 2026-10-02 — Rename Order navigation group to Support
+
+- Renamed the sidebar group heading from `Order` to `Support` in desktop and mobile navigation.
+- Moved Camp, Proxy, YTrends, Idea Amazon, Idea Etsy, and Order into the Support group; removed the separate Idea group and duplicate product links.
+- Routes and page functionality are unchanged.
+- Validation: `php artisan view:cache` passed; `git diff --check` only reported pre-existing `AI_MEMORY.md` whitespace warnings.
+
+### 2026-10-02 — Simplify sidebar profile footer
+
+- Removed the user email and green online-status dot from the desktop and mobile sidebar footers while keeping the user name and avatar.
+- Kept all account/navigation behavior unchanged.
+- Validation: Blade cache passed.
+
+### 2026-10-02 — Remove AI Provider from Profile
+
+- Removed the `update-ai-provider-form` card from `resources/views/profile.blade.php`, including its provider selector and Save action.
+- Kept the underlying provider component and account/provider behavior unchanged elsewhere.
+- Validation: Blade cache passed.
+
+### 2026-10-02 — Standardize page-size filters
+
+- Standardized visible page-size selectors and Livewire validation to `5`, `10`, `20`, `30`, and `50` across product pages, Marketplace Exports, Order, Idea Amazon, and Idea Etsy.
+- Order and Marketplace Exports additionally allow `100`; removed unsupported choices such as 25, 200, 300, 400, and 500. Idea pages now default to 20.
+- Validation: Blade cache and frontend build passed.
+
+### 2026-10-02 — Pattern export requires complete selected groups
+
+- Root cause: Pattern button was enabled by total selection count, even when a selected SKU prefix had only one exportable asset.
+- Changed app/Livewire/Pages/Marketplace/MarketplaceExports.php, resources/views/livewire/pages/marketplace/marketplace-exports.blade.php, and .design/marketplace-export-pattern/DESIGN_BRIEF.md: shared group validation disables button, lists incomplete prefixes, and rejects direct Livewire calls before export status changes.
+- Affected module: Marketplace Export. Deploy impact: PHP and Blade refresh; no migration. Queue impact: none. Follow-up: browser verification with live selected groups and screenshot pending.
+- Validation: php -l and php artisan view:cache passed. Better Design unavailable (HTTP 402).
+
+
+### 2026-10-02 — Marketplace Pattern export column contract
+
+- Root cause: Pattern CSV reused every normal export column, including unwanted auxiliary images, error, and data fields.
+- Changed app/Livewire/Pages/Marketplace/MarketplaceExports.php and .design/marketplace-export-pattern/DESIGN_BRIEF.md. Pattern now emits SKU, SKU pattern, keyword, image link, title, description, Item Highlight, applicable Amazon bullets/generic keyword or Etsy tags, and redesign/mockup1-11 direct links. Mixed selection uses a shared header and blanks irrelevant fields; normal export unchanged.
+- Deploy impact: PHP only, no migration. Queue impact: none. Follow-up: browser/live-data CSV verification pending. Better Design quota unavailable (HTTP 402).
+
+
+### 2026-10-02 — Remove image_link from Pattern export
+
+- Pattern CSV no longer emits image_link; redesign and mockup1-11 remain the image columns.
+- Deploy impact: PHP only; no migration or queue impact.
+
+### 2026-10-02 — Rename Catalog navigation label
+
+- Changed resources/views/livewire/layout/navigation.blade.php section labels from Catalog to DATA in desktop and mobile navigation; routes and child labels unchanged.
+- Deploy impact: Blade only; no migration or queue impact. Validation: php artisan view:cache and git diff --check passed.
+
+
+### 2026-10-02 — Web-managed Listing input/output configuration
+
+- Added mapping JSON columns to listing_prompt_overrides and admin UI for input/output mapping plus sample data preview.
+- Listing prompt generation now reads configured input mapping with safe whitelist and fallback paths; existing prompt defaults remain compatible.
+- Changed files: database/migrations/2026_10_02_000005_add_mappings_to_listing_prompt_overrides.php, app/Models/ListingPromptOverride.php, app/Livewire/Pages/Admin/ListingPromptSettings.php, resources/views/livewire/pages/admin/listing-prompt-settings.blade.php, app/Services/Marketplace/MarketplaceListingMetadataService.php.
+- Deploy impact: run migration and clear caches. Queue impact: none. Output mapping is stored and displayed; applying arbitrary output target columns remains intentionally restricted pending explicit field whitelist review.
+

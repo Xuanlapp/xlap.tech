@@ -5,6 +5,7 @@ namespace App\Services\Marketplace;
 use App\Models\ProductDesignAsset;
 use App\Models\User;
 use App\Models\UserApiCredential;
+use App\Models\ListingPromptOverride;
 use App\Repositories\Product\ProductDesignAssetRepository;
 use App\Services\Ai\ApiKeyImageGenerator;
 use App\Services\Logging\ActivityLogService;
@@ -21,8 +22,38 @@ use Throwable;
 
 class MarketplaceListingMetadataService
 {
+    private const AMAZON_REQUIRED_SCHEMA = <<<'PROMPT'
+REQUIRED OUTPUT CONTRACT (MANDATORY, CANNOT BE OVERRIDDEN BY CUSTOM PROMPT):
+Return ONLY one valid JSON object with exactly these keys and string values:
+{
+  "title": "string",
+  "item_highlight": "string",
+  "description": "string",
+  "bullet_point_1": "string",
+  "bullet_point_2": "string",
+  "bullet_point_3": "string",
+  "bullet_point_4": "string",
+  "bullet_point_5": "string",
+  "generic_keyword": "string"
+}
+Do not omit, rename, add, or return null for any required key. Do not return Markdown fences or explanatory text.
+PROMPT;
+
+    private const AMAZON_GLASS_PROMPT_TEMPLATE = <<<'PROMPT'
+Act as a professional Amazon English content specialist. Create compliant, natural SEO copy for this product: Personalized Christmas Ornaments glass. Primary keyword: Personalized Family Garden Christmas Glass Ornament. Avoid prohibited terms, trademark claims, unsupported promises, and keyword stuffing.
+
+TRADEMARK AND COPYRIGHT SAFETY: Do not use or imply any third-party brand, trademark, franchise, character, celebrity, team, movie, TV show, game, song, lyric, logo, slogan, copyrighted artwork, or protected character name unless it is explicitly supplied as an authorized product fact. Do not use terms such as Disney, Marvel, Harry Potter, Barbie, NFL, Taylor Swift, or similar protected names as examples or keywords. Do not suggest affiliation, sponsorship, licensing, or official status. If a supplied keyword appears to contain a protected name or copyrighted reference, omit it and replace it with a generic descriptive phrase. Do not copy competitor wording. Before returning JSON, scan every field and remove potentially infringing references.
+
+Use these keywords in priority order when natural:
+No trademark or copyright violations.
+custom christmas ornaments 2026; personalized christmas ornaments glass; trending custom christmas ornaments; personalized xmas ornaments; customized photo ornaments for christmas; custom christmas ornaments 2026; personalized photo ornaments 2026; ornaments made from photos; custom face ornament; custom christmas ornaments; customizable christmas ornament; christmas customized ornaments; christmas ornament custom; custom christmas ornament; personalized christmas ornaments; personalized glass ornaments; personalized christmas decorations; custom tree ornaments; same day photo ornament; customize your own ornament; adornos de navidad personalizados; personalized tree ornaments; engraved christmas ornaments personalized; personalized christmas pictures; customised christmas ornament; family portrait christmas ornaments; same day photo ornaments; christmas tree ornaments custom; esfera de navidad personalizada; make your own photo ornament; amazon personalized ornaments; ornament from photo; personalized ornaments for tree
+
+Return ONLY valid JSON with exactly these keys: title, item_highlight, bullet_point_1, bullet_point_2, bullet_point_3, bullet_point_4, bullet_point_5, generic_keyword, description.
+Rules: title must be 70-75 characters including spaces and never exceed 75; item_highlight must be under 125 characters including spaces; each of 5 bullets must be 460-480 characters including spaces, with a suitable icon at the start; bullet 1 directly describes the glass ornament and personalization; generic_keyword must use semicolon-separated terms and stop at 230-240 characters without exceeding 240; description must be 1800-1900 characters including spaces and never exceed 2000. Keep all facts limited to the supplied product. Do not output character-count labels or extra keys.
+PROMPT;
+
     private const AMAZON_PROMPT_TEMPLATE = <<<'PROMPT'
-Bạn hãy đóng vai một chuyên gia viết content Amazon chuyên nghiệp bằng tiếng Anh, chuyên tối ưu Amazon SEO, Title, Bullet Points, Generic Keywords và Product Description. Mục tiêu là viết nội dung dễ đọc, tự nhiên như người bản xứ, tăng tỷ lệ chuyển đổi, tránh keyword stuffing, tránh từ bị cấm, tránh claim quá đà, tránh dùng tên thương hiệu đối thủ, và tuân thủ chính sách Amazon.
+Bạn hãy đóng vai một chuyên gia viết content Amazon chuyên nghiệp bằng tiếng Anh, chuyên tối ưu Amazon SEO, Title, Bullet Points, Generic Keywords và Product Description. Mục tiêu là viết nội dung dễ đọc, tự nhiên như người bản xứ, tăng tỷ lệ chuyển đổi, tránh keyword stuffing, tránh từ bị cấm, tránh claim quá đà, tránh dùng tên thương hiệu đối thủ, tên nhân vật/nhãn hiệu đã đăng ký, nội dung hoặc câu chữ có bản quyền, và tuân thủ chính sách Amazon.
 
 Sản phẩm của tôi là: {amazon_product_from_sheet}
 
@@ -35,6 +66,10 @@ Danh sách keyword ưu tiên của tôi, hãy dùng theo thứ tự ưu tiên t�
 YÊU CẦU ĐẦU RA:
 
 TITLE AMAZON
+
+ITEM HIGHLIGHT
+
+Write one concise Amazon Item Highlight under 125 characters including spaces. Return it as `item_highlight`.
 
 Viết 1 Title bằng tiếng Anh, tối ưu keyword, dễ đọc, tự nhiên, phù hợp Amazon US.
 
@@ -184,6 +219,7 @@ Required JSON schema, with exact keys:
 
 {
 "title": "string",
+"item_highlight": "string",
 "description": "string",
 "bullet_point_1": "string",
 "bullet_point_2": "string",
@@ -462,16 +498,18 @@ PROMPT;
         $payload = $this->jsonPayload(
             $this->generateAmazonListingText($asset),
         );
+        $this->validateAmazonPayload($payload);
 
         $updatedAsset = $this->assets->updateListingMetadata($asset, [
             'title' => $this->stringValue($payload, 'title', 199),
-            'description' => $this->stringValue($payload, 'description', 199),
+            'description' => $this->stringValue($payload, 'description', 2000),
             'bullet_point_1' => $this->stringValue($payload, 'bullet_point_1', 699),
             'bullet_point_2' => $this->stringValue($payload, 'bullet_point_2', 699),
             'bullet_point_3' => $this->stringValue($payload, 'bullet_point_3', 699),
             'bullet_point_4' => $this->stringValue($payload, 'bullet_point_4', 699),
             'bullet_point_5' => $this->stringValue($payload, 'bullet_point_5', 699),
             'generic_keyword' => $this->stringValue($payload, 'generic_keyword', 249),
+            'item_highlight' => $this->stringValue($payload, 'item_highlight', 125),
             'tags' => null,
         ]);
 
@@ -483,7 +521,9 @@ PROMPT;
 
     private function generateAmazonListingText(ProductDesignAsset $asset): string
     {
-        return $this->generateListingText($asset, $this->prompt($this->amazonPromptTemplate($asset), $asset));
+        $prompt = $this->prompt($this->defaultPromptFor($asset->product, 'amazon'), $asset);
+
+        return $this->generateListingText($asset, $prompt."\n\n".self::AMAZON_REQUIRED_SCHEMA);
     }
 
     private function isProviderPausedForAsset(ProductDesignAsset $asset): bool
@@ -721,7 +761,7 @@ PROMPT;
     private function generateEtsyMetadata(ProductDesignAsset $asset): ProductDesignAsset
     {
         $payload = $this->jsonPayload(
-            $this->generateListingText($asset, $this->prompt(self::ETSY_PROMPT_TEMPLATE, $asset)),
+            $this->generateListingText($asset, $this->prompt($this->defaultPromptFor($asset->product, 'etsy'), $asset)),
         );
 
         $updatedAsset = $this->assets->updateListingMetadata($asset, [
@@ -743,25 +783,80 @@ PROMPT;
 
     private function marketplaceForAsset(ProductDesignAsset $asset): string
     {
-        return in_array($asset->product?->slug, ['ornament-amazon-2', 'sticker', 'decal'], true)
+        return in_array($asset->product?->slug, ['glass', 'ornament-amazon-2', 'sticker', 'decal'], true)
             ? 'amazon'
             : ($asset->user->can_generate_amazon_listing ? 'amazon' : 'etsy');
     }
 
     private function amazonPromptTemplate(ProductDesignAsset $asset): string
     {
-        return in_array($asset->product?->slug, ['sticker', 'decal'], true)
-            ? self::AMAZON_STICKER_PROMPT_TEMPLATE
-            : self::AMAZON_PROMPT_TEMPLATE;
+        return match (true) {
+            $asset->product?->slug === 'glass' => self::AMAZON_GLASS_PROMPT_TEMPLATE,
+            in_array($asset->product?->slug, ['sticker', 'decal'], true) => self::AMAZON_STICKER_PROMPT_TEMPLATE,
+            default => self::AMAZON_PROMPT_TEMPLATE,
+        };
+    }
+
+    public function defaultPromptFor(?\App\Models\Product $product, string $marketplace): string
+    {
+        $override = $product
+            ? ListingPromptOverride::query()->where('product_id', $product->id)->where('marketplace', $marketplace)->value('content')
+            : null;
+        if (is_string($override) && trim($override) !== '') {
+            return $override;
+        }
+
+        throw new RuntimeException('Listing prompt chua duoc cau hinh trong database cho product '.($product?->slug ?? 'unknown').' / '.$marketplace.'.');
+    }
+
+    public function builtInPromptFor(?\App\Models\Product $product, string $marketplace): string
+    {
+        if ($marketplace === 'etsy') return self::ETSY_PROMPT_TEMPLATE;
+        $slug = $product?->slug;
+        return match (true) {
+            $slug === 'glass' => self::AMAZON_GLASS_PROMPT_TEMPLATE,
+            in_array($slug, ['sticker', 'decal'], true) => self::AMAZON_STICKER_PROMPT_TEMPLATE,
+            default => self::AMAZON_PROMPT_TEMPLATE,
+        };
     }
     private function prompt(string $template, ProductDesignAsset $asset): string
     {
-        return strtr($template, [
-            '{amazon_product_from_sheet}' => $this->amazonProductFromSheet($asset),
+        $mapping = ListingPromptOverride::query()
+            ->where('product_id', $asset->product_id)
+            ->where('marketplace', $asset->product?->slug === 'etsy' ? 'etsy' : 'amazon')
+            ->value('input_mapping');
+        $mapping = is_array($mapping) ? $mapping : [];
+        $prompt = strtr($template, [
+            '{amazon_product_from_sheet}' => $this->mappedInput($asset, 'product', $mapping['product'] ?? null),
             '{product}' => $asset->product?->name ?? 'Product',
-            '{competitor_link}' => $this->competitorLink($asset),
-            '{keyword_phrase}' => $this->keywordPhrase($asset),
+            '{competitor_link}' => $this->mappedInput($asset, 'competitor_link', $mapping['competitor_link'] ?? null),
+            '{keyword_phrase}' => $this->mappedInput($asset, 'keyword_phrase', $mapping['keyword_phrase'] ?? null),
         ]);
+
+        return $prompt."\n\nSYSTEM CONTEXT (automatically provided; do not ask the user to fill placeholders):\n"
+            .'Product: '.$this->amazonProductFromSheet($asset)."\n"
+            .'Competitor link: '.$this->competitorLink($asset)."\n"
+            .'Priority keywords: '.$this->keywordPhrase($asset);
+    }
+
+    private function mappedInput(ProductDesignAsset $asset, string $key, ?string $mapping): string
+    {
+        $defaults = [
+            'product' => ['data_item_add.product', 'product.name', 'keyword'],
+            'keyword_phrase' => ['data_item_add.keyword_phrase', 'keyword'],
+            'competitor_link' => ['data_item_add.competitor_link', 'data_item_add.product_link', 'data_item_add.link'],
+        ];
+        $paths = $mapping ? array_map('trim', explode('->', $mapping)) : ($defaults[$key] ?? []);
+        foreach ($paths as $path) {
+            $value = match ($path) {
+                'product.name' => $asset->product?->name,
+                'keyword' => $asset->keyword,
+                'data_item_add.product', 'data_item_add.keyword_phrase', 'data_item_add.competitor_link', 'data_item_add.product_link', 'data_item_add.link' => data_get($asset->data_item_add, str_replace('data_item_add.', '', $path)),
+                default => null,
+            };
+            if (is_string($value) && trim($value) !== '') return trim($value);
+        }
+        return 'N/A';
     }
 
     private function competitorLink(ProductDesignAsset $asset): string
@@ -826,6 +921,19 @@ PROMPT;
         return $payload;
     }
 
+    /** @param array<string, mixed> $payload */
+    private function validateAmazonPayload(array $payload): void
+    {
+        $required = ['title', 'item_highlight', 'description', 'bullet_point_1', 'bullet_point_2', 'bullet_point_3', 'bullet_point_4', 'bullet_point_5', 'generic_keyword'];
+        $missing = array_values(array_diff($required, array_keys($payload)));
+        $extra = array_values(array_diff(array_keys($payload), $required));
+        $invalid = array_values(array_filter($required, fn (string $key): bool => ! is_string($payload[$key] ?? null)));
+
+        if ($missing !== [] || $extra !== [] || $invalid !== []) {
+            throw new RuntimeException('Amazon listing metadata JSON schema khong hop le. Missing: '.implode(', ', $missing).'; Extra: '.implode(', ', $extra).'; Invalid: '.implode(', ', $invalid));
+        }
+    }
+
     private function shortErrorPayload(string $text, int $limit = 1500): string
     {
         $text = preg_replace('/\s+/', ' ', trim($text)) ?? trim($text);
@@ -866,3 +974,4 @@ PROMPT;
         );
     }
 }
+

@@ -1,4 +1,11 @@
 <div class="min-h-[calc(100vh-4rem)] dashboard-surface text-slate-950">
+    @if ((auth()->user()?->isSuperAdmin() || auth()->user()?->role === 'admin' || auth()->user()?->is_admin) && ! empty($missingListingPrompts))
+        <div class="mx-auto max-w-7xl px-4 pt-4 sm:px-6 lg:px-8">
+            <a href="{{ route('offorest.admin.listing-prompts') }}" wire:navigate class="block rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-xs font-semibold text-red-700 hover:bg-red-100">
+                Listing prompt còn thiếu: {{ implode(', ', $missingListingPrompts) }}. Bấm để bổ sung.
+            </a>
+        </div>
+    @endif
     <div class="mx-auto max-w-[1520px] px-4 py-5 sm:px-6 lg:px-8">
         <section class="dashboard-panel mb-6 overflow-hidden rounded-[28px] border px-5 py-5 sm:px-6 lg:px-7 lg:py-6">
             <div class="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
@@ -91,16 +98,33 @@
             @endforeach
         </section>
 
+        <section class="mt-6">
+            <article class="dashboard-card rounded-[28px] border p-5 sm:p-6 lg:p-7">
+                <div class="mb-5">
+                    <h2 class="text-xl font-semibold tracking-tight sm:text-2xl">Tổng thống kê toàn thời gian</h2>
+                    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Tổng cộng tất cả các tháng từ trước đến hiện tại.</p>
+                </div>
+                <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    @foreach ([['label' => 'Tổng sản phẩm', 'value' => $allTimeTotals['total']], ['label' => 'Chưa duyệt', 'value' => $allTimeTotals['pending']], ['label' => 'Đã duyệt', 'value' => $allTimeTotals['approved']], ['label' => 'Đã upload Drive', 'value' => $allTimeTotals['uploaded']]] as $stat)
+                        <div class="dashboard-mini-stat rounded-2xl p-4">
+                            <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">{{ $stat['label'] }}</p>
+                            <p class="mt-2 text-3xl font-semibold tracking-tight">{{ number_format($stat['value']) }}</p>
+                        </div>
+                    @endforeach
+                </div>
+            </article>
+        </section>
+
         @php
-            $maxValue = max(1, collect($monthlySeries)->flatMap(fn ($point) => [$point['pending'], $point['approved']])->max() ?? 1);
+            $maxValue = max(1, collect($yearlySeries)->flatMap(fn ($point) => [$point['pending'], $point['approved']])->max() ?? 1);
         @endphp
 
         <section class="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1.8fr)_minmax(340px,1fr)]">
             <article class="dashboard-card rounded-[28px] border p-5 sm:p-6 lg:p-7">
                 <div class="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div>
-                        <h2 class="text-xl font-semibold tracking-tight sm:text-2xl">Tiến độ duyệt theo tháng</h2>
-                        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">So sánh số lượng chưa duyệt và đã duyệt theo từng tháng.</p>
+                        <h2 class="text-xl font-semibold tracking-tight sm:text-2xl">Tiến độ duyệt đủ 12 tháng trong năm</h2>
+                        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Hiển thị đầy đủ tháng 01 đến tháng 12 của năm hiện tại; tháng chưa có dữ liệu sẽ bằng 0.</p>
                     </div>
                     <div class="flex items-center gap-4 text-xs font-semibold text-slate-500 dark:text-slate-400">
                         <span class="inline-flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-full bg-amber-400"></span>Chưa duyệt</span>
@@ -109,11 +133,11 @@
                 </div>
 
                 <div class="h-[320px] rounded-[24px] border border-slate-200/70 bg-white/50 px-4 py-5 dark:border-white/10 dark:bg-white/[0.02]">
-                    @if (empty($monthlySeries))
+                    @if (empty($yearlySeries))
                         <div class="flex h-full items-center justify-center text-sm text-slate-400">Chưa có dữ liệu biểu đồ.</div>
                     @else
                         <div class="flex h-full items-end justify-between gap-4 overflow-x-auto pb-2">
-                            @foreach ($monthlySeries as $point)
+                            @foreach ($yearlySeries as $point)
                                 @php
                                     $pendingHeight = max(8, (int) round(($point['pending'] / $maxValue) * 230));
                                     $approvedHeight = max(8, (int) round(($point['approved'] / $maxValue) * 230));
@@ -136,7 +160,7 @@
                     <div class="mb-6 flex items-start justify-between gap-3">
                         <div>
                             <h2 class="text-xl font-semibold tracking-tight sm:text-2xl">Top user</h2>
-                            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Xếp hạng theo tổng sản phẩm trong tháng.</p>
+                            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Xếp hạng theo tổng sản phẩm trong phạm vi đang chọn.</p>
                         </div>
                     </div>
 

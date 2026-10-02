@@ -51,7 +51,7 @@
         sortKey: 'searchVolume',
         sortDirection: 'desc',
         currentPage: 1,
-        perPage: 25,
+        perPage: 20,
         crawlFiltersOpen: false,
         filtersOpen: false,
         fbaRuleOpen: true,
@@ -748,7 +748,7 @@
         },
 
         totalPages() {
-            return Math.max(1, Math.ceil(this.sortableProducts().length / Number(this.perPage || 25)));
+            return Math.max(1, Math.ceil(this.sortableProducts().length / Number(this.perPage || 20)));
         },
 
         visibleProducts() {
@@ -758,9 +758,9 @@
                 this.currentPage = pageCount;
             }
 
-            const start = (this.currentPage - 1) * Number(this.perPage || 25);
+            const start = (this.currentPage - 1) * Number(this.perPage || 20);
 
-            return this.sortableProducts().slice(start, start + Number(this.perPage || 25));
+            return this.sortableProducts().slice(start, start + Number(this.perPage || 20));
         },
 
         resultStart() {
@@ -768,11 +768,11 @@
                 return 0;
             }
 
-            return ((this.currentPage - 1) * Number(this.perPage || 25)) + 1;
+            return ((this.currentPage - 1) * Number(this.perPage || 20)) + 1;
         },
 
         resultEnd() {
-            return Math.min(this.currentPage * Number(this.perPage || 25), this.sortableProducts().length);
+            return Math.min(this.currentPage * Number(this.perPage || 20), this.sortableProducts().length);
         },
 
         sortBy(key) {
@@ -1461,10 +1461,11 @@
                                 x-on:change="currentPage = 1"
                                 class="mt-1 block h-10 w-full rounded-md border-gray-300 bg-white text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                             >
+                                <option value="5">5</option>
                                 <option value="10">10</option>
-                                <option value="25">25</option>
+                                <option value="20">20</option>
+                                <option value="30">30</option>
                                 <option value="50">50</option>
-                                <option value="100">100</option>
                             </select>
                         </div>
                     </div>

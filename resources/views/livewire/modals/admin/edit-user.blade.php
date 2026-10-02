@@ -73,9 +73,23 @@
                                         <option value="user">User</option>
                                         <option value="manager">Manager</option>
                                         <option value="admin">Admin</option>
+                                        @if ($role === 'super_admin') <option value="super_admin">Admin tong</option> @endif
                                     </select>
                                 </div>
                                 
+                                @if (auth()->user()?->isSuperAdmin() && $role === 'admin')
+                                <div class="rounded-lg border border-cyan-200 bg-cyan-50 p-3">
+                                    <p class="text-xs font-bold text-cyan-900">Quyen Admin do Admin tong cap</p>
+                                    <div class="mt-2 grid gap-2 sm:grid-cols-2">
+                                        @foreach (\App\Models\User::ADMIN_PERMISSIONS as $permission => $label)
+                                            <label class="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm">
+                                                <input wire:model="adminPermissions" type="checkbox" value="{{ $permission }}" class="rounded border-slate-300 text-cyan-600">
+                                                <span>{{ $label }}</span>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                </div>
+                                @endif
                                 <label class="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm shadow-sm">
                                     <input wire:model.live="can_generate_amazon_listing" type="checkbox" class="rounded border-slate-300 text-cyan-600">
                                     <span>Amazon listing metadata</span>

@@ -68,10 +68,11 @@ class UserAccessService
             'username' => $data['username'] ?? null,
             'email' => $data['email'],
             'status' => $data['status'] ?? 'active',
-            'is_admin' => (string) ($data['role'] ?? 'user') === 'admin',
+            'is_admin' => in_array((string) ($data['role'] ?? 'user'), ['admin', 'super_admin'], true),
             'can_generate_amazon_listing' => (bool) ($data['can_generate_amazon_listing'] ?? false),
             'can_generate_etsy_listing' => (bool) ($data['can_generate_etsy_listing'] ?? false),
             'role' => (string) ($data['role'] ?? 'user'),
+            'admin_permissions' => array_values(array_intersect(array_keys(User::ADMIN_PERMISSIONS), $data['admin_permissions'] ?? [])),
             'can_access_wali' => (bool) ($data['can_access_wali'] ?? false),
         ];
 

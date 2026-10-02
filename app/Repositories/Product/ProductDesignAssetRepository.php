@@ -473,6 +473,8 @@ class ProductDesignAssetRepository
             'bullet_point_4',
             'bullet_point_5',
             'generic_keyword',
+            'item_highlight',
+            'sku_pattern',
             'tags',
         ];
 
@@ -490,9 +492,10 @@ class ProductDesignAssetRepository
                 $value = $this->removeBlockedListingSymbols($value);
 
                 $limit = match ($field) {
-                    'description' => 199,
+                    'description' => 2000,
                     'bullet_point_1', 'bullet_point_2', 'bullet_point_3', 'bullet_point_4', 'bullet_point_5' => 699,
                     'generic_keyword' => 249,
+                    'item_highlight' => 125,
                     default => null,
                 };
 

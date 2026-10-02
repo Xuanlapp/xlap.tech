@@ -62,6 +62,7 @@
                         <span wire:loading wire:target="deleteOrphanImages">Dang xoa...</span>
                     </button>
 
+                    @if (auth()->user()?->canCreateUsers())
                     <button
                         type="button"
                         wire:click="$dispatch('openModal', { component: 'modals.admin.add-user' })"
@@ -69,6 +70,7 @@
                     >
                         Add user
                     </button>
+                    @endif
                     <button
                         type="button"
                         wire:click="$dispatch('openModal', { component: 'modals.admin.edit-glass-bounds-guide' })"
@@ -290,6 +292,7 @@
                     <h2 class="text-base font-bold text-slate-950">Danh sach user</h2>
                     <p class="mt-1 text-sm text-slate-500">{{ $users->count() }} user dang duoc quan ly.</p>
                 </div>
+                @if (auth()->user()?->canCreateUsers())
                 <button
                     type="button"
                     wire:click="$dispatch('openModal', { component: 'modals.admin.add-user' })"
@@ -297,6 +300,7 @@
                 >
                     Add user
                 </button>
+                @endif
             </div>
 
             <div class="overflow-x-auto">
@@ -317,8 +321,8 @@
                         @forelse ($users as $user)
                             <tr
                                 wire:key="user-access-{{ $user->id }}"
-                                wire:click="$dispatch('openModal', { component: 'modals.admin.edit-user', arguments: { userId: {{ $user->id }} } })"
-                                class="cursor-pointer transition hover:bg-cyan-50"
+                                @if (auth()->user()?->canEditUsers()) wire:click="$dispatch('openModal', { component: 'modals.admin.edit-user', arguments: { userId: {{ $user->id }} } })" @endif
+                                class="{{ auth()->user()?->canEditUsers() ? 'cursor-pointer' : '' }} transition hover:bg-cyan-50"
                             >
                                 <td class="px-6 py-4">
                                     <div class="flex min-w-[240px] items-center gap-3">

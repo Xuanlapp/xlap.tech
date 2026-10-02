@@ -561,7 +561,7 @@ class Index extends Component
     public function updatedPerPage(int|string $value): void
     {
         $value = (int) $value;
-        $this->perPage = in_array($value, [5, 10, 20, 50, 100], true) ? $value : 5;
+        $this->perPage = in_array($value, [5, 10, 20, 30, 50, 100], true) ? $value : 5;
         $this->resetPage();
     }
 

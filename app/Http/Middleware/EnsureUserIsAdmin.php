@@ -15,7 +15,7 @@ class EnsureUserIsAdmin
     {
         $user = $request->user();
 
-        abort_unless($user && ((bool) $user->is_admin || $user->role === 'admin'), 403);
+        abort_unless($user?->canManageUsers(), 403);
 
         return $next($request);
     }

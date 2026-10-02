@@ -161,7 +161,7 @@ class ListUser extends Component
 
     private function authorizeAdmin(): void
     {
-        abort_unless(auth()->user() && ((bool) auth()->user()->is_admin || auth()->user()->role === 'admin'), 403);
+        abort_unless(auth()->user()?->canManageUsers(), 403);
     }
     public function render(): View
     {

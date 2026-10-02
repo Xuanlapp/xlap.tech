@@ -15,10 +15,18 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'username', 'email', 'password', 'avatar_path', 'status', 'role', 'is_admin', 'can_generate_amazon_listing', 'can_generate_etsy_listing', 'can_access_wali', 'can_view_all_proxy', 'theme_mode'])]
+#[Fillable(['name', 'username', 'email', 'password', 'avatar_path', 'status', 'role', 'admin_permissions', 'is_admin', 'can_generate_amazon_listing', 'can_generate_etsy_listing', 'can_access_wali', 'can_view_all_proxy', 'theme_mode'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
+    public const ADMIN_PERMISSIONS = [
+        'manage_users' => 'Xem danh sach user',
+        'create_users' => 'Tao user moi',
+        'edit_users' => 'Chinh sua user',
+        'manage_platform_settings' => 'Quan ly cau hinh he thong',
+        'manage_api_credentials' => 'Quan ly API credentials',
+        'cleanup_files' => 'Don dep anh va file rac',
+    ];
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, SoftDeletes;
 
@@ -33,6 +41,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'role' => 'string',
+            'admin_permissions' => 'array',
             'is_admin' => 'boolean',
             'can_generate_amazon_listing' => 'boolean',
             'can_generate_etsy_listing' => 'boolean',
@@ -40,6 +49,31 @@ class User extends Authenticatable
             'can_view_all_proxy' => 'boolean',
             'theme_mode' => 'string',
         ];
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === 'super_admin';
+    }
+
+    public function hasAdminPermission(string $permission): bool
+    {
+        return $this->isSuperAdmin() || ($this->role === 'admin' && in_array($permission, $this->admin_permissions ?? [], true));
+    }
+
+    public function canManageUsers(): bool
+    {
+        return $this->hasAdminPermission('manage_users');
+    }
+
+    public function canCreateUsers(): bool
+    {
+        return $this->hasAdminPermission('create_users');
+    }
+
+    public function canEditUsers(): bool
+    {
+        return $this->hasAdminPermission('edit_users');
     }
 
     public function isManager(): bool
@@ -80,7 +114,7 @@ class User extends Authenticatable
      */
     public function canAccessProduct(string $slug): bool
     {
-        if ($this->is_admin || $this->role === 'admin') {
+        if ($this->is_admin || in_array($this->role, ['admin', 'super_admin'], true)) {
             return true;
         }
 

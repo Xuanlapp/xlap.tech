@@ -58,6 +58,7 @@ class MarketplaceExports extends Component
         'bullet_point_4',
         'bullet_point_5',
         'generic_keyword',
+        'item_highlight',
         'tags',
         'redesign',
         'redesign_candidates',
@@ -78,6 +79,20 @@ class MarketplaceExports extends Component
         'marketplace_listing_error',
     ];
 
+    private const PATTERN_BASE_FIELDS = [
+        'sku', 'sku_pattern', 'keyword', 'title', 'description', 'item_highlight',
+    ];
+
+    private const PATTERN_AMAZON_FIELDS = [
+        'bullet_point_1', 'bullet_point_2', 'bullet_point_3', 'bullet_point_4',
+        'bullet_point_5', 'generic_keyword',
+    ];
+
+    private const PATTERN_IMAGE_FIELDS = [
+        'redesign', 'mockup1', 'mockup2', 'mockup3', 'mockup4', 'mockup5',
+        'mockup6', 'mockup7', 'mockup8', 'mockup9', 'mockup10', 'mockup11',
+    ];
+
     #[Session(key: 'marketplace-export.status')]
     public string $status = 'unexported';
 
@@ -93,7 +108,7 @@ class MarketplaceExports extends Component
     #[Session(key: 'marketplace-export.per-page')]
     public int $perPage = 20;
 
-    private const PER_PAGE_OPTIONS = [5, 20, 50, 100, 200, 300, 500];
+    private const PER_PAGE_OPTIONS = [5, 10, 20, 30, 50, 100];
 
     /** @var array<int, int|string> */
     public array $selectedUnexported = [];
@@ -102,6 +117,8 @@ class MarketplaceExports extends Component
     public array $selectedExported = [];
 
     public ?string $message = null;
+
+    public ?string $patternError = null;
 
     public function updatedStatus(string $status): void
     {
@@ -179,6 +196,30 @@ class MarketplaceExports extends Component
         ]);
     }
 
+    public function exportPattern(): ?Response
+    {
+        $this->patternError = null;
+        $selectedIds = $this->selectedIds();
+
+        $assets = $this->exportableQuery()->whereKey($selectedIds->all())->orderBy('id')->get();
+        if ($error = $this->patternSelectionError($assets, $selectedIds->count())) {
+            $this->patternError = $error;
+            return null;
+        }
+
+        $groups = $assets->groupBy(fn (ProductDesignAsset $asset): string => $this->skuPatternBase((string) $asset->sku));
+        $filename = 'Pattern_'.now()->format('Ymd_His').'.csv';
+        $rows = $this->patternCsvRows($groups);
+        ProductDesignAsset::query()->whereKey($assets->pluck('id')->all())->update([
+            'marketplace_exported_at' => now(),
+            'marketplace_export_filename' => $filename,
+        ]);
+        $this->setSelectedIds([]);
+        $this->dispatch('marketplace-export-selection-cleared');
+
+        return $this->downloadCsvRows($rows, $filename);
+    }
+
     public function exportSelected(): ?Response
     {
         $selectedIds = $this->selectedIds();
@@ -232,8 +273,12 @@ class MarketplaceExports extends Component
      */
     private function downloadAmazonCsv(Collection $assets, string $filename): Response
     {
-        $rows = $this->csvRows($assets);
+        return $this->downloadCsvRows($this->csvRows($assets), $filename);
+    }
 
+    /** @param array<int, array<int, string|null>> $rows */
+    private function downloadCsvRows(array $rows, string $filename): Response
+    {
         return response()->streamDownload(function () use ($rows): void {
             $handle = fopen('php://output', 'w');
 
@@ -258,6 +303,10 @@ class MarketplaceExports extends Component
             ->paginate(in_array($this->perPage, self::PER_PAGE_OPTIONS, true) ? $this->perPage : 20);
         $visibleIds = $assets->getCollection()->pluck('id')->map(fn (int $id): string => (string) $id);
         $selectedIds = $this->selectedIds();
+        $patternSelectionError = $selectedIds->isEmpty() ? null : $this->patternSelectionError(
+            $this->exportableQuery()->whereKey($selectedIds->all())->orderBy('id')->get(),
+            $selectedIds->count(),
+        );
 
         return view('livewire.pages.marketplace.marketplace-exports', [
             'assets' => $assets,
@@ -268,6 +317,7 @@ class MarketplaceExports extends Component
             'perPageOptions' => self::PER_PAGE_OPTIONS,
             'marketplaceCounts' => $this->marketplaceCounts(),
             'selectedCount' => $selectedIds->count(),
+            'patternSelectionError' => $patternSelectionError,
             'allVisibleSelected' => $visibleIds->isNotEmpty() && $visibleIds->diff($selectedIds)->isEmpty(),
             'selectedIds' => $selectedIds->all(),
             'sheetUrl' => $this->ornamentAmazonTwoSheetUrl(),
@@ -364,18 +414,7 @@ class MarketplaceExports extends Component
                 $search = $this->normalizedSearch();
 
                 $query->where(function (Builder $query) use ($search): void {
-                    $query
-                        ->where('keyword', 'like', '%'.$this->escapeLike($search).'%')
-                        ->orWhere('title', 'like', '%'.$this->escapeLike($search).'%')
-                        ->orWhere('id', ctype_digit($search) ? (int) $search : -1);
-
-                    if (auth()->user()->is_admin || auth()->user()->isManager()) {
-                        $query->orWhereHas('user', function (Builder $query) use ($search): void {
-                            $query
-                                ->where('name', 'like', '%'.$this->escapeLike($search).'%')
-                                ->orWhere('email', 'like', '%'.$this->escapeLike($search).'%');
-                        });
-                    }
+                    $query->where('sku', 'like', '%'.$this->escapeLike($search).'%');
                 });
             });
     }
@@ -518,6 +557,77 @@ class MarketplaceExports extends Component
             ->forPage($this->getPage(), in_array($this->perPage, self::PER_PAGE_OPTIONS, true) ? $this->perPage : 20)
             ->pluck('id')
             ->map(fn (int $id): string => (string) $id);
+    }
+
+    private function skuPatternBase(string $sku): string
+    {
+        $normalized = strtoupper(trim($sku));
+        $base = preg_replace('/\d.*$/', '', $normalized);
+
+        return is_string($base) && $base !== '' ? $base : $normalized;
+    }
+
+    private function patternSelectionError(Collection $assets, int $selectedCount): ?string
+    {
+        if ($selectedCount < 2 || $assets->count() !== $selectedCount) {
+            return 'Vui lòng chọn ít nhất 2 SKU cùng nhóm để export Pattern.';
+        }
+
+        $groups = $assets->groupBy(fn (ProductDesignAsset $asset): string => $this->skuPatternBase((string) $asset->sku));
+        $incomplete = $groups->filter(fn (Collection $group): bool => $group->count() < 2);
+
+        return $incomplete->isEmpty()
+            ? null
+            : $incomplete->keys()->implode(', ').' vui lòng có ít nhất 2 sku mới được export Pattern';
+    }
+
+    /** @param Collection<string, Collection<int, ProductDesignAsset>> $groups */
+    private function patternCsvRows(Collection $groups): array
+    {
+        $assets = $groups->flatten(1);
+        $marketplaces = $assets->map(fn (ProductDesignAsset $asset): string => $this->assetMarketplace($asset))->unique();
+        $fields = array_merge(
+            self::PATTERN_BASE_FIELDS,
+            $marketplaces->contains('amazon') ? self::PATTERN_AMAZON_FIELDS : [],
+            $marketplaces->contains('etsy') ? ['tags'] : [],
+            self::PATTERN_IMAGE_FIELDS,
+        );
+        $rows = [$fields];
+
+        foreach ($groups as $group) {
+            $first = $group->first();
+            $patternSku = (string) $first->sku.'Pattern';
+            $rows[] = $this->patternRow($first, $fields, $patternSku, $patternSku);
+
+            foreach ($group as $asset) {
+                $rows[] = $this->patternRow($asset, $fields, (string) $asset->sku, $patternSku);
+            }
+        }
+
+        return $rows;
+    }
+
+    /** @param array<int, string> $fields @return array<int, string> */
+    private function patternRow(ProductDesignAsset $asset, array $fields, string $sku, string $patternSku): array
+    {
+        $marketplace = $this->assetMarketplace($asset);
+
+        return array_map(function (string $field) use ($asset, $sku, $patternSku, $marketplace): string {
+            if ($field === 'sku') {
+                return $sku;
+            }
+            if ($field === 'sku_pattern') {
+                return $patternSku;
+            }
+            if ($field === 'tags' && $marketplace !== 'etsy') {
+                return '';
+            }
+            if (in_array($field, self::PATTERN_AMAZON_FIELDS, true) && $marketplace !== 'amazon') {
+                return '';
+            }
+
+            return $this->exportValue($asset, $field);
+        }, $fields);
     }
 
     /**
@@ -824,6 +934,7 @@ class MarketplaceExports extends Component
             'item_number' => $asset->item_number,
             'keyword' => $asset->keyword,
             'title' => $asset->title,
+            'item_highlight' => $asset->item_highlight,
             'description' => $asset->description,
             'tags' => $asset->tags,
             'marketplace_listing_marketplace' => $asset->marketplace_listing_marketplace,

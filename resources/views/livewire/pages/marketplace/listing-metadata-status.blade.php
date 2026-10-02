@@ -120,8 +120,9 @@
                                 <td class="px-4 py-4 align-top">
                                     @if ($asset->title)
                                         <p class="max-w-md font-medium text-slate-950">{{ $asset->title }}</p>
+                                        <p class="mt-2 max-w-md text-xs text-slate-400">Item Highlight: {{ $asset->item_highlight ?: '-' }}</p>
                                         @if ($asset->generic_keyword)
-                                            <p class="mt-2 max-w-md text-xs text-slate-400">Generic: {{ $asset->generic_keyword }}</p>
+                                            <p class="max-w-md text-xs text-slate-400">Generic: {{ $asset->generic_keyword }}</p>
                                         @endif
                                         @if ($asset->tags)
                                             <p class="mt-2 max-w-md text-xs text-slate-400">Tags: {{ $asset->tags }}</p>
@@ -156,5 +157,6 @@
 
             {{ $assets->links('vendor.pagination.idea-etsy') }}
         </div>
+
     </div>
 </section>
