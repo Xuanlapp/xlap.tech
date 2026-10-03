@@ -105,6 +105,18 @@ class ProductDesignCard extends Component
         }
     }
 
+    public function clearPsdMockups(): void
+    {
+        try {
+            app(DecalService::class)->clearPsdMockups(auth()->user(), $this->assetId);
+            $this->dispatch('decal-product-design-updated', assetId: $this->assetId);
+            $this->dispatch('toast', type: 'success', title: 'Mockups deleted', message: 'Da xoa toan bo mockup cua item nay.');
+        } catch (RuntimeException $exception) {
+            $this->reportUserActionError($exception, 'decal.clear_psd_mockups', ['asset_id' => $this->assetId]);
+            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
+        }
+    }
+
     public function toggleApproval(): void
     {
         try {

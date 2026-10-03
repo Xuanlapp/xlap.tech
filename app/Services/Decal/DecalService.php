@@ -539,6 +539,12 @@ class DecalService
     /**
      * Toggle approval after the item has at least one Lifestyle or mockup output.
      */
+    public function clearPsdMockups(User $user, int $assetId): ProductDesignAsset
+    {
+        $asset = $this->assetForUser($user, $assetId);
+        return $this->fileCleanup->clearMockups($asset, 'decal');
+    }
+
     public function toggleApproval(User $user, int $assetId): ProductDesignAsset
     {
         $asset = $this->assetForUser($user, $assetId);

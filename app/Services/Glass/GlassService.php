@@ -739,29 +739,10 @@ class GlassService
     {
         $asset = $this->assetForUser($user, $assetId);
         $job = $this->latestLocalMockupJob($asset);
-
         if (in_array($job?->status, ['waiting', 'processing'], true)) {
             throw new RuntimeException('Mockup dang render, khong the xoa luc nay.');
         }
-
-        $paths = collect(range(1, 6))
-            ->map(fn (int $slot): mixed => $asset->getAttribute("mockup{$slot}"))
-            ->filter(fn (mixed $url): bool => is_string($url) && str_starts_with($url, '/storage/'))
-            ->map(fn (string $url): string => ltrim(substr($url, strlen('/storage/')), '/'))
-            ->values()
-            ->all();
-
-        if ($paths !== []) {
-            Storage::disk('public')->delete($paths);
-        }
-
-        $updates = [];
-        for ($slot = 1; $slot <= 6; $slot++) {
-            $updates["mockup{$slot}"] = null;
-        }
-        $asset->update($updates);
-
-        return $asset->refresh();
+        return $this->fileCleanup->clearMockups($asset, 'glass');
     }
     /**
      * Delete one Glass item owned by the user.

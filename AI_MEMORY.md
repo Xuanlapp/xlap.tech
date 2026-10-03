@@ -12007,3 +12007,10 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 - Removed `#[Reactive]` from that mutable property across Decal, Glass, Sticker, and Ornament Etsy cards/panels; provider/model props remain reactive.
 - Validation: PHP lint and Blade cache passed.
 
+
+### 2026-10-03 — Shared clear action for custom PSD mockups
+
+- Root cause: only Glass exposed a clear action and its service cleared six slots; Decal and Sticker custom mockup cards had no delete action, allowing partial/stale outputs.
+- Changed app/Services/Product/ProductDesignAssetFileCleanupService.php to clear mockup1-11, local files, and generated product folder; updated GlassService, DecalService, StickerService and their cards/views. Glass retains in-progress job protection; Decal/Sticker now expose confirmed delete buttons.
+- Ornament Etsy has no 3. Mockup Tu Chon section in its card, so it was not changed. Deploy impact: PHP/Blade only; no migration or queue impact. Validation: PHP lint, Blade cache, and diff check passed. Follow-up: test one item per page after deploy.
+

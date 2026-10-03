@@ -213,7 +213,8 @@
                         @if ($psdMockups->isNotEmpty())
                             <span class="text-[11px] font-medium text-slate-400">Scroll</span>
                         @endif
-                    </div>
+                    
+                            <button type="button" wire:click="clearPsdMockups" wire:confirm="Xoa toan bo mockup cua item nay?" wire:loading.attr="disabled" wire:target="clearPsdMockups" class="rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-bold text-rose-700 hover:bg-rose-100 disabled:opacity-60">Xoa mockup</button></div>
 
                     @if ($psdMockups->isNotEmpty())
                         <div class="min-h-0 flex-1 overflow-y-auto pr-1">

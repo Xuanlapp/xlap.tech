@@ -64,6 +64,30 @@ class ProductDesignAssetFileCleanupService
             ->all();
     }
 
+    public function clearMockups(ProductDesignAsset $asset, string $productSlug): ProductDesignAsset
+    {
+        $urls = [];
+        for ($slot = 1; $slot <= 11; $slot++) {
+            $urls[] = $asset->getAttribute("mockup{$slot}");
+        }
+
+        collect($urls)
+            ->filter(fn (mixed $url): bool => is_string($url) && str_starts_with($url, '/storage/'))
+            ->map(fn (string $url): string => ltrim(substr($url, strlen('/storage/')), '/'))
+            ->unique()
+            ->each(fn (string $path): bool => Storage::disk('public')->delete($path));
+
+        Storage::disk('public')->deleteDirectory("generated/{$productSlug}/mockups/{$asset->id}");
+
+        $updates = [];
+        for ($slot = 1; $slot <= 11; $slot++) {
+            $updates["mockup{$slot}"] = null;
+        }
+        $asset->update($updates);
+
+        return $asset->refresh();
+    }
+
     private function deleteGeneratedDirectories(ProductDesignAsset $asset, string $productSlug): int
     {
         $directories = [
