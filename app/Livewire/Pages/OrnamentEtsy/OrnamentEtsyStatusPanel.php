@@ -20,7 +20,6 @@ class OrnamentEtsyStatusPanel extends Component
 
     public int $perPage;
 
-    #[Reactive]
     public ?string $activePsdTemplateName = null;
 
     #[Reactive]

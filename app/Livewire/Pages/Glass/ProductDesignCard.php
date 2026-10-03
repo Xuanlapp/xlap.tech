@@ -25,7 +25,6 @@ class ProductDesignCard extends Component
 
     public int $mockupAutoRefreshCount = 0;
 
-    #[Reactive]
     public ?string $activePsdTemplateName = null;
 
     #[Reactive]

@@ -12001,3 +12001,9 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 - Preserved the user selector and added an accessible `aria-label`.
 - Validation: Blade cache passed.
 
+### 2026-10-03 — Fix PSD template reactive prop mutation
+
+- Root cause: `activePsdTemplateName` was marked `#[Reactive]` in product cards/status panels while PSD upload event handlers assigned a refreshed template name to it.
+- Removed `#[Reactive]` from that mutable property across Decal, Glass, Sticker, and Ornament Etsy cards/panels; provider/model props remain reactive.
+- Validation: PHP lint and Blade cache passed.
+

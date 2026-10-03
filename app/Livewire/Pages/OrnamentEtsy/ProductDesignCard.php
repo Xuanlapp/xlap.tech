@@ -22,7 +22,6 @@ class ProductDesignCard extends Component
 
     public int $assetId;
 
-    #[Reactive]
     public ?string $activePsdTemplateName = null;
 
     #[Reactive]

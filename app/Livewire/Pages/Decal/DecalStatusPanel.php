@@ -29,7 +29,6 @@ class DecalStatusPanel extends Component
     #[Reactive]
     public string $search = '';
 
-    #[Reactive]
     public ?string $activePsdTemplateName = null;
 
     #[Reactive]
