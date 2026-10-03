@@ -11975,3 +11975,29 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 - Changed files: database/migrations/2026_10_02_000005_add_mappings_to_listing_prompt_overrides.php, app/Models/ListingPromptOverride.php, app/Livewire/Pages/Admin/ListingPromptSettings.php, resources/views/livewire/pages/admin/listing-prompt-settings.blade.php, app/Services/Marketplace/MarketplaceListingMetadataService.php.
 - Deploy impact: run migration and clear caches. Queue impact: none. Output mapping is stored and displayed; applying arbitrary output target columns remains intentionally restricted pending explicit field whitelist review.
 
+
+### 2026-10-03 — Glass Amazon listing without customer-image claims
+
+- Root cause: bundled Glass prompt contained image-customization keywords, causing unsupported buyer-upload claims; prior text already requested bullet icons but lacked strong exclusions.
+- Changed app/Services/Marketplace/MarketplaceListingMetadataService.php and database/migrations/2026_10_03_000001_refresh_legacy_glass_amazon_prompt.php. Updated Glass prompt requires one suitable icon at the start of each bullet and excludes customer-image language from every output field. Migration updates only the recognizable old built-in DB prompt, leaving other custom prompts intact.
+- Deploy impact: code plus migrate; existing generated listings are unchanged until regenerated. Queue impact: new jobs use the updated DB prompt after migration; running jobs may use already-read content. Follow-up: verify Glass prompt in admin and regenerate one item before bulk run.
+- Validation: PHP lint passed for service and migration; git diff --check passed. Better Design MCP quota HTTP 402; Graphiti unavailable in available tools.
+
+### 2026-10-03 — Add All status to Marketplace Export
+
+- Added an `All` status tab alongside `Chua export` and `Da export` in Marketplace Export.
+- The All query includes both exported and unexported assets; selection is split internally so existing export actions can process the combined selection.
+- Validation: Blade cache and PHP lint passed.
+
+### 2026-10-03 — Hide Marketplace Export page-size label
+
+- Removed the visible `Items / page` label while preserving the page-size selector and pagination behavior.
+- Added an accessible label to the control.
+- Validation: Blade cache passed.
+
+### 2026-10-03 — Hide Marketplace Export admin User label
+
+- Removed the visible `User` label above the Admin/Manager owner filter.
+- Preserved the user selector and added an accessible `aria-label`.
+- Validation: Blade cache passed.
+

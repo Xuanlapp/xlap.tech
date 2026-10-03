@@ -40,16 +40,18 @@ Do not omit, rename, add, or return null for any required key. Do not return Mar
 PROMPT;
 
     private const AMAZON_GLASS_PROMPT_TEMPLATE = <<<'PROMPT'
-Act as a professional Amazon English content specialist. Create compliant, natural SEO copy for this product: Personalized Christmas Ornaments glass. Primary keyword: Personalized Family Garden Christmas Glass Ornament. Avoid prohibited terms, trademark claims, unsupported promises, and keyword stuffing.
+Act as a professional English Amazon listing writer. Write for the actual glass Christmas ornament shown by this item and its theme. Use the item's product information and idea keyword as context. Never assume the customer can provide their own image or that this ornament is made from an uploaded image.
 
-TRADEMARK AND COPYRIGHT SAFETY: Do not use or imply any third-party brand, trademark, franchise, character, celebrity, team, movie, TV show, game, song, lyric, logo, slogan, copyrighted artwork, or protected character name unless it is explicitly supplied as an authorized product fact. Do not use terms such as Disney, Marvel, Harry Potter, Barbie, NFL, Taylor Swift, or similar protected names as examples or keywords. Do not suggest affiliation, sponsorship, licensing, or official status. If a supplied keyword appears to contain a protected name or copyrighted reference, omit it and replace it with a generic descriptive phrase. Do not copy competitor wording. Before returning JSON, scan every field and remove potentially infringing references.
+PERSONALIZATION AND ACCURACY: Only describe personalization options explicitly verified for this item. If none are supplied, describe the existing design without inventing name, text, date, engraving, material finish, production method, shipping speed, or packaging. For a teacher design, describe its teacher theme; do not turn it into a different family or garden design. Do not invite the buyer to upload or submit an image. Do not include any photo-related words, image-upload claims, or picture/portrait/face claims in any output field, including generic keywords. When the supplied title or keywords imply those features, discard those terms rather than repeating them.
 
-Use these keywords in priority order when natural:
-No trademark or copyright violations.
-custom christmas ornaments 2026; personalized christmas ornaments glass; trending custom christmas ornaments; personalized xmas ornaments; customized photo ornaments for christmas; custom christmas ornaments 2026; personalized photo ornaments 2026; ornaments made from photos; custom face ornament; custom christmas ornaments; customizable christmas ornament; christmas customized ornaments; christmas ornament custom; custom christmas ornament; personalized christmas ornaments; personalized glass ornaments; personalized christmas decorations; custom tree ornaments; same day photo ornament; customize your own ornament; adornos de navidad personalizados; personalized tree ornaments; engraved christmas ornaments personalized; personalized christmas pictures; customised christmas ornament; family portrait christmas ornaments; same day photo ornaments; christmas tree ornaments custom; esfera de navidad personalizada; make your own photo ornament; amazon personalized ornaments; ornament from photo; personalized ornaments for tree
+TRADEMARK AND COPYRIGHT SAFETY: Do not use third-party brands, trademarks, franchises, characters, celebrities, teams, lyrics, protected artwork, or competitor wording. Do not imply affiliation, licensing, or sponsorship. Omit unsupported claims and prohibited terms.
+
+Use relevant keywords naturally, in priority order when accurate for this item:
+personalized christmas ornaments glass; personalized glass ornaments; personalized christmas ornaments; personalized christmas decorations; personalized tree ornaments; custom tree ornaments; personalized xmas ornaments; custom christmas ornaments 2026; christmas ornament custom
+Do not add irrelevant terms just to meet a length target. Avoid keyword stuffing and repeated words.
 
 Return ONLY valid JSON with exactly these keys: title, item_highlight, bullet_point_1, bullet_point_2, bullet_point_3, bullet_point_4, bullet_point_5, generic_keyword, description.
-Rules: title must be 70-75 characters including spaces and never exceed 75; item_highlight must be under 125 characters including spaces; each of 5 bullets must be 460-480 characters including spaces, with a suitable icon at the start; bullet 1 directly describes the glass ornament and personalization; generic_keyword must use semicolon-separated terms and stop at 230-240 characters without exceeding 240; description must be 1800-1900 characters including spaces and never exceed 2000. Keep all facts limited to the supplied product. Do not output character-count labels or extra keys.
+Rules: title must be 70-75 characters including spaces and never exceed 75; item_highlight must be under 125 characters including spaces; each of the 5 bullets must be 460-480 characters including spaces and must START with one suitable icon followed by a space. Count the icon and the space in each bullet's limit. Bullet 1 describes the actual glass ornament and only verified personalization options. Do not repeat the same icon for all five bullets. Generic_keyword uses semicolon-separated accurate terms, aims for 230-240 characters when enough relevant terms exist, and never exceeds 240. Description aims for 1800-1900 characters including spaces and never exceeds 2000. Never invent features or pad with inaccurate claims to meet a target. Do not output character-count labels or extra keys.
 PROMPT;
 
     private const AMAZON_PROMPT_TEMPLATE = <<<'PROMPT'
@@ -583,7 +585,7 @@ PROMPT;
             return $this->generator->generateText($asset->user, $prompt, true);
         }
 
-        if (! in_array($providerKey, ['v98store', 'cheapkeyai'], true)) {
+        if (! in_array($providerKey, ['cheapkeyai', 'v98store'], true)) {
             throw new RuntimeException("AI provider '{$providerKey}' khong duoc ho tro cho Listing metadata.");
         }
 

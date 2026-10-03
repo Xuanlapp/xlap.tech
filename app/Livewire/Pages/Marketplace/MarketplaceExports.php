@@ -22,7 +22,7 @@ class MarketplaceExports extends Component
 {
     use WithPagination;
 
-    private const STATUS_OPTIONS = ['unexported', 'exported'];
+    private const STATUS_OPTIONS = ['all', 'unexported', 'exported'];
 
     private const MARKETPLACE_OPTIONS = ['all', 'amazon', 'etsy'];
 
@@ -347,7 +347,9 @@ class MarketplaceExports extends Component
             ->when(
                 $this->status === 'exported',
                 fn (Builder $query) => $query->whereNotNull('marketplace_exported_at'),
-                fn (Builder $query) => $query->whereNull('marketplace_exported_at'),
+                fn (Builder $query) => $this->status === 'unexported'
+                    ? $query->whereNull('marketplace_exported_at')
+                    : $query,
             );
     }
 
@@ -357,7 +359,9 @@ class MarketplaceExports extends Component
             ->when(
                 $this->status === 'exported',
                 fn (Builder $query) => $query->whereNotNull('marketplace_exported_at'),
-                fn (Builder $query) => $query->whereNull('marketplace_exported_at'),
+                fn (Builder $query) => $this->status === 'unexported'
+                    ? $query->whereNull('marketplace_exported_at')
+                    : $query,
             );
     }
 
@@ -427,6 +431,7 @@ class MarketplaceExports extends Component
         $query = $this->readyQuery();
 
         return [
+            'all' => $query->count(),
             'unexported' => (clone $query)->whereNull('marketplace_exported_at')->count(),
             'exported' => (clone $query)->whereNotNull('marketplace_exported_at')->count(),
         ];
@@ -520,9 +525,9 @@ class MarketplaceExports extends Component
      */
     private function selectedIds(): Collection
     {
-        $ids = $this->status === 'exported'
-            ? $this->selectedExported
-            : $this->selectedUnexported;
+        $ids = $this->status === 'all'
+            ? array_merge($this->selectedUnexported, $this->selectedExported)
+            : ($this->status === 'exported' ? $this->selectedExported : $this->selectedUnexported);
 
         return collect($ids)
             ->filter(fn ($id): bool => is_numeric($id))
@@ -536,6 +541,23 @@ class MarketplaceExports extends Component
      */
     private function setSelectedIds(array $ids): void
     {
+        if ($this->status === 'all') {
+            $exportedIds = ProductDesignAsset::query()
+                ->whereKey($ids)
+                ->whereNotNull('marketplace_exported_at')
+                ->pluck('id')
+                ->map(fn (int $id): string => (string) $id)
+                ->all();
+
+            $this->selectedExported = $exportedIds;
+            $this->selectedUnexported = array_values(array_diff(
+                array_map('strval', $ids),
+                $exportedIds,
+            ));
+
+            return;
+        }
+
         if ($this->status === 'exported') {
             $this->selectedExported = $ids;
 

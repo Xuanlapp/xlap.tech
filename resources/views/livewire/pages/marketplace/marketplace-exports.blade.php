@@ -74,6 +74,14 @@
                     <div class="inline-flex w-full rounded-md border border-slate-200 bg-slate-100 p-1 lg:w-auto">
                         <button
                             type="button"
+                            wire:click="$set('status', 'all')"
+                            class="flex-1 rounded px-4 py-2 text-sm font-semibold transition lg:flex-none {{ $status === 'all' ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-500 hover:text-slate-800' }}"
+                        >
+                            All
+                            <span class="ml-2 rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-700">{{ $statusCounts['all'] ?? 0 }}</span>
+                        </button>
+                        <button
+                            type="button"
                             wire:click="$set('status', 'unexported')"
                             class="flex-1 rounded px-4 py-2 text-sm font-semibold transition lg:flex-none {{ $status === 'unexported' ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-500 hover:text-slate-800' }}"
                         >
@@ -121,8 +129,7 @@
                     </label>
                     @if ($currentUser->is_admin || $currentUser->isManager())
                         <label class="block w-full sm:w-72">
-                            <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">User</span>
-                            <select wire:model.live="selectedOwnerUserId" class="h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-950">
+                            <select wire:model.live="selectedOwnerUserId" aria-label="Filter by user" class="h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-950">
                                 <option value="all">Tat ca user</option>
                                 @foreach ($userOptions as $userOption)
                                     <option value="{{ $userOption->id }}">{{ $userOption->name }} (#{{ $userOption->id }}) - {{ $userOption->email }}</option>
@@ -130,8 +137,7 @@
                             </select>
                         </label>
                     @endif
-                    <label class="block w-full sm:w-36">
-                        <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Items / page</span>
+                    <label class="block w-full sm:w-36" aria-label="Items per page">
                         <select wire:model.live="perPage" class="h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-950">
                             @foreach ($perPageOptions as $option)
                                 <option value="{{ $option }}">{{ $option }}</option>
@@ -231,8 +237,11 @@
                                     title="{{ $canExportAsset ? '' : 'Manager chi duoc export item cua minh' }}"
                                     @if ($status === 'exported')
                                         wire:model.live="selectedExported"
-                                    @else
+                                    @elseif ($status === 'unexported')
                                         wire:model.live="selectedUnexported"
+                                    @else
+                                        wire:click="toggleAssetSelection({{ $asset->id }})"
+                                        @checked(in_array((string) $asset->id, $selectedIds, true))
                                     @endif
                                     class="h-4 w-4 rounded border-slate-400 text-indigo-600 focus:ring-indigo-500"
                                 >
@@ -295,7 +304,7 @@
         @if ($selectedCount > 0)
             <div class="border-t border-slate-200 bg-white px-5 py-3">
                 <span class="inline-flex rounded-full bg-indigo-100 px-3 py-1 text-xs font-bold text-indigo-700">
-                    Da chon {{ $selectedCount }} item {{ $status === 'exported' ? 'da export' : 'chua export' }}
+                    Da chon {{ $selectedCount }} item {{ $status === 'exported' ? 'da export' : ($status === 'unexported' ? 'chua export' : '') }}
                 </span>
             </div>
         @endif
