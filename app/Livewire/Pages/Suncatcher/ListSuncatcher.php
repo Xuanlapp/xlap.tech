@@ -36,7 +36,7 @@ class ListSuncatcher extends Component
 
     public function mount(): void
     {
-        $this->activeStatus = in_array($this->activeStatus, ['all', 'unapproved', 'approved'], true) ? $this->activeStatus : 'all';
+        $this->activeStatus = in_array($this->activeStatus, ['all', 'unapproved', 'approved', 'no_mockup'], true) ? $this->activeStatus : 'all';
         $this->selectedAiProvider = $this->validProviderKey($this->selectedAiProvider);
         $this->syncSelectedModels();
     }
@@ -44,7 +44,7 @@ class ListSuncatcher extends Component
     #[On('suncatcher-active-status-changed')]
     public function setActiveStatus(string $status): void
     {
-        if (! in_array($status, ['all', 'unapproved', 'approved'], true)) {
+        if (! in_array($status, ['all', 'unapproved', 'approved', 'no_mockup'], true)) {
             return;
         }
 

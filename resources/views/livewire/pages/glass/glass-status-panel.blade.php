@@ -1,7 +1,7 @@
 <div>
-    <div class="glass-status-toolbar mb-4 flex flex-col gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
+    <div class="glass-status-toolbar mb-4 flex flex-col gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:border-slate-700 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
         <div class="flex min-w-0 flex-wrap items-center gap-2">
-            <div class="flex min-w-0 gap-1 overflow-x-auto" role="tablist" aria-label="Loc glass theo trang thai">
+            <div class="flex min-w-0 gap-1 overflow-x-auto" role="tablist" aria-label="Loc item theo trang thai">
             @foreach ([
                 'all' => 'Tat ca',
                 'unapproved' => 'Chua duyet',
@@ -96,8 +96,8 @@
                 :key="'glass-'.$status.'-product-design-card-'.$asset->id"
             />
         @empty
-            <div class="rounded-lg border border-dashed border-slate-300 bg-white p-12 dark:border-slate-700 dark:bg-slate-900 text-center shadow-sm">
-                <p class="text-base font-bold text-slate-800">Khong co item trong tab nay</p>
+            <div class="rounded-lg border border-dashed border-slate-300 bg-white p-12 dark:border-slate-700 dark:bg-slate-900 dark:border-slate-700 dark:bg-slate-900 text-center shadow-sm">
+                <p class="text-base font-bold text-slate-800 dark:text-slate-100">Khong co item trong tab nay</p>
             </div>
         @endforelse
 

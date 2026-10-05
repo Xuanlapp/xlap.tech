@@ -7,7 +7,7 @@
     )
         wire:poll.10s="refreshWhenUpdated"
     @endif
-    class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/[0.02]"
+    class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/[0.02] dark:border-slate-700 dark:bg-slate-900 dark:ring-white/[0.03]"
 >
     @php
         $automationStatus = strtolower(trim((string) ($automation?->workflow_status ?? '')));

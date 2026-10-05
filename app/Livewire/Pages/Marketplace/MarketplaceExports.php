@@ -201,13 +201,15 @@ class MarketplaceExports extends Component
         $this->patternError = null;
         $selectedIds = $this->selectedIds();
 
-        $assets = $this->exportableQuery()->whereKey($selectedIds->all())->orderBy('id')->get();
+        $assets = $this->exportableQuery()->whereKey($selectedIds->all())->get()
+            ->sortBy(fn (ProductDesignAsset $asset): int => $selectedIds->search((string) $asset->id))
+            ->values();
         if ($error = $this->patternSelectionError($assets, $selectedIds->count())) {
             $this->patternError = $error;
             return null;
         }
 
-        $groups = $assets->groupBy(fn (ProductDesignAsset $asset): string => $this->skuPatternBase((string) $asset->sku));
+        $groups = collect(['selected' => $assets]);
         $filename = 'Pattern_'.now()->format('Ymd_His').'.csv';
         $rows = $this->patternCsvRows($groups);
         ProductDesignAsset::query()->whereKey($assets->pluck('id')->all())->update([
@@ -592,15 +594,10 @@ class MarketplaceExports extends Component
     private function patternSelectionError(Collection $assets, int $selectedCount): ?string
     {
         if ($selectedCount < 2 || $assets->count() !== $selectedCount) {
-            return 'Vui lòng chọn ít nhất 2 SKU cùng nhóm để export Pattern.';
+            return 'Vui lòng chọn ít nhất 2 item hợp lệ để export Pattern.';
         }
 
-        $groups = $assets->groupBy(fn (ProductDesignAsset $asset): string => $this->skuPatternBase((string) $asset->sku));
-        $incomplete = $groups->filter(fn (Collection $group): bool => $group->count() < 2);
-
-        return $incomplete->isEmpty()
-            ? null
-            : $incomplete->keys()->implode(', ').' vui lòng có ít nhất 2 sku mới được export Pattern';
+        return null;
     }
 
     /** @param Collection<string, Collection<int, ProductDesignAsset>> $groups */

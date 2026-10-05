@@ -71,9 +71,9 @@ new class extends Component
 }; ?>
 
 @php
-    $navItemClass = 'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition';
-    $activeClass = 'bg-blue-600 text-white shadow-lg shadow-blue-600/18';
-    $inactiveClass = 'text-slate-600 hover:bg-slate-100 hover:text-slate-950';
+    $navItemClass = 'group flex items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 text-sm font-semibold transition';
+    $activeClass = 'border-blue-500/30 bg-blue-600 text-white shadow-lg shadow-blue-600/18';
+    $inactiveClass = 'text-slate-600 hover:border-slate-200 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:border-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-100';
     $iconClass = 'h-5 w-5 shrink-0';
     $isAdminUser = auth()->user()?->role === 'admin' || (bool) auth()->user()?->is_admin;
     $isWaliUser = (bool) (auth()->user()?->can_access_wali) && ! $isAdminUser && ! auth()->user()?->isManager();
@@ -96,11 +96,11 @@ new class extends Component
 @endphp
 
 <div class="pt-[4.75rem]" x-data="{ sidebarOpen: false, userMenuOpen: false, isDark: document.documentElement.dataset.themeMode === 'dark' || localStorage.getItem('offorest.theme') === 'dark', scrolled: window.scrollY > 70 }" @scroll.window="scrolled = window.scrollY > 70" x-init="document.documentElement.classList.toggle('theme-dark', isDark); document.documentElement.classList.toggle('theme-light', !isDark); document.documentElement.classList.toggle('dark', isDark); document.documentElement.dataset.themeMode = isDark ? 'dark' : 'light'" x-on:keydown.escape.window="sidebarOpen = false; userMenuOpen = false">
-    <div class="fixed left-3 right-3 top-1 z-50 border-b border-slate-200 bg-gray-100 px-3 py-2 text-slate-950">
-        <div class="relative flex h-11 items-center rounded-xl border border-slate-300 bg-white px-2 shadow-sm">
+    <div class="fixed left-3 right-3 top-1 z-50 border-b border-slate-200 bg-gray-100 px-3 py-2 text-slate-950 dark:border-white/10 dark:bg-[#181b21] dark:text-slate-100">
+        <div class="relative flex h-11 items-center rounded-xl border border-slate-300 bg-white px-2 shadow-sm dark:border-white/10 dark:bg-[#181b21]">
         <button
             type="button"
-            class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus:outline-none"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus:outline-none dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100"
             x-on:click="sidebarOpen = true"
             aria-label="Open navigation"
         >
@@ -114,10 +114,10 @@ new class extends Component
         <a
             href="{{ route('dashboard') }}"
             wire:navigate
-            class="absolute top-1/2 z-10 flex -translate-y-1/2 items-center gap-2 whitespace-nowrap transition-all duration-500 ease-in-out focus:outline-none"
+            class="absolute top-1/2 z-10 flex -translate-y-1/2 items-center gap-2 whitespace-nowrap text-slate-900 transition-all duration-500 ease-in-out focus:outline-none dark:text-slate-100"
             :class="scrolled ? 'left-1/2 -translate-x-1/2' : 'left-12 translate-x-0'"
         >
-            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 shadow-sm">
+            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 shadow-sm dark:bg-slate-800">
                 <x-application-logo class="h-6 w-6" />
             </span>
             <span class="text-sm font-semibold">Offorest</span>
@@ -125,7 +125,7 @@ new class extends Component
 
 <button
             type="button"
-            class="ml-auto flex h-9 w-9 items-center justify-center rounded-full border border-slate-200/80 bg-white/90 text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white hover:text-slate-950 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:border-white/20 dark:hover:bg-white/10"
+            class="ml-auto flex h-9 w-9 items-center justify-center rounded-full border border-slate-200/80 bg-white/90 text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-100"
             x-on:click="isDark = !isDark; localStorage.setItem('offorest.theme', isDark ? 'dark' : 'light'); document.documentElement.dataset.themeMode = isDark ? 'dark' : 'light'; document.documentElement.classList.toggle('theme-dark', isDark); document.documentElement.classList.toggle('theme-light', !isDark); document.documentElement.classList.toggle('dark', isDark); $wire.setThemeMode(isDark ? 'dark' : 'light')"
             aria-label="Toggle theme"
         >
@@ -166,9 +166,9 @@ new class extends Component
             x-cloak
             x-transition.origin.top.right
             x-on:click.outside="userMenuOpen = false"
-            class="absolute right-3 top-[4.25rem] z-50 w-72 overflow-hidden rounded-3xl border border-slate-200 bg-white p-2 shadow-2xl shadow-slate-400/40"
+            class="absolute right-3 top-[4.25rem] z-50 w-72 overflow-hidden rounded-3xl border border-slate-200 bg-white p-2 shadow-2xl shadow-slate-400/40 dark:border-slate-700 dark:bg-slate-900 dark:shadow-black/40"
         >
-            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3 shadow-sm">
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3 shadow-sm dark:border-slate-700 dark:bg-slate-800">
                 <div class="flex items-center gap-3">
                     <span class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl {{ $avatarClass }} text-base font-extrabold text-black shadow-sm ring-1 ring-white">
                         @if (auth()->user()->avatar_path)
@@ -178,7 +178,7 @@ new class extends Component
                         @endif
                     </span>
                     <span class="min-w-0">
-                        <span class="block truncate text-sm font-extrabold text-slate-950">{{ auth()->user()->name }}</span>
+                        <span class="block truncate text-sm font-extrabold text-slate-950 dark:text-slate-100">{{ auth()->user()->name }}</span>
                         <span class="mt-0.5 block truncate text-xs font-medium text-slate-500">{{ auth()->user()->email }}</span>
                     </span>
                 </div>
@@ -190,7 +190,7 @@ new class extends Component
                 </div>
             </div>
             <div class="mt-2 space-y-1 ">
-                <a href="{{ route('profile') }}" wire:navigate x-on:click="userMenuOpen = false" class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950 focus:outline-none">
+                <a href="{{ route('profile') }}" wire:navigate x-on:click="userMenuOpen = false" class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-100">
                     <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
                         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
                             <path d="M20 21a8 8 0 0 0-16 0" />
@@ -202,7 +202,7 @@ new class extends Component
                         <path d="m9 18 6-6-6-6" />
                     </svg>
                 </a>
-                <button type="button" wire:click="logout" class="flex w-full items-center gap-3 rounded-2xl border border-red-100 bg-white px-3 py-2.5 text-left text-sm font-bold text-red-600 shadow-sm transition hover:border-red-200 hover:bg-red-50 focus:outline-none">
+                <button type="button" wire:click="logout" class="flex w-full items-center gap-3 rounded-2xl border border-red-100 bg-white px-3 py-2.5 text-left text-sm font-bold text-red-600 shadow-sm transition hover:border-red-200 hover:bg-red-50 focus:outline-none dark:border-red-400/30 dark:bg-slate-800 dark:hover:bg-red-500/15">
                     <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-red-50 text-red-600">
                         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
                             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -216,8 +216,8 @@ new class extends Component
         </div>
     </div>
 
-    <aside class="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-slate-300 bg-gray-200 p-3">
-        <div class="flex h-full flex-col overflow-hidden rounded-3xl border border-slate-300 bg-white shadow-xl shadow-slate-300/70 ring-1 ring-slate-950/5">
+    <aside class="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-slate-300 bg-gray-200 p-3 dark:border-white/10 dark:bg-[#111317]">
+        <div class="flex h-full flex-col overflow-hidden rounded-3xl border border-slate-300 bg-white shadow-xl shadow-slate-300/70 ring-1 ring-slate-950/5 dark:border-white/10 dark:bg-[#181b21] dark:shadow-black/30">
             <div class="flex h-20 items-center gap-3 border-b border-slate-200 px-4">
                 <a href="{{ route('dashboard') }}" wire:navigate class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-950 shadow-sm">
                     <x-application-logo class="h-8 w-8" />
@@ -250,7 +250,7 @@ new class extends Component
                                 wire:navigate
                                 class="{{ $navItemClass }} {{ $isActive ? $activeClass : $inactiveClass }}"
                             >
-                                <svg class="{{ $iconClass }} {{ $isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                                <svg class="{{ $iconClass }} {{ $isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
                                     @if ($product->slug === 'redesign')
                                         <path d="M12 20h9" />
                                         <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
@@ -281,14 +281,14 @@ new class extends Component
                             @php($productRouteSlug = $product->slug === 'ornament' ? 'suncatcher' : $product->slug)
                             @php($isActive = request()->routeIs('offorest.products.'.$productRouteSlug))
                             <a href="{{ route('offorest.products.'.$productRouteSlug) }}" wire:navigate class="{{ $navItemClass }} {{ $isActive ? $activeClass : $inactiveClass }}">
-                                <svg class="{{ $iconClass }} {{ $isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                                <svg class="{{ $iconClass }} {{ $isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
                                     <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" />
                                 </svg>
                                 <span class="truncate">{{ $product->display_name }}</span>
                             </a>
                         @endforeach
                         <a href="{{ route('offorest.order') }}" wire:navigate class="{{ $navItemClass }} {{ request()->routeIs('offorest.order') ? $activeClass : $inactiveClass }}">
-                            <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.order') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                            <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.order') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
                                 <path d="M4 5h16v14H4z" /><path d="M8 9h8" /><path d="M8 13h5" /><path d="m15 16 2 2 3-3" />
                             </svg>
                             <span>Order</span>
@@ -299,7 +299,7 @@ new class extends Component
                     <p class="px-3 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">DATA</p>
                     <div class="mt-2 space-y-1">
                         <a href="{{ route('offorest.listing-metadata') }}" wire:navigate class="{{ $navItemClass }} {{ request()->routeIs('offorest.listing-metadata') ? $activeClass : $inactiveClass }}">
-                            <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.listing-metadata') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                            <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.listing-metadata') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
                                 <path d="M4 5h16" />
                                 <path d="M4 12h10" />
                                 <path d="M4 19h7" />
@@ -308,7 +308,7 @@ new class extends Component
                             <span>Listing</span>
                         </a>
                         <a href="{{ route('offorest.suncatcher.catalog') }}" class="{{ $navItemClass }} {{ request()->routeIs('offorest.suncatcher.catalog') ? $activeClass : $inactiveClass }}">
-                            <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.suncatcher.catalog') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                            <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.suncatcher.catalog') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
                                 <path d="M4 5h16" />
                                 <path d="M4 10h16" />
                                 <path d="M4 15h10" />
@@ -317,7 +317,7 @@ new class extends Component
                             <span>Suncatcher Catalog</span>
                         </a>
                         <a href="{{ route('offorest.drive-uploads') }}" wire:navigate class="{{ $navItemClass }} {{ request()->routeIs('offorest.drive-uploads') ? $activeClass : $inactiveClass }}">
-                            <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.drive-uploads') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                            <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.drive-uploads') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
                                 <path d="M12 3v12" />
                                 <path d="m7 8 5-5 5 5" />
                                 <path d="M5 15v4h14v-4" />
@@ -325,7 +325,7 @@ new class extends Component
                             <span>Uploads</span>
                         </a>
                         <a href="{{ route('offorest.exports') }}" wire:navigate class="{{ $navItemClass }} {{ request()->routeIs('offorest.exports') ? $activeClass : $inactiveClass }}">
-                            <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.exports') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                            <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.exports') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
                                 <path d="M4 4h16v16H4z" />
                                 <path d="M8 9h8" />
                                 <path d="M8 13h8" />
@@ -342,7 +342,7 @@ new class extends Component
                         <p class="px-3 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Finance</p>
                         <div class="mt-2 space-y-1">
                             <a href="{{ route('offorest.financial-management') }}" wire:navigate class="{{ $navItemClass }} {{ request()->routeIs('offorest.financial-management') ? $activeClass : $inactiveClass }}">
-                                <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.financial-management') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 3v18h18"/><path d="m7 14 3-3 3 2 5-6"/></svg>
+                                <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.financial-management') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 3v18h18"/><path d="m7 14 3-3 3 2 5-6"/></svg>
                                 <span>Financial Management</span>
                             </a>
                         </div>
@@ -351,7 +351,7 @@ new class extends Component
                 @if ($canAccessAccountFinancial && ! $isAdminUser)
                     <div class="mt-6">
                         <p class="px-3 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Account</p>
-                        <div class="mt-2 space-y-1"><a href="{{ route('offorest.account-manager.notes') }}" wire:navigate class="{{ $navItemClass }} {{ request()->routeIs('offorest.account-manager.*') ? $activeClass : $inactiveClass }}"><svg class="{{ $iconClass }} {{ request()->routeIs('offorest.account-manager.*') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 4h12l4 4v12H4z"/><path d="M16 4v5h5"/><path d="M8 14h8"/></svg><span>Financial Management</span></a></div>
+                        <div class="mt-2 space-y-1"><a href="{{ route('offorest.account-manager.notes') }}" wire:navigate class="{{ $navItemClass }} {{ request()->routeIs('offorest.account-manager.*') ? $activeClass : $inactiveClass }}"><svg class="{{ $iconClass }} {{ request()->routeIs('offorest.account-manager.*') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 4h12l4 4v12H4z"/><path d="M16 4v5h5"/><path d="M8 14h8"/></svg><span>Financial Management</span></a></div>
                     </div>
                 @endif
                 @if ($canAccessWali)
@@ -359,7 +359,7 @@ new class extends Component
                     <p class="px-3 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Salary</p>
                     <div class="mt-2 space-y-1">
                         <a href="{{ route('offorest.salary.wali') }}" wire:navigate class="{{ $navItemClass }} {{ request()->routeIs('offorest.salary.wali') ? $activeClass : $inactiveClass }}">
-                            <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.salary.wali') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                            <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.salary.wali') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
                                 <path d="M4 19V5" />
                                 <path d="M4 19h16" />
                                 <path d="M8 16V10" />
@@ -377,7 +377,7 @@ new class extends Component
                         <p class="px-3 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Admin</p>
                         <div class="mt-2 space-y-1">
                             <a href="{{ route('offorest.admin.users') }}" wire:navigate class="{{ $navItemClass }} {{ request()->routeIs('offorest.admin.users') ? $activeClass : $inactiveClass }}">
-                                <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.admin.users') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                                <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.admin.users') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
                                     <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
                                     <circle cx="9" cy="7" r="4" />
                                     <path d="M19 8v6" />
@@ -386,7 +386,7 @@ new class extends Component
                                 <span>Users</span>
                             </a>
                             <a href="{{ route('offorest.account-manager.notes') }}" wire:navigate class="{{ $navItemClass }} {{ request()->routeIs('offorest.account-manager.*') ? $activeClass : $inactiveClass }}">
-                                <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.account-manager.*') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                                <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.account-manager.*') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
                                     <path d="M5 4h10l4 4v12H5z" />
                                     <path d="M15 4v5h5" />
                                     <path d="M8 13h8" />
@@ -395,7 +395,7 @@ new class extends Component
                                 <span>Account Notes</span>
                             </a>
                             <a href="{{ route('offorest.admin.logs') }}" wire:navigate class="{{ $navItemClass }} {{ request()->routeIs('offorest.admin.logs') ? $activeClass : $inactiveClass }}">
-                                <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.admin.logs') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                                <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.admin.logs') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
                                     <path d="M4 5h16" />
                                     <path d="M4 12h16" />
                                     <path d="M4 19h10" />
@@ -403,7 +403,7 @@ new class extends Component
                                 <span>Logs</span>
                             </a>
                             <a href="{{ route('offorest.admin.api-credits') }}" wire:navigate class="{{ $navItemClass }} {{ request()->routeIs('offorest.admin.api-credits') ? $activeClass : $inactiveClass }}">
-                                <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.admin.api-credits') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                                <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.admin.api-credits') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
                                     <path d="M4 7h16" />
                                     <path d="M4 17h16" />
                                     <path d="M7 4v6" />
@@ -412,13 +412,13 @@ new class extends Component
                                 <span>API Credits</span>
                             </a>
                             <a href="{{ route('offorest.admin.financial-management') }}" wire:navigate class="{{ $navItemClass }} {{ request()->routeIs('offorest.admin.financial-management') ? $activeClass : $inactiveClass }}">
-                                <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.admin.financial-management') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                                <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.admin.financial-management') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
                                     <path d="M3 3v18h18" />
                                     <path d="m7 14 3-3 3 2 5-6" />
                                 </svg>
                                 <span>Financial Management</span>
                             </a>                            <a href="{{ route('offorest.admin.mail-test') }}" wire:navigate class="{{ $navItemClass }} {{ request()->routeIs('offorest.admin.mail-test') ? $activeClass : $inactiveClass }}">
-                                <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.admin.mail-test') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                                <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.admin.mail-test') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
                                     <path d="M4 6h16v12H4z" />
                                     <path d="m4 7 8 6 8-6" />
                                 </svg>
@@ -479,7 +479,7 @@ new class extends Component
                         <div class="mt-3 space-y-3">
                             @foreach ($pageProducts as $product)
                                 @php($productRouteSlug = $product->slug === 'ornament' ? 'suncatcher' : $product->slug)
-                                <a href="{{ route('offorest.products.'.$productRouteSlug) }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">
+                                <a href="{{ route('offorest.products.'.$productRouteSlug) }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md px-2 py-1 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100">
                                     <span>{{ $product->display_name }}</span>
                                 </a>
                             @endforeach
@@ -492,20 +492,20 @@ new class extends Component
                         <div class="mt-3 space-y-3">
                             @foreach ($supportProducts as $product)
                                 @php($productRouteSlug = $product->slug === 'ornament' ? 'suncatcher' : $product->slug)
-                                <a href="{{ route('offorest.products.'.$productRouteSlug) }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">
+                                <a href="{{ route('offorest.products.'.$productRouteSlug) }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md px-2 py-1 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100">
                                     <span>{{ $product->display_name }}</span>
                                 </a>
                             @endforeach
-                            <a href="{{ route('offorest.order') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Order</a>
+                            <a href="{{ route('offorest.order') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md px-2 py-1 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100">Order</a>
                         </div>
                     </div>
                     <div class="mt-6 border-t border-slate-200 pt-3">
                         <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">DATA</p>
                         <div class="mt-3 space-y-3">
-                            <a href="{{ route('offorest.listing-metadata') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Listing</a>
-                            <a href="{{ route('offorest.suncatcher.catalog') }}" x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Suncatcher Catalog</a>
-                            <a href="{{ route('offorest.drive-uploads') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Uploads</a>
-                            <a href="{{ route('offorest.exports') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Export</a>
+                            <a href="{{ route('offorest.listing-metadata') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md px-2 py-1 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100">Listing</a>
+                            <a href="{{ route('offorest.suncatcher.catalog') }}" x-on:click="sidebarOpen = false" class="block rounded-md px-2 py-1 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100">Suncatcher Catalog</a>
+                            <a href="{{ route('offorest.drive-uploads') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md px-2 py-1 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100">Uploads</a>
+                            <a href="{{ route('offorest.exports') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md px-2 py-1 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100">Export</a>
                         </div>
                     </div>
                     @endif
@@ -514,7 +514,7 @@ new class extends Component
                         <p class="px-3 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Finance</p>
                         <div class="mt-2 space-y-1">
                             <a href="{{ route('offorest.financial-management') }}" wire:navigate class="{{ $navItemClass }} {{ request()->routeIs('offorest.financial-management') ? $activeClass : $inactiveClass }}">
-                                <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.financial-management') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 3v18h18"/><path d="m7 14 3-3 3 2 5-6"/></svg>
+                                <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.financial-management') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 3v18h18"/><path d="m7 14 3-3 3 2 5-6"/></svg>
                                 <span>Financial Management</span>
                             </a>
                             @if (auth()->user()->isSuperAdmin())
@@ -527,13 +527,13 @@ new class extends Component
                     </div>
                 @endif
                 @if ($canAccessAccountFinancial && ! $isAdminUser)
-                    <div class="mt-6 border-t border-slate-200 pt-3"><p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Account</p><div class="mt-3 space-y-3"><a href="{{ route('offorest.account-manager.notes') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Financial Management</a></div></div>
+                    <div class="mt-6 border-t border-slate-200 pt-3"><p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Account</p><div class="mt-3 space-y-3"><a href="{{ route('offorest.account-manager.notes') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md px-2 py-1 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100">Financial Management</a></div></div>
                 @endif
                 @if ($canAccessWali)
                     <div class="mt-6 border-t border-slate-200 pt-3">
                         <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Salary</p>
                         <div class="mt-3 space-y-3">
-                            <a href="{{ route('offorest.salary.wali') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Wali</a>
+                            <a href="{{ route('offorest.salary.wali') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md px-2 py-1 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100">Wali</a>
                         </div>
                     </div>
                     @endif
@@ -541,15 +541,15 @@ new class extends Component
                         <div class="mt-6 border-t border-slate-200 pt-3">
                             <p class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Admin</p>
                             <div class="mt-3 space-y-3">
-                                <a href="{{ route('offorest.admin.users') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Users</a>
-                                <a href="{{ route('offorest.account-manager.notes') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Account Notes</a>
-                                <a href="{{ route('offorest.admin.logs') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Logs</a>
+                                <a href="{{ route('offorest.admin.users') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md px-2 py-1 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100">Users</a>
+                                <a href="{{ route('offorest.account-manager.notes') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md px-2 py-1 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100">Account Notes</a>
+                                <a href="{{ route('offorest.admin.logs') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md px-2 py-1 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100">Logs</a>
                                 @if (auth()->user()->isSuperAdmin())
-                                    <a href="{{ route('offorest.admin.listing-prompts') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Listing Prompts</a>
+                                    <a href="{{ route('offorest.admin.listing-prompts') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md px-2 py-1 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100">Listing Prompts</a>
                                 @endif
-                                <a href="{{ route('offorest.admin.api-credits') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">API Credits</a>
-                                <a href="{{ route('offorest.admin.financial-management') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Financial Management</a>
-                                <a href="{{ route('offorest.admin.mail-test') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md py-1 text-sm font-semibold text-slate-700 transition hover:text-slate-950">Mail Test</a>
+                                <a href="{{ route('offorest.admin.api-credits') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md px-2 py-1 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100">API Credits</a>
+                                <a href="{{ route('offorest.admin.financial-management') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md px-2 py-1 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100">Financial Management</a>
+                                <a href="{{ route('offorest.admin.mail-test') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md px-2 py-1 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100">Mail Test</a>
                             </div>
                         </div>
                     @endif

@@ -69,44 +69,44 @@
                 </div>
             </div>
 
-            <div class="flex flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
-                <div class="flex flex-col gap-3 xl:flex-row xl:items-center">
-                    <div class="inline-flex w-full rounded-md border border-slate-200 bg-slate-100 p-1 lg:w-auto">
+            <div class="flex min-w-0 flex-col gap-4 overflow-hidden px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+                <div class="flex min-w-0 flex-col gap-3 xl:flex-row xl:items-center">
+                    <div class="flex min-w-0 max-w-full flex-wrap rounded-md border border-slate-200 bg-slate-100 p-1 dark:border-slate-700 dark:bg-slate-800 lg:w-auto">
                         <button
                             type="button"
                             wire:click="$set('status', 'all')"
-                            class="flex-1 rounded px-4 py-2 text-sm font-semibold transition lg:flex-none {{ $status === 'all' ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-500 hover:text-slate-800' }}"
+                            class="min-w-0 flex-1 whitespace-nowrap rounded px-3 py-2 text-sm font-semibold transition dark:text-slate-200 dark:hover:text-white lg:flex-none {{ $status === 'all' ? 'bg-white text-slate-950 shadow-sm dark:bg-slate-700 dark:text-white' : 'text-slate-500 hover:text-slate-800' }}"
                         >
                             All
-                            <span class="ml-2 rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-700">{{ $statusCounts['all'] ?? 0 }}</span>
+                            <span class="ml-1 rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-700 dark:bg-slate-600 dark:text-slate-100">{{ $statusCounts['all'] ?? 0 }}</span>
                         </button>
                         <button
                             type="button"
                             wire:click="$set('status', 'unexported')"
-                            class="flex-1 rounded px-4 py-2 text-sm font-semibold transition lg:flex-none {{ $status === 'unexported' ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-500 hover:text-slate-800' }}"
+                            class="min-w-0 flex-1 whitespace-nowrap rounded px-3 py-2 text-sm font-semibold transition dark:text-slate-200 dark:hover:text-white lg:flex-none {{ $status === 'unexported' ? 'bg-white text-slate-950 shadow-sm dark:bg-slate-700 dark:text-white' : 'text-slate-500 hover:text-slate-800' }}"
                         >
                             Chua export
-                            <span class="ml-2 rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-700">{{ $statusCounts['unexported'] ?? 0 }}</span>
+                            <span class="ml-1 rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-700 dark:bg-slate-600 dark:text-slate-100">{{ $statusCounts['unexported'] ?? 0 }}</span>
                         </button>
                         <button
                             type="button"
                             wire:click="$set('status', 'exported')"
-                            class="flex-1 rounded px-4 py-2 text-sm font-semibold transition lg:flex-none {{ $status === 'exported' ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-500 hover:text-slate-800' }}"
+                            class="min-w-0 flex-1 whitespace-nowrap rounded px-3 py-2 text-sm font-semibold transition dark:text-slate-200 dark:hover:text-white lg:flex-none {{ $status === 'exported' ? 'bg-white text-slate-950 shadow-sm dark:bg-slate-700 dark:text-white' : 'text-slate-500 hover:text-slate-800' }}"
                         >
                             Da export
-                            <span class="ml-2 rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-700">{{ $statusCounts['exported'] ?? 0 }}</span>
+                            <span class="ml-1 rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-700 dark:bg-slate-600 dark:text-slate-100">{{ $statusCounts['exported'] ?? 0 }}</span>
                         </button>
                     </div>
 
-                    <div class="inline-flex w-full rounded-md border border-slate-200 bg-slate-100 p-1 lg:w-auto">
+                    <div class="flex min-w-0 max-w-full flex-wrap rounded-md border border-slate-200 bg-slate-100 p-1 dark:border-slate-700 dark:bg-slate-800 lg:w-auto">
                         @foreach (['all' => 'All', 'amazon' => 'Amazon', 'etsy' => 'Etsy'] as $marketplaceOption => $marketplaceLabel)
                             <button
                                 type="button"
                                 wire:click="$set('marketplace', '{{ $marketplaceOption }}')"
-                                class="flex-1 rounded px-4 py-2 text-sm font-semibold transition lg:flex-none {{ $marketplace === $marketplaceOption ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-500 hover:text-slate-800' }}"
+                                class="min-w-0 flex-1 whitespace-nowrap rounded px-3 py-2 text-sm font-semibold transition dark:text-slate-200 dark:hover:text-white lg:flex-none {{ $marketplace === $marketplaceOption ? 'bg-white text-slate-950 shadow-sm dark:bg-slate-700 dark:text-white' : 'text-slate-500 hover:text-slate-800' }}"
                             >
                                 {{ $marketplaceLabel }}
-                                <span class="ml-2 rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-700">{{ $marketplaceCounts[$marketplaceOption] ?? 0 }}</span>
+                                <span class="ml-1 rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-700 dark:bg-slate-600 dark:text-slate-100">{{ $marketplaceCounts[$marketplaceOption] ?? 0 }}</span>
                             </button>
                         @endforeach
                     </div>
@@ -160,10 +160,10 @@
             </div>
         @endif
 
-        <div class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm" wire:poll.30s>
-            <div class="border-b border-slate-200 px-5 py-4">
-                <h2 class="text-sm font-bold text-slate-950">Export Data</h2>
-                <p class="mt-1 text-xs font-medium text-slate-500">Bang du lieu theo filter hien tai.</p>
+        <div class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900" wire:poll.30s>
+            <div class="border-b border-slate-200 px-5 py-4 dark:border-slate-700">
+                <h2 class="text-sm font-bold text-slate-950 dark:text-slate-100">Export Data</h2>
+                <p class="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">Bang du lieu theo filter hien tai.</p>
             </div>
 
             <div class="overflow-x-auto">
@@ -180,7 +180,7 @@
                     <col style="width: 240px;">
                 </colgroup>
                 <thead>
-                    <tr class="border-b border-slate-200 bg-slate-50 text-left text-xs font-semibold text-slate-500">
+                    <tr class="border-b border-slate-200 bg-slate-50 text-left text-xs font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
                         <th class="w-12 px-5 py-4">
                             <input
                                 type="checkbox"
@@ -226,7 +226,7 @@
                                 ->values();
                             $canExportAsset = true;
                         @endphp
-                        <tr wire:key="marketplace-export-row-{{ $asset->id }}" class="border-b border-slate-200 text-slate-500 transition hover:bg-slate-50">
+                        <tr wire:key="marketplace-export-row-{{ $asset->id }}" class="border-b border-slate-200 text-slate-600 transition hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800/70">
                             <td class="px-5 py-5 align-middle">
                                 <input
                                     type="checkbox"
@@ -247,24 +247,24 @@
                                 >
                             </td>
                             <td class="px-5 py-5 align-middle">
-                                <span class="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
+                                <span class="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700 dark:bg-slate-700 dark:text-slate-100">
                                     {{ $asset->sku ?: '-' }}
                                 </span>
                             </td>
                             <td class="px-5 py-5 align-middle">
                                 <div class="flex items-center gap-4">
-                                    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-slate-100 text-xs font-bold text-slate-500">
+                                    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-slate-100 text-xs font-bold text-slate-500 dark:bg-slate-700 dark:text-slate-200">
                                         {{ $asset->item_number }}
                                     </div>
                                     <div class="min-w-0 flex-1">
-                                        <p class="truncate font-semibold text-slate-700">{{ $asset->keyword }}</p>
-                                        <p class="mt-1 truncate text-xs text-slate-400" style="max-width: 720px;">{{ $asset->title }}</p>
+                                        <p class="truncate font-semibold text-slate-800 dark:text-slate-100">{{ $asset->keyword }}</p>
+                                        <p class="mt-1 truncate text-xs text-slate-400 dark:text-slate-400" style="max-width: 720px;">{{ $asset->title }}</p>
                                     </div>
                                 </div>
                             </td>
                             @if ((auth()->user()->is_admin || auth()->user()->isManager()))
                                 <td class="px-5 py-5 align-middle">
-                                    <p class="font-medium text-slate-600">{{ $asset->user?->name }}</p>
+                                    <p class="font-medium text-slate-700 dark:text-slate-200">{{ $asset->user?->name }}</p>
                                     <p class="mt-1 text-xs text-slate-400">{{ $asset->user?->email }}</p>
                                 </td>
                             @endif
@@ -281,7 +281,7 @@
                                     <span class="inline-flex rounded-full bg-indigo-100 px-3 py-1 text-xs font-bold text-indigo-600">
                                         Export
                                     </span>
-                                    <p class="mt-1 truncate text-xs text-slate-400" style="max-width: 240px;">{{ $asset->marketplace_export_filename ?: '-' }}</p>
+                                    <p class="mt-1 truncate text-xs text-slate-400 dark:text-slate-400" style="max-width: 240px;">{{ $asset->marketplace_export_filename ?: '-' }}</p>
                                 @else
                                     <span class="inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-600">
                                         Chua export
@@ -302,7 +302,7 @@
             </div>
 
         @if ($selectedCount > 0)
-            <div class="border-t border-slate-200 bg-white px-5 py-3">
+            <div class="border-t border-slate-200 bg-white px-5 py-3 dark:border-slate-700 dark:bg-slate-900">
                 <span class="inline-flex rounded-full bg-indigo-100 px-3 py-1 text-xs font-bold text-indigo-700">
                     Da chon {{ $selectedCount }} item {{ $status === 'exported' ? 'da export' : ($status === 'unexported' ? 'chua export' : '') }}
                 </span>

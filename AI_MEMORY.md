@@ -12014,3 +12014,80 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 - Changed app/Services/Product/ProductDesignAssetFileCleanupService.php to clear mockup1-11, local files, and generated product folder; updated GlassService, DecalService, StickerService and their cards/views. Glass retains in-progress job protection; Decal/Sticker now expose confirmed delete buttons.
 - Ornament Etsy has no 3. Mockup Tu Chon section in its card, so it was not changed. Deploy impact: PHP/Blade only; no migration or queue impact. Validation: PHP lint, Blade cache, and diff check passed. Follow-up: test one item per page after deploy.
 
+
+### 2026-10-05 — Pattern export counts selected items
+
+- Root cause: validation incorrectly required two selected SKU rows per prefix instead of two selected items total.
+- Changed app/Livewire/Pages/Marketplace/MarketplaceExports.php and .design/marketplace-export-pattern/DESIGN_BRIEF.md: single-item groups are allowed when at least two exportable items are selected; stale/nonexportable selections still block download. Grouped CSV layout remains unchanged.
+- Deploy impact: PHP only; no migration. Queue impact: none. Follow-up: verify selection combinations on deployed Marketplace Export page.
+- Validation: php -l, php artisan view:cache, and focused git diff --check passed.
+
+
+### 2026-10-05 — Fix Marketplace Export filters in dark mode
+
+- Root cause: filter groups used non-wrapping inline flex with fixed padding and light-only active/inactive colors, causing overflow and low contrast in dark mode.
+- Changed resources/views/livewire/pages/marketplace/marketplace-exports.blade.php: groups now wrap within a clipped flex container, buttons use compact spacing/nowrap, and active/inactive surfaces include dark-mode variants.
+- Deploy impact: Blade only; no migration or queue impact. Validation: Blade cache and focused diff check passed. Better Design guidance loaded; rendered screenshot review remains pending.
+
+
+### 2026-10-05 — Pattern uses first selected SKU
+
+- Pattern export no longer groups by SKU prefix. All selected items stay together in one pattern block, and the first selected item supplies the pattern value, for example SF6 becomes SF6Pattern.
+- Selection order is preserved when building the CSV.
+- Deploy impact: PHP only; no migration or queue impact.
+
+### 2026-10-05 — Fix Marketplace Export table dark mode
+
+- Root cause: table surface, header, rows, and text relied on light-only classes, and the global dark override left the data row visually white with low-contrast text.
+- Changed resources/views/livewire/pages/marketplace/marketplace-exports.blade.php with explicit dark surfaces, borders, row hover, text, badges, and pagination background.
+- Deploy impact: Blade only; no migration or queue impact. Validation: Blade cache and diff check passed. Rendered browser verification remains pending.
+
+
+### 2026-10-05 — Neutral default dark mode palette
+
+- Replaced the blue/navy dark-mode surfaces with neutral charcoal defaults: page #111317, panels #181b21, muted panels #22262e, and neutral input surfaces.
+- Removed the dark-mode blue radial background gradient while preserving action/status colors.
+- Changed resources/css/app.css only. Deploy impact: frontend CSS rebuild required; no migration or queue impact. Validation: Blade cache and diff check passed; browser screenshot verification pending.
+
+
+### 2026-10-05 — Tailwind dark utility adoption for shared shell
+
+- Added explicit dark:* utilities to the shared app layout and navigation surfaces so the primary shell follows Tailwind class-based dark mode instead of relying only on global selectors.
+- Changed resources/views/layouts/app.blade.php and resources/views/livewire/layout/navigation.blade.php. Existing CSS fallback remains for legacy pages not yet migrated.
+- Validation: Blade cache, npm run build, and focused diff check passed. Deploy impact: Blade/CSS rebuild; no migration or queue impact.
+
+
+### 2026-10-05 — Fix product workspace toolbar dark mode
+
+- Root cause: Sticker, Decal, Glass, and Suncatcher toolbars and status panels used light-only backgrounds, borders, text, badges, selects, menus, and empty states; these became low-contrast or visually inconsistent under class-based dark mode.
+- Changed resources/views/livewire/pages/sticker/list-sticker.blade.php, decal/list-decal.blade.php, glass/list-glass.blade.php, suncatcher/list-suncatcher.blade.php and their status-panel views with explicit dark:* surfaces and semantic action/status colors. Livewire bindings and Alpine behavior are unchanged.
+- Deploy impact: Blade/CSS build only; no migration or queue impact. Follow-up: deploy rebuilt assets and verify toolbar/menu/tab states in a logged-in dark-mode browser at desktop and mobile widths.
+- Validation: php artisan view:cache and npm run build passed. Rendered screenshot review was not available in this environment; existing unrelated AI_MEMORY whitespace remains in git diff check.
+
+### 2026-10-05 — Soften dark-mode navigation hover states
+
+- Root cause: top navigation and user-menu controls used bright white/light hover surfaces and light-only inactive link classes, creating glare and low readability in dark mode.
+- Changed resources/views/livewire/layout/navigation.blade.php with muted slate dark hover states for the menu button, theme toggle, logo container, navigation links, user menu, profile/logout actions, and nav icons. Added .design/navigation-hover-dark-mode/DESIGN_BRIEF.md.
+- Deploy impact: Blade/CSS build only; no migration or queue impact. Follow-up: deploy rebuilt assets and verify top bar, sidebar, user menu, and mobile menu in dark mode.
+- Validation: php artisan view:cache, npm run build, and focused git diff --check passed. Rendered browser verification remains unavailable.
+
+### 2026-10-05 — Make sidebar hover visible in both themes
+
+- Root cause: sidebar inactive links changed text color on hover but had no sufficiently visible surface/border in some states; mobile utility links also had text-only hover feedback.
+- Changed resources/views/livewire/layout/navigation.blade.php: added transparent borders, subtle slate hover surfaces/borders for light and dark modes, and consistent mobile utility-link hover styling. Active links remain blue and unchanged in behavior.
+- Deploy impact: Blade/CSS build only; no migration or queue impact. Follow-up: verify desktop and mobile sidebar hover after deployment.
+- Validation: php artisan view:cache, npm run build, and focused git diff --check passed. Rendered browser verification remains unavailable.
+
+### 2026-10-05 — Add No Mockup filter to all custom-mockup pages
+
+- Root cause: only Glass exposed the existing repository-level no_mockup query/filter; Sticker, Decal, and Suncatcher status panels accepted only the three standard statuses and their parent views did not expose the fourth tab.
+- Changed Sticker, Decal, Glass, and Suncatcher status-panel components/views plus parent list views where needed to expose `No Mockup`. The filter reuses the existing repository condition requiring mockup1 through mockup11 to all be empty, and counts remain search-aware.
+- Deploy impact: PHP/Blade and frontend build only; no migration or queue impact. Follow-up: deploy and click `No Mockup` on each page to verify expected empty/non-empty results.
+- Validation: PHP lint, php artisan view:cache, npm run build, and focused git diff check passed. Rendered browser verification remains unavailable.
+
+### 2026-10-05 — Remove legacy blue card surfaces in dark mode
+
+- Root cause: a legacy Glass compatibility rule forced the card and toolbar to navy #111c2e/#1a2940, overriding the newer neutral charcoal dark-mode palette; other product card roots also lacked explicit dark surfaces.
+- Changed resources/css/app.css to use charcoal #181b21 cards and #22262e inner headers, and added explicit dark card surfaces to Decal, Sticker, and Suncatcher card roots. Accent blue remains reserved for actions and status cues.
+- Deploy impact: frontend CSS/Blade build only; no migration or queue impact. Follow-up: rebuild assets and verify all product workspaces in dark mode.
+- Validation: view cache and build pending in this turn; screenshot verification unavailable.
