@@ -12420,3 +12420,46 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 
 **Deploy/queue impact:**
 - Frontend CSS only; no backend, migration, or queue impact.
+## 2026-10-06 - Lower review preview download bar
+
+**Root cause:**
+- The review image Download bar was positioned inside the preview with too much bottom offset and the image reserve was too tight, making the lower preview area appear covered.
+
+**Files changed:**
+- `resources/views/livewire/modals/image/review-image.blade.php`
+- `resources/views/livewire/modals/suncatcher/review-image.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Moved the Download bar from `bottom-5` to `bottom-2`.
+- Reduced the image max-height to reserve a larger safe area below the image and keep the Download control visually separated.
+
+**Validation:**
+- `php artisan view:cache` passed.
+- `npm run build` passed.
+- Focused `git diff --check` passed with only existing CRLF normalization warnings.
+- Browser screenshot verification remains unavailable in this session.
+
+**Deploy/queue impact:**
+- Blade/CSS layout only; no backend, migration, or queue impact.
+## 2026-10-06 - Prevent false Drive failures after local file cleanup
+
+**Root cause:**
+- Drive uploads could complete, then local cleanup/Syncthing could remove the source before the export code called `File::size`, causing a `filesize()` exception and a false failed status.
+
+**Files changed:**
+- `app/Services/Product/ApprovedAssetDriveExportService.php`
+- `app/Console/Commands/ReconcileDriveUploads.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Capture file byte size before calling Google Drive upload, so post-upload cleanup cannot invalidate the metadata step.
+- Added `offorest:reconcile-drive-uploads` to mark failed records that already contain persisted Drive files as completed without re-uploading.
+
+**Validation:**
+- PHP lint passed for changed classes.
+- Artisan command is registered and listed.
+- Focused `git diff --check` passed with only the existing CRLF normalization warning.
+
+**Deploy/queue impact:**
+- Drive export behavior and one maintenance command; no migration or queue schema changes.

@@ -174,7 +174,7 @@
                                         x-on:load="dimensions = `${$event.target.naturalWidth} x ${$event.target.naturalHeight} px`"
                                         src="{{ $src }}"
                                         alt="{{ $title }}"
-                                        class="max-h-[calc(100%-8rem)] max-w-[calc(100%-8rem)] object-contain drop-shadow-sm transition duration-300 ease-out"
+                                        class="max-h-[calc(100%-10rem)] max-w-[calc(100%-8rem)] object-contain drop-shadow-sm transition duration-300 ease-out"
                                     >
                                 @else
                                     <div class="flex h-80 w-80 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-100 text-center">
@@ -188,7 +188,7 @@
                                         <div class="mt-1 text-xs font-medium text-slate-500">Bam Generate de tao anh cho slot nay.</div>
                                     </div>
                                 @endif
-                                <div class="absolute bottom-5 left-5 right-5 rounded-2xl border border-slate-200 bg-white/92 p-4 shadow-sm backdrop-blur">
+                                <div class="absolute bottom-2 left-5 right-5 rounded-2xl border border-slate-200 bg-white/92 p-4 shadow-sm backdrop-blur">
                                     <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center">
                                         <!-- <div class="flex items-center gap-3">
                                             <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-600">

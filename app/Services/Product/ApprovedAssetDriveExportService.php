@@ -191,6 +191,8 @@ class ApprovedAssetDriveExportService
 
             $filename = $this->driveFilename($asset, $imageNumber, $absolutePath);
             $mimeType = File::mimeType($absolutePath) ?: null;
+            // Read local metadata before uploading; Syncthing may remove the source immediately after upload.
+            $bytes = File::size($absolutePath);
             $driveUrl = $this->drive->uploadLocalFile(
                 $absolutePath,
                 $filename,
@@ -206,7 +208,7 @@ class ApprovedAssetDriveExportService
                 'local_url' => $url,
                 'filename' => $filename,
                 'mime_type' => $mimeType,
-                'bytes' => File::size($absolutePath),
+                'bytes' => $bytes,
             ];
             $uploaded[] = [
                 'item' => 'item'.$imageNumber,
