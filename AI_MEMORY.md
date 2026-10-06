@@ -12528,3 +12528,17 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 - Changed app/Livewire/Pages/Marketplace/MarketplaceExports.php: both `EXPORT_FIELDS` and `PATTERN_BASE_FIELDS` now emit `title`, `item_highlight`, `description` in that order. No values or other export columns changed.
 - Deploy impact: PHP export ordering only; no migration or queue impact. Existing downloaded files are unchanged; new Excel/CSV exports use the new order.
 - Validation: PHP lint, php artisan view:cache, npm run build, and focused git diff check passed.
+
+### 2026-10-06 — Support comma-separated SKU search in Marketplace Export
+
+- Root cause: Marketplace Export search treated the entire input as one SKU substring, so `SKU_A, SKU_B` was searched literally and returned no rows.
+- Changed app/Livewire/Pages/Marketplace/MarketplaceExports.php to trim, deduplicate, and exact-match multiple comma-separated SKUs with `whereIn`; single-SKU partial search remains unchanged. Updated the export search placeholder in resources/views/livewire/pages/marketplace/marketplace-exports.blade.php.
+- Deploy impact: PHP/Blade/frontend build only; no migration or queue impact. Follow-up: verify `GPMN_021, GPMN_015` with and without spaces.
+- Validation: PHP lint, php artisan view:cache, npm run build, and focused git diff check passed.
+
+### 2026-10-06 — Make Marketplace Export SKU search robust for comma-separated input
+
+- Root cause: multi-SKU filtering previously used exact `whereIn`, so SKU values with suffixes, formatting differences, full-width commas, or line breaks could return no results even when the intended SKU prefix existed.
+- Changed `app/Livewire/Pages/Marketplace/MarketplaceExports.php`: normalize comma/full-width-comma/newline separators, trim and deduplicate tokens, then match each token within a grouped `OR LIKE` clause. Single and multiple SKU searches now use the same tolerant behavior without changing export selection logic.
+- Deploy impact: Livewire/PHP query behavior only; no migration, queue, worker, or external API impact.
+- Validation: PHP lint passed, `php artisan view:cache` passed, `npm run build` passed. `git diff --check` reports only the repository's pre-existing trailing whitespace in `AI_MEMORY.md` and CRLF normalization warnings.

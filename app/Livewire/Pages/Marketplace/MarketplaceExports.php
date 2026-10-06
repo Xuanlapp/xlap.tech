@@ -417,10 +417,16 @@ class MarketplaceExports extends Component
             ->when($this->selectedOwnerId() !== null, fn (Builder $query) => $query->where('user_id', $this->selectedOwnerId()))
             ->when($this->marketplace !== 'all', fn (Builder $query) => $this->applyMarketplaceFilter($query, $this->marketplace))
             ->when($this->normalizedSearch() !== null, function (Builder $query): void {
-                $search = $this->normalizedSearch();
+                $skus = collect(preg_split('/[,，\\r\\n]+/u', $this->normalizedSearch() ?? '') ?: [])
+                    ->map(fn (string $sku): string => trim($sku))
+                    ->filter()
+                    ->unique()
+                    ->values();
 
-                $query->where(function (Builder $query) use ($search): void {
-                    $query->where('sku', 'like', '%'.$this->escapeLike($search).'%');
+                $query->where(function (Builder $query) use ($skus): void {
+                    foreach ($skus as $sku) {
+                        $query->orWhere('sku', 'like', '%'.$this->escapeLike($sku).'%');
+                    }
                 });
             });
     }
