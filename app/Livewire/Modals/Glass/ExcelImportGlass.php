@@ -175,53 +175,62 @@ class ExcelImportGlass extends Component
             return;
         }
 
-        $nextIndex = collect($this->rows)->search(fn (array $row): bool => in_array(($row['status'] ?? 'ready'), ['pending', 'ready'], true));
+        $service = app(GlassService::class);
+        $processedInBatch = 0;
+        $importedInBatch = 0;
 
-        if ($nextIndex === false) {
-            $this->finishImportCycle();
+        // Process several rows per poll to avoid one HTTP round-trip per Excel row.
+        while ($processedInBatch < 5) {
+            $nextIndex = collect($this->rows)->search(fn (array $row): bool => in_array(($row['status'] ?? 'ready'), ['pending', 'ready'], true));
 
-            return;
+            if ($nextIndex === false) {
+                break;
+            }
+
+            $this->rows[$nextIndex]['status'] = 'running';
+            $this->rows[$nextIndex]['attempts'] = (int) ($this->rows[$nextIndex]['attempts'] ?? 0) + 1;
+            $this->statusMessage = 'Dang import dong '.$this->rows[$nextIndex]['row'].'...';
+            $row = $this->rows[$nextIndex];
+
+            try {
+                $service->importAsset(
+                    auth()->user(),
+                    (string) $row['sku'],
+                    (string) $row['keyword'],
+                    $row['source_image'] ?: (string) $row['create_master'],
+                    (string) $row['create_master'],
+                    array_values(array_filter([
+                        $row['mockup1'] ?? '',
+                        $row['mockup2'] ?? '',
+                        $row['mockup3'] ?? '',
+                        $row['mockup4'] ?? '',
+                        $row['mockup5'] ?? '',
+                        $row['mockup6'] ?? '',
+                    ])),
+                );
+
+                unset($this->rows[$nextIndex]);
+                $this->rows = array_values($this->rows);
+                $this->successRows++;
+                $importedInBatch++;
+            } catch (Throwable $exception) {
+                $this->rows[$nextIndex]['status'] = 'false';
+                $this->rows[$nextIndex]['result_message'] = $exception->getMessage();
+                $this->rowErrors[] = [
+                    'row' => $row['row'] ?? ($nextIndex + 1),
+                    'message' => 'Could not import row: '.$exception->getMessage(),
+                ];
+                $this->failedRows = count($this->rowErrors);
+            }
+
+            $processedInBatch++;
         }
 
-        $this->rows[$nextIndex]['status'] = 'running';
-        $this->rows[$nextIndex]['attempts'] = (int) ($this->rows[$nextIndex]['attempts'] ?? 0) + 1;
-        $this->statusMessage = 'Dang import dong '.$this->rows[$nextIndex]['row'].'...';
-
-        $service = app(GlassService::class);
-        $row = $this->rows[$nextIndex];
-
-        try {
-            $asset = $service->importAsset(
-                auth()->user(),
-                (string) $row['sku'],
-                (string) $row['keyword'],
-                $row['source_image'] ?: (string) $row['create_master'],
-                (string) $row['create_master'],
-                array_values(array_filter([
-                    $row['mockup1'] ?? '',
-                    $row['mockup2'] ?? '',
-                    $row['mockup3'] ?? '',
-                    $row['mockup4'] ?? '',
-                    $row['mockup5'] ?? '',
-                    $row['mockup6'] ?? '',
-                ])),
-            );
-
-            unset($this->rows[$nextIndex]);
-            $this->rows = array_values($this->rows);
-            $this->successRows++;
+        if ($importedInBatch > 0) {
             $this->dispatch('product-design-created')->to(ListGlass::class);
             $this->dispatch('product-design-created')->to(GlassStatusPanel::class);
             $this->dispatch('glass-counts-updated')->to(ListGlass::class);
             $this->dispatch('glass-counts-updated')->to(GlassStatusPanel::class);
-        } catch (Throwable $exception) {
-            $this->rows[$nextIndex]['status'] = 'false';
-            $this->rows[$nextIndex]['result_message'] = $exception->getMessage();
-            $this->rowErrors[] = [
-                'row' => $row['row'] ?? ($nextIndex + 1),
-                'message' => 'Could not import row: '.$exception->getMessage(),
-            ];
-            $this->failedRows = count($this->rowErrors);
         }
 
         $processed = $this->successRows + $this->failedRows;

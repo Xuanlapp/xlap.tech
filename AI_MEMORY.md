@@ -12463,3 +12463,26 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 
 **Deploy/queue impact:**
 - Drive export behavior and one maintenance command; no migration or queue schema changes.
+## 2026-10-06 - Speed up Glass Excel import batching
+
+**Root cause:**
+- Glass Excel import processed exactly one row per Livewire poll at 800ms and dispatched four refresh events after every successful row, creating excessive HTTP and UI overhead.
+
+**Files changed:**
+- `app/Livewire/Modals/Glass/ExcelImportGlass.php`
+- `resources/views/livewire/modals/glass/excel-import-glass.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Process up to five rows in each Livewire poll while preserving per-row error handling and retry behavior.
+- Reduced poll interval from 800ms to 250ms.
+- Dispatch list/count refresh events once per successful batch instead of once per row.
+
+**Validation:**
+- PHP lint passed.
+- `php artisan view:cache` passed.
+- `npm run build` passed.
+- Focused `git diff --check` passed with existing CRLF normalization warnings.
+
+**Deploy/queue impact:**
+- Livewire import performance only; no schema, queue worker, or external API changes.
