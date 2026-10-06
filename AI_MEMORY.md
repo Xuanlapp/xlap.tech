@@ -12513,3 +12513,18 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 - Changed app/Repositories/Product/ProductDesignAssetRepository.php: comma-separated input is trimmed, deduplicated, and filtered with exact `sku` matching when multiple values are supplied; single-term search keeps existing keyword, SKU, ID, and STT behavior. Updated Glass, Decal, and Sticker placeholders to explain comma-separated SKU input.
 - Deploy impact: PHP/Blade/frontend build only; no migration or queue impact. Follow-up: verify `GPMN_021, GPMN_015` and values with spaces on each product workspace.
 - Validation: PHP lint, php artisan view:cache, npm run build, and focused diff check passed.
+
+### 2026-10-06 — Use one AI provider selection across product pages
+
+- Root cause: each product list component persisted `selectedAiProvider` in a separate Livewire session key (`glass.ai-provider`, `decal.ai-provider`, `sticker.ai-provider`, `suncatcher.ai-provider`, and ornament page variants), even though User already stores one enabled default provider through `UserAiProvider.is_default` and `activeAiProviderKey()`.
+- Changed the six product list components to remove only the per-page AI-provider session attributes. Existing provider-change handlers already call `setDefaultAiProvider()`, so every page now reads the same user-level default while API credentials, enabled-provider permissions, models, and `product_design_assets.ai_provider_key` history remain intact.
+- Database impact: no migration and no columns removed. No database column was proven unused; `ai_provider_key` is retained for actual item history and `UserAiProvider.is_default` is the shared setting. Old browser/session values naturally stop controlling new page instances.
+- Deploy/queue impact: PHP component behavior only; no queue or worker changes. Follow-up: change provider on one page, navigate to another product page, and verify the same provider is selected.
+- Validation: PHP lint, php artisan view:cache, npm run build, and focused git diff check passed.
+
+### 2026-10-06 — Place Item Highlight after Title in marketplace exports
+
+- Root cause: `item_highlight` was positioned after `generic_keyword` in normal export and after `description` in Pattern export, which did not match the requested spreadsheet order.
+- Changed app/Livewire/Pages/Marketplace/MarketplaceExports.php: both `EXPORT_FIELDS` and `PATTERN_BASE_FIELDS` now emit `title`, `item_highlight`, `description` in that order. No values or other export columns changed.
+- Deploy impact: PHP export ordering only; no migration or queue impact. Existing downloaded files are unchanged; new Excel/CSV exports use the new order.
+- Validation: PHP lint, php artisan view:cache, npm run build, and focused git diff check passed.

@@ -19,8 +19,6 @@ class ListGlass extends Component
 
     #[Session(key: 'glass.search')]
     public string $search = '';
-
-    #[Session(key: 'glass.ai-provider')]
     public ?string $selectedAiProvider = null;
 
     #[Session(key: 'glass.image-model')]

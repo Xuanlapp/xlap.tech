@@ -18,8 +18,6 @@ class ListOrnamentEtsy extends Component
     public string $pageSubtitle = 'Quan ly quy trinh tao anh ornament Etsy';
 
     public string $addButtonLabel = 'Them ornament Etsy';
-
-    #[Session(key: 'ornament-etsy.ai-provider')]
     public ?string $selectedAiProvider = null;
 
     #[Session(key: 'ornament-etsy.image-model')]

@@ -18,8 +18,6 @@ class ListDecal extends Component
 
     #[Session(key: 'decal.search')]
     public string $search = '';
-
-    #[Session(key: 'decal.ai-provider')]
     public ?string $selectedAiProvider = null;
 
     #[Session(key: 'decal.image-model')]

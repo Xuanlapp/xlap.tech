@@ -18,8 +18,6 @@ class ListSticker extends Component
 
     #[Session(key: 'sticker.search')]
     public string $search = '';
-
-    #[Session(key: 'sticker.ai-provider')]
     public ?string $selectedAiProvider = null;
 
     #[Session(key: 'sticker.image-model')]

@@ -51,6 +51,7 @@ class MarketplaceExports extends Component
         'image_sub',
         'data_item_add',
         'title',
+        'item_highlight',
         'description',
         'bullet_point_1',
         'bullet_point_2',
@@ -58,7 +59,6 @@ class MarketplaceExports extends Component
         'bullet_point_4',
         'bullet_point_5',
         'generic_keyword',
-        'item_highlight',
         'tags',
         'redesign',
         'redesign_candidates',
@@ -80,7 +80,7 @@ class MarketplaceExports extends Component
     ];
 
     private const PATTERN_BASE_FIELDS = [
-        'sku', 'sku_pattern', 'keyword', 'title', 'description', 'item_highlight',
+        'sku', 'sku_pattern', 'keyword', 'title', 'item_highlight', 'description',
     ];
 
     private const PATTERN_AMAZON_FIELDS = [

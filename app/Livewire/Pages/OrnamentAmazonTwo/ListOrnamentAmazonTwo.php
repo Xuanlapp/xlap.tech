@@ -21,8 +21,6 @@ class ListOrnamentAmazonTwo extends Component
 
     #[Session(key: 'ornament-amazon-2.per-page')]
     public int $perPage = 5;
-
-    #[Session(key: 'ornament-amazon-2.ai-provider')]
     public ?string $selectedAiProvider = null;
 
     #[Session(key: 'ornament-amazon-2.image-model')]

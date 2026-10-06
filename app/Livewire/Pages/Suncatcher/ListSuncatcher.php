@@ -21,8 +21,6 @@ class ListSuncatcher extends Component
 
     #[Session(key: 'suncatcher.per-page')]
     public int $perPage = 5;
-
-    #[Session(key: 'suncatcher.ai-provider')]
     public ?string $selectedAiProvider = null;
 
     #[Session(key: 'suncatcher.image-model')]
