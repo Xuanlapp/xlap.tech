@@ -129,7 +129,7 @@
                         <input
                             type="search"
                             wire:model.live.debounce.600ms="search"
-                            placeholder="Tim ten, ID hoac STT"
+                            placeholder="SKU (cach nhau bang dau phay)"
                             class="h-9 w-full rounded-md border border-slate-200 bg-white py-0 pl-9 pr-3 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500 outline-none transition placeholder:text-slate-400 focus:border-cyan-300 focus:ring-4 focus:ring-cyan-100"
                         >
                     </label>

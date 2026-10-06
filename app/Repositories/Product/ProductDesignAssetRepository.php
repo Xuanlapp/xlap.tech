@@ -623,13 +623,25 @@ class ProductDesignAssetRepository
      */
     private function applySearch(Builder $query, string $search): Builder
     {
-        return $query->where(function (Builder $query) use ($search): void {
-            $query
-                ->where('keyword', 'like', '%'.$this->escapeLike($search).'%')
-                ->orWhere('sku', 'like', '%'.$this->escapeLike($search).'%');
+        $terms = collect(explode(',', $search))
+            ->map(fn (string $term): string => trim($term))
+            ->filter()
+            ->unique()
+            ->values();
 
-            if (ctype_digit($search)) {
-                $number = (int) $search;
+        if ($terms->count() > 1) {
+            return $query->whereIn('sku', $terms->all());
+        }
+
+        $term = (string) $terms->first();
+
+        return $query->where(function (Builder $query) use ($term): void {
+            $query
+                ->where('keyword', 'like', '%'.$this->escapeLike($term).'%')
+                ->orWhere('sku', 'like', '%'.$this->escapeLike($term).'%');
+
+            if (ctype_digit($term)) {
+                $number = (int) $term;
 
                 $query
                     ->orWhere('id', $number)
@@ -637,7 +649,6 @@ class ProductDesignAssetRepository
             }
         });
     }
-
     private function normalizedSearch(?string $search): ?string
     {
         $search = trim((string) $search);

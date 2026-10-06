@@ -785,10 +785,12 @@ class MarketplaceExports extends Component
         }
 
         $rootFolder = 'Etsy_'.now()->format('d_m_Y');
+        $tempFiles = [];
 
-        $this->addEtsyAssetsToZip($zip, $assets, $rootFolder);
+        $this->addEtsyAssetsToZip($zip, $assets, $rootFolder, $tempFiles);
 
         $zip->close();
+        $this->cleanupTemporaryExportFiles($tempFiles);
 
         return response()
             ->download($zipPath, $filename, ['Content-Type' => 'application/zip'])
@@ -812,8 +814,10 @@ class MarketplaceExports extends Component
         }
 
         $zip->addFromString('Amazon_'.now()->format('Ymd_His').'.csv', $this->csvString($amazonAssets));
-        $this->addEtsyAssetsToZip($zip, $etsyAssets, 'Etsy_'.now()->format('d_m_Y'));
+        $tempFiles = [];
+        $this->addEtsyAssetsToZip($zip, $etsyAssets, 'Etsy_'.now()->format('d_m_Y'), $tempFiles);
         $zip->close();
+        $this->cleanupTemporaryExportFiles($tempFiles);
 
         return response()
             ->download($zipPath, $filename, ['Content-Type' => 'application/zip'])
@@ -843,7 +847,7 @@ class MarketplaceExports extends Component
     /**
      * @param  Collection<int, ProductDesignAsset>  $assets
      */
-    private function addEtsyAssetsToZip(ZipArchive $zip, Collection $assets, string $rootFolder): void
+    private function addEtsyAssetsToZip(ZipArchive $zip, Collection $assets, string $rootFolder, array &$tempFiles): void
     {
         foreach ($assets as $asset) {
             $assetFolder = $rootFolder.'/'.$this->etsyAssetFolderName($asset);
@@ -853,7 +857,7 @@ class MarketplaceExports extends Component
             $zip->addFromString($assetFolder.'/data.txt', $this->etsyDataText($asset));
             $zip->addFromString($assetFolder.'/images.txt', $this->etsyImageLinks($asset));
             $zip->addFromString($assetFolder.'/metadata.json', json_encode($this->etsyMetadata($asset), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: '{}');
-            $this->addEtsyImagesToZip($zip, $asset, $assetFolder.'/images');
+            $this->addEtsyImagesToZip($zip, $asset, $assetFolder.'/images', $tempFiles);
         }
     }
 
@@ -888,7 +892,7 @@ class MarketplaceExports extends Component
         ]).PHP_EOL;
     }
 
-    private function addEtsyImagesToZip(ZipArchive $zip, ProductDesignAsset $asset, string $folder): void
+    private function addEtsyImagesToZip(ZipArchive $zip, ProductDesignAsset $asset, string $folder, array &$tempFiles): void
     {
         foreach (self::IMAGE_FIELDS as $field) {
             $url = $asset->getAttribute($field);
@@ -908,9 +912,26 @@ class MarketplaceExports extends Component
             try {
                 $image = app(GoogleDriveService::class)->downloadImageFile($fileId);
                 $extension = $this->imageExtension($image['content_type']);
-                $zip->addFromString($folder.'/'.$field.'.'.$extension, $image['body']);
+                $temporaryPath = tempnam(storage_path('app/marketplace-exports'), 'etsy-image-');
+
+                if ($temporaryPath === false || file_put_contents($temporaryPath, $image['body']) === false) {
+                    throw new \RuntimeException('Khong tao duoc file tam cho anh Etsy.');
+                }
+
+                $tempFiles[] = $temporaryPath;
+                $zip->addFile($temporaryPath, $folder.'/'.$field.'.'.$extension);
             } catch (\Throwable $exception) {
                 $zip->addFromString($folder.'/'.$field.'_download_failed.txt', $exception->getMessage().PHP_EOL.$url);
+            }
+        }
+    }
+
+    /** @param array<int, string> $tempFiles */
+    private function cleanupTemporaryExportFiles(array $tempFiles): void
+    {
+        foreach (array_unique($tempFiles) as $path) {
+            if (is_string($path) && is_file($path)) {
+                @unlink($path);
             }
         }
     }

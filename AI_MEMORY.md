@@ -12486,3 +12486,30 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 
 **Deploy/queue impact:**
 - Livewire import performance only; no schema, queue worker, or external API changes.
+## 2026-10-06 - Prevent Marketplace Etsy ZIP memory exhaustion
+
+**Root cause:**
+- Etsy export downloaded many Google Drive images into PHP strings and accumulated ZIP entries through `addFromString`, exhausting the 512MB PHP memory limit during Livewire export.
+
+**Files changed:**
+- `app/Livewire/Pages/Marketplace/MarketplaceExports.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Write each downloaded Drive image to a temporary file and add it to ZipArchive with `addFile`, retaining only one image response in memory at a time.
+- Clean temporary image files after the ZIP archive is closed.
+
+**Validation:**
+- PHP lint passed.
+- `php artisan view:cache` passed.
+- `npm run build` passed.
+- Focused `git diff --check` passed with only the existing CRLF normalization warning.
+
+**Deploy/queue impact:**
+- Marketplace export runtime/memory behavior only; no schema or queue changes.
+### 2026-10-06 — Support comma-separated SKU filtering
+
+- Root cause: product workspace search accepted only one search string and applied a broad keyword/SKU substring query, so entering multiple SKUs separated by commas did not return a precise set.
+- Changed app/Repositories/Product/ProductDesignAssetRepository.php: comma-separated input is trimmed, deduplicated, and filtered with exact `sku` matching when multiple values are supplied; single-term search keeps existing keyword, SKU, ID, and STT behavior. Updated Glass, Decal, and Sticker placeholders to explain comma-separated SKU input.
+- Deploy impact: PHP/Blade/frontend build only; no migration or queue impact. Follow-up: verify `GPMN_021, GPMN_015` and values with spaces on each product workspace.
+- Validation: PHP lint, php artisan view:cache, npm run build, and focused diff check passed.
