@@ -154,7 +154,9 @@
                                                 $visibleDuplicatePpps = collect($item->duplicate_public_ip_visible_ppps ?? [])->filter();
                                                 $visibleHistoricalOwnerPpps = collect($item->historical_public_ip_visible_owner_ppps ?? [])->filter();
                                                 $resetPort = $item->port ?? (preg_match('/mvlan(\d+)/i', (string) $item->ppp, $matches) ? 9800 + (int) $matches[1] : null);
-                                                $rowStateClass = $hasChangedAt ? 'bg-red-50' : (($isDuplicatePublicIp || $hasHistoricalPublicIpOwner) ? 'bg-amber-50' : '');
+                                                $rowStateClass = $hasChangedAt
+                                                    ? 'bg-red-50 proxy-row-alert'
+                                                    : (($isDuplicatePublicIp || $hasHistoricalPublicIpOwner) ? 'bg-amber-50 proxy-row-warning' : '');
                                             @endphp
                                             <tr @if (auth()->user()?->is_admin) x-on:click="openingProxyModal = true; setTimeout(() => openingProxyModal = false, 900)" wire:click="$dispatch('openModal', { component: 'modals.proxy.edit-proxy-item', arguments: { itemId: {{ $item->id }} } })" @endif class="{{ auth()->user()?->is_admin ? 'cursor-pointer hover:bg-cyan-50' : '' }} transition {{ $rowStateClass }}">
                                                 <td class="px-4 py-3 text-slate-700">

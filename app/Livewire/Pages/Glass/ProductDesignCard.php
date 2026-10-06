@@ -8,6 +8,7 @@ use App\Services\Image\ImageLinkPreviewService;
 use App\Services\Logging\ActivityLogService;
 use App\Services\Glass\PsdMockupTemplateService;
 use App\Services\Glass\GlassService;
+use App\Services\Glass\GlassBoundsGuideStorage;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -196,17 +197,7 @@ class ProductDesignCard extends Component
 
     private function glassBoundsGuideUrl(): ?string
     {
-        $disk = Storage::disk('public');
-        $path = 'admin/glass/bounds-guide.png';
-
-        if (! $disk->exists($path)) {
-            return null;
-        }
-
-        return route('image-preview.show', [
-            'path' => '/storage/'.$path,
-            'v' => $disk->lastModified($path),
-        ], false);
+        return app(GlassBoundsGuideStorage::class)->url(auth()->user());
     }
 
     private function appendPreviewUrls(ProductDesignAsset $asset, ?string $mockupPreviewVersion = null): void

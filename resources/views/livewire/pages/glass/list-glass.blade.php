@@ -229,6 +229,7 @@
         </svg>
     </button>
 
+    <livewire:modals.glass.edit-personal-bounds-guide />
     <livewire:modals.glass.add-product-design />
     <livewire:modals.glass.edit-product-detail />
     <livewire:modals.glass.psd-mockup-template />

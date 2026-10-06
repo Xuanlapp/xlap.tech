@@ -18,6 +18,9 @@
                     @endif
                     <label class="block"><span class="text-sm font-semibold text-slate-700">Chọn ảnh mới</span><input type="file" wire:model="boundsGuide" accept="image/png,image/jpeg,image/webp" class="mt-2 block w-full rounded-lg border border-slate-300 p-2 text-sm"></label>
                     @error('boundsGuide')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
+                    <label class="block"><span class="text-sm font-semibold text-slate-700">Đường dẫn Hướng dẫn cho user</span><input type="url" wire:model="guideLink" placeholder="https://..." class="mt-2 block w-full rounded-lg border border-slate-300 p-2 text-sm"></label>
+                    @error('guideLink')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
+                    <button type="button" wire:click="saveGuideLink" wire:loading.attr="disabled" class="rounded-lg border border-cyan-600 px-3 py-2 text-sm font-semibold text-cyan-700">Lưu đường dẫn hướng dẫn</button>
                     <p class="text-xs text-slate-500">App tự đọc vòng xanh nước làm Template. Safezone xanh lá là tùy chọn, không cần có vẫn lưu được. Upload ảnh mới là editor tự cập nhật, không cần sửa code. Tối đa 10 MB.</p>
                 </div>
                 <div class="flex justify-end gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4"><button type="button" wire:click="close" class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold">No</button><button type="submit" class="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-bold text-white" wire:loading.attr="disabled"><span wire:loading.remove>Save</span><span wire:loading>Saving...</span></button></div>

@@ -23,6 +23,7 @@ use App\Services\Sticker\StickerService;
 use App\Services\Decal\DecalService;
 use App\Services\Glass\GlassService;
 use App\Services\Glass\GlassBoundsGuideAnalyzer;
+use App\Services\Glass\GlassBoundsGuideStorage;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -707,18 +708,10 @@ class ReviewImage extends Component
     public function render(): View
     {
 
-        $path = 'admin/glass/bounds-guide.png';
-        $disk = Storage::disk('public');
-        if ($disk->exists($path)) {
-            $this->glassBoundsGuideUrl = route('image-preview.show', [
-                'path' => '/storage/'.$path,
-                'v' => $disk->lastModified($path),
-            ], false);
-        } else {
-            $this->glassBoundsGuideUrl = null;
-        }
+        $guide = app(GlassBoundsGuideStorage::class);
+        $this->glassBoundsGuideUrl = $guide->url(auth()->user());
         try {
-            $config = app(GlassBoundsGuideAnalyzer::class)->loadOrCreate($disk);
+            $config = $guide->config(auth()->user());
         } catch (InvalidArgumentException $exception) {
             Log::warning('Glass bounds guide analysis failed.', ['message' => $exception->getMessage()]);
             $config = null;

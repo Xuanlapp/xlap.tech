@@ -1,4 +1,4 @@
-﻿# AI MEMORY
+# AI MEMORY
 
 File nÃ y dÃ¹ng Ä‘á»ƒ lÆ°u láº¡i quÃ¡ trÃ¬nh AI Ä‘Ã£ lÃ m trong project.
 TrÆ°á»›c khi lÃ m tiáº¿p, AI pháº£i Ä‘á»c file nÃ y trÆ°á»›c.
@@ -12091,3 +12091,332 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 - Changed resources/css/app.css to use charcoal #181b21 cards and #22262e inner headers, and added explicit dark card surfaces to Decal, Sticker, and Suncatcher card roots. Accent blue remains reserved for actions and status cues.
 - Deploy impact: frontend CSS/Blade build only; no migration or queue impact. Follow-up: rebuild assets and verify all product workspaces in dark mode.
 - Validation: view cache and build pending in this turn; screenshot verification unavailable.
+
+### 2026-10-06 — Add per-user Glass bounds with admin fallback
+
+- Root cause: Glass bounds editor and Create Master preview always loaded `admin/glass/bounds-guide.png`, so every user shared the same guide and could not keep a private replacement.
+- Changed app/Services/Glass/GlassBoundsGuideStorage.php to resolve `users/{user_id}/glass/bounds-guide.png` first and fall back to the admin guide. Added app/Livewire/Modals/Glass/EditPersonalBoundsGuide.php and its view for authenticated users; each upload replaces only that user's old file after successful analysis. Updated Glass card, status panel, list modal registration, and ReviewImage editor to use the resolver.
+- Deploy impact: PHP/Blade/frontend build only; no migration or queue impact. Existing admin bounds remain available as fallback. Follow-up: upload as two different users and confirm each sees their own guide, while a user without one sees admin bounds.
+- Validation: PHP lint, php artisan view:cache, npm run build, and focused diff check passed. Rendered browser verification remains unavailable.
+
+## 2026-10-06 - Normalize all dark-mode data tables to Export styling
+
+**Root cause:**
+- Older tables used hardcoded light Tailwind surfaces (`bg-white`, `bg-slate-50`, bright status fills), so dark mode rendered white/cyan panels unlike Marketplace Export.
+
+**Files changed:**
+- `resources/css/app.css`
+- `.design/table-dark-mode/DESIGN_BRIEF.md`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Added global `html.theme-dark table` rules for shared dark table surface, header, borders, row text, hover state, and muted semantic status rows.
+- Preserved light mode, table behavior, status meaning, and responsive overflow.
+
+**Affected modules:**
+- All Blade/Livewire data tables, especially Proxy and Export screens.
+
+**Deploy/queue impact:**
+- No backend, migration, or queue changes. Rebuild frontend assets and deploy CSS only.
+
+**Validation:**
+- `php artisan view:cache` passed.
+- `npm run build` passed.
+- Visual after-state screenshots were not captured because no browser/Better Design MCP endpoint or running authenticated page URL was available in this session; user-provided screenshot was used as baseline evidence.
+
+**Follow-up notes:**
+- Review dark tables at 1280px, 768px, and 375px after deployment; verify status-row contrast and horizontal table scrolling.
+## 2026-10-06 - Make dark tables near-black while preserving red alerts
+
+**Root cause:**
+- User wanted all normal dark-mode table surfaces black rather than blue-tinted, while error/changed rows must remain visibly red.
+
+**Files changed:**
+- `resources/css/app.css`
+- `.design/table-dark-mode/DESIGN_BRIEF.md`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Table, header, tbody, and normal row backgrounds now use near-black tones.
+- Cyan/sky/blue row fills are normalized back to near-black.
+- Red/rose status rows use a stronger dark-red tint and remain visually prominent.
+
+**Validation:**
+- `npm run build` passed.
+- `php artisan view:cache` passed.
+
+**Deploy/queue impact:**
+- CSS-only frontend change; no backend, migration, or queue impact.
+## 2026-10-06 - Restore visible red Proxy alert rows in dark mode
+
+**Root cause:**
+- Global dark-table normalization overrode the Proxy row's legacy `bg-red-50` class, so changed rows lost their red alert appearance.
+
+**Files changed:**
+- `resources/views/livewire/pages/proxy/index.blade.php`
+- `resources/css/app.css`
+- `.design/table-dark-mode/DESIGN_BRIEF.md`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Added explicit `proxy-row-alert` and `proxy-row-warning` state hooks.
+- Dark mode now renders changed Proxy rows with a stronger dark-red background, red left rail, and light-red text; duplicate/history warnings retain an amber rail.
+
+**Validation:**
+- `npm run build` passed.
+- `php artisan view:cache` passed.
+- `git diff --check` passed for changed UI files.
+
+**Deploy/queue impact:**
+- Frontend-only change; no backend, migration, or queue impact.
+## 2026-10-06 - Align dashboard dark panels with near-black theme
+
+**Root cause:**
+- Dashboard panels and stat cards retained a navy gradient that looked blue instead of matching the new black dark-mode tables.
+
+**Files changed:**
+- `resources/css/app.css`
+- `.design/table-dark-mode/DESIGN_BRIEF.md`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Dark Dashboard panels/cards now use near-black `#111317` and inner stat surfaces use `#181b21`; gradients were removed while borders/shadows remain subtle.
+
+**Validation:**
+- `npm run build` passed.
+- `php artisan view:cache` passed.
+
+**Deploy/queue impact:**
+- Frontend CSS only; no backend, migration, or queue impact.\r\n\r\n## 2026-10-06 - Restore visible dark-mode modal frames
+
+**Root cause:**
+- Dark-mode dialog CSS covered direct panels but did not match the nested form structure used by Add Items sticker/glass modals, so the modal blended into the page and its outer frame was not visible.
+
+**Files changed:**
+- `resources/css/app.css`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Added dark-mode frame selectors for nested modal forms and nested relative panels.
+- Restored a visible slate border, layered near-black surface, header/footer separators, and close-button treatment for role-based dialogs.
+
+**Validation:**
+- `npm run build` passed.
+- `php artisan view:cache` passed.
+- `git diff --check` found only the pre-existing trailing-whitespace warning in `AI_MEMORY.md`; no CSS errors.
+- Browser screenshot verification remains unavailable in this session.
+
+**Deploy/queue impact:**
+- Frontend CSS only; no backend, migration, or queue impact.
+## 2026-10-06 - Improve dark-mode modal backdrop and corner frame
+
+**Root cause:**
+- Modal backdrop was visually opaque and the panel border was too subtle; child surfaces also obscured the rounded outer corners.
+
+**Files changed:**
+- `resources/css/app.css`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Added translucent black backdrop with 5px backdrop blur for role-based dialogs.
+- Increased modal border contrast, added consistent rounding, clipped child surfaces, and strengthened the outer shadow so all four corners remain visible.
+
+**Validation:**
+- `npm run build` passed.
+- `php artisan view:cache` passed.
+- `git diff --check -- resources/css/app.css` passed with only the existing CRLF normalization warning.
+- Browser screenshot verification remains unavailable in this session.
+
+**Deploy/queue impact:**
+- Frontend CSS only; no backend, migration, or queue impact.
+## 2026-10-06 - Make modal backdrop visibly translucent
+
+**Root cause:**
+- The previous dark backdrop opacity was too high, making the area outside the modal look like a flat black layer instead of a blurred page background.
+
+**Files changed:**
+- `resources/css/app.css`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Reduced dialog backdrop opacity to 0.48 and increased backdrop blur to 12px with slight desaturation, preserving the dark-mode mood while revealing a soft blurred background.
+
+**Validation:**
+- `npm run build` passed.
+- `php artisan view:cache` passed.
+- Browser screenshot verification remains unavailable in this session.
+
+**Deploy/queue impact:**
+- Frontend CSS only; no backend, migration, or queue impact.
+## 2026-10-06 - Soften modal backdrop and center dialog containers
+
+**Root cause:**
+- The backdrop still appeared too dark, and some role-based dialog containers relied on varying utility classes for centering.
+
+**Files changed:**
+- `resources/css/app.css`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Reduced backdrop opacity to 0.28 and blur to 8px for a lighter translucent effect.
+- Normalized role-based dialogs to full viewport flex alignment with centered content, while preserving scrolling behavior for tall modal content.
+
+**Validation:**
+- `npm run build` passed.
+- `php artisan view:cache` passed.
+- Browser screenshot verification remains unavailable in this session.
+
+**Deploy/queue impact:**
+- Frontend CSS only; no backend, migration, or queue impact.
+## 2026-10-06 - Match modal backdrop to preview softness
+
+**Root cause:**
+- The modal backdrop was still darker than the preview experience requested by the user.
+
+**Files changed:**
+- `resources/css/app.css`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Changed the backdrop to a lighter slate-tinted 0.2 overlay with 10px blur and restrained saturation, closer to the preview modal treatment while retaining separation from the dialog.
+
+**Validation:**
+- `npm run build` passed.
+- `php artisan view:cache` passed.
+- Browser screenshot verification remains unavailable in this session.
+
+**Deploy/queue impact:**
+- Frontend CSS only; no backend, migration, or queue impact.
+## 2026-10-06 - Match backdrop tint to preview modal
+
+**Root cause:**
+- The Add Items backdrop remained visually flatter and darker than the preview modal backdrop shown by the user.
+
+**Files changed:**
+- `resources/css/app.css`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Updated the dark-mode dialog backdrop to a translucent navy tint with 14px blur and near-neutral saturation, matching the softer preview background treatment.
+
+**Validation:**
+- `npm run build` passed.
+- `php artisan view:cache` passed.
+- Browser screenshot verification remains unavailable in this session.
+
+**Deploy/queue impact:**
+- Frontend CSS only; no backend, migration, or queue impact.
+## 2026-10-06 - Add bounds comparison preview and shared guide link
+
+**Root cause:**
+- The personal Glass bounds modal showed only the active image and a fallback status sentence, so users could not compare the current bounds with a newly selected upload or open the shared Super Admin guide directly.
+
+**Files changed:**
+- `app/Livewire/Modals/Glass/EditPersonalBoundsGuide.php`
+- `app/Services/Glass/GlassBoundsGuideStorage.php`
+- `resources/views/livewire/modals/glass/edit-personal-bounds-guide.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Added temporary preview state for the newly selected bounds image.
+- Rendered current bounds on the left, an arrow, and new upload preview on the right (stacked on narrow screens).
+- Replaced the fallback status text with a `Hướng dẫn` link to the shared Super Admin Glass bounds image; missing shared guide gets an explicit empty state.
+
+**Validation:**
+- PHP lint passed for changed classes.
+- `php artisan view:cache` passed.
+- `npm run build` passed.
+- Focused `git diff --check` passed.
+- Browser interaction verification remains unavailable in this session.
+
+**Deploy/queue impact:**
+- Livewire modal and public storage URL behavior only; no queue, migration, or background worker changes.
+## 2026-10-06 - Add Super Admin upload field for shared bounds guide link
+
+**Root cause:**
+- The user-facing `Hướng dẫn` link had no dedicated Super Admin field; it only fell back to the shared bounds image URL.
+
+**Files changed:**
+- `app/Services/Glass/GlassBoundsGuideStorage.php`
+- `app/Livewire/Modals/Admin/EditGlassBoundsGuide.php`
+- `app/Livewire/Modals/Glass/EditPersonalBoundsGuide.php`
+- `resources/views/livewire/modals/admin/edit-glass-bounds-guide.blade.php`
+- `resources/views/livewire/modals/glass/edit-personal-bounds-guide.blade.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Added shared metadata storage for a validated guide URL at `admin/glass/bounds-guide-meta.json`.
+- Added a Super Admin URL field and save action to the Glass bounds admin modal.
+- User modal now opens the configured guide URL, with the shared bounds image as a fallback.
+
+**Validation:**
+- PHP lint passed for all changed classes.
+- `php artisan view:cache` passed.
+- `npm run build` passed.
+- Focused `git diff --check` passed.
+- Browser interaction verification remains unavailable in this session.
+
+**Deploy/queue impact:**
+- Livewire modal and public storage metadata only; no migration, queue, or worker changes.
+## 2026-10-06 - Standardize all dark modal backdrops to Upload bounds
+
+**Root cause:**
+- Different modal backdrop treatments had drifted from the Upload bounds modal, making the outer background inconsistent across dialogs.
+
+**Files changed:**
+- `resources/css/app.css`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Standardized dark-mode role dialogs to match Upload bounds `bg-slate-950/70`: rgba(2, 6, 23, 0.70) with no additional backdrop blur.
+- Preserved the shared centered layout and modal panel framing.
+
+**Validation:**
+- `npm run build` passed.
+- `php artisan view:cache` passed.
+- Focused `git diff --check` passed with only the existing CRLF normalization warning.
+- Browser screenshot verification remains unavailable in this session.
+
+**Deploy/queue impact:**
+- Frontend CSS only; no backend, migration, or queue impact.
+## 2026-10-06 - Normalize legacy modal backgrounds
+
+**Root cause:**
+- Some modals used legacy Tailwind backdrop classes instead of the Upload bounds treatment, causing inconsistent visibility of the page behind the modal.
+
+**Files changed:**
+- `resources/css/app.css`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Normalized common dark-mode modal wrappers using `bg-slate-950/70`, `bg-slate-950/40`, `bg-slate-950/45`, and `bg-gray-900/50` to the same rgba(2, 6, 23, 0.70) backdrop as Upload bounds.
+- Disabled extra backdrop filters on those wrappers for consistent rendering.
+
+**Validation:**
+- `npm run build` passed.
+- `php artisan view:cache` passed.
+- Focused `git diff --check` passed with only the existing CRLF normalization warning.
+- Browser screenshot verification remains unavailable in this session.
+
+**Deploy/queue impact:**
+- Frontend CSS only; no backend, migration, or queue impact.
+## 2026-10-06 - Reduce dark overlay so all modal pages remain visible
+
+**Root cause:**
+- The shared 0.70 slate overlay was too opaque on already-dark pages, making Edit background-removal and other modals appear blacker than Bounds Glass.
+
+**Files changed:**
+- `resources/css/app.css`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Updated role-based and legacy modal wrappers to use a consistent 0.42 slate overlay with light 8px blur and restrained saturation, keeping the underlying page visible without changing modal panel colors.
+
+**Validation:**
+- `npm run build` passed.
+- `php artisan view:cache` passed.
+- Focused `git diff --check` passed with only the existing CRLF normalization warning.
+- Browser screenshot verification remains unavailable in this session.
+
+**Deploy/queue impact:**
+- Frontend CSS only; no backend, migration, or queue impact.

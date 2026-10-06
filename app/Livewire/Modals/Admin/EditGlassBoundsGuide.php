@@ -23,6 +23,8 @@ class EditGlassBoundsGuide extends Component
 
     public ?array $currentConfig = null;
 
+    public ?string $guideLink = null;
+
     #[On('openModal')]
     public function openModal(string $component, array $arguments = []): void
     {
@@ -35,6 +37,7 @@ class EditGlassBoundsGuide extends Component
         $this->reset('boundsGuide');
         $this->currentUrl = $this->guideUrl();
         $this->currentConfig = $this->guideConfig();
+        $this->guideLink = app(\App\Services\Glass\GlassBoundsGuideStorage::class)->guideLink();
         $this->isOpen = true;
     }
 
@@ -44,6 +47,7 @@ class EditGlassBoundsGuide extends Component
 
         $validated = $this->validate([
             'boundsGuide' => ['required', 'image', 'mimes:png,jpg,jpeg,webp', 'max:10240'],
+            'guideLink' => ['nullable', 'url', 'max:2048'],
         ]);
 
         try {
@@ -60,6 +64,7 @@ class EditGlassBoundsGuide extends Component
         $disk = Storage::disk('public');
         $disk->put($path, $result['png']);
         $disk->put($configPath, json_encode($result['config'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+        app(\App\Services\Glass\GlassBoundsGuideStorage::class)->saveGuideLink($validated['guideLink'] ?? null);
 
         app(ActivityLogService::class)->record(
             event: 'admin.glass_bounds_guide_updated',
@@ -81,10 +86,19 @@ class EditGlassBoundsGuide extends Component
         $this->close();
     }
 
+    public function saveGuideLink(): void
+    {
+        abort_unless($this->isAdmin(), 403);
+
+        $validated = $this->validate(['guideLink' => ['nullable', 'url', 'max:2048']]);
+        app(\App\Services\Glass\GlassBoundsGuideStorage::class)->saveGuideLink($validated['guideLink'] ?? null);
+        $this->dispatch('toast', type: 'success', title: 'Đã lưu', message: 'Đã cập nhật đường dẫn hướng dẫn dùng chung.');
+    }
+
     public function close(): void
     {
         $this->resetValidation();
-        $this->reset(['isOpen', 'boundsGuide', 'currentUrl', 'currentConfig']);
+        $this->reset(['isOpen', 'boundsGuide', 'currentUrl', 'currentConfig', 'guideLink']);
     }
 
     public function render(): View

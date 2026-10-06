@@ -29,6 +29,7 @@
             @endforeach
             </div>
 
+            <button type="button" wire:click="$dispatch('openModal', { component: 'modals.glass.edit-personal-bounds-guide' })" class="inline-flex h-9 items-center rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700">Upload bounds</button>
             <div
                 x-data="{
                     showMasterBounds: localStorage.getItem('glass-show-master-bounds') === '1',

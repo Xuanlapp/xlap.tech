@@ -251,7 +251,7 @@ html.theme-dark .dashboard-card,
 html.theme-dark .dashboard-stat-card,
 html.theme-dark .dashboard-product-card {
     border-color: rgba(148, 163, 184, 0.16);
-    background: linear-gradient(180deg, rgba(15, 23, 42, 0.84) 0%, rgba(15, 23, 42, 0.74) 100%);
+    background: #111317;
     box-shadow: 0 18px 48px rgba(2, 6, 23, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
@@ -273,7 +273,7 @@ html.theme-dark .dashboard-select:focus {
 
 html.theme-dark .dashboard-mini-stat {
     border-color: rgba(148, 163, 184, 0.14);
-    background: linear-gradient(180deg, rgba(15, 23, 42, 0.68) 0%, rgba(15, 23, 42, 0.46) 100%);
+    background: #181b21;
 }
 
 @media (max-width: 1024px) {
@@ -294,4 +294,157 @@ html.theme-dark .glass-item-header {
 
 html.theme-dark .glass-item-header {
     background: #22262e !important;
+}
+
+/* Keep every data table aligned with the dark Export table language. */
+html.theme-dark table {
+    color: #d7dee9;
+    background: #111317;
+    border-color: rgba(148, 163, 184, 0.22) !important;
+}
+
+html.theme-dark table thead,
+html.theme-dark table thead tr {
+    background: #0b0d10 !important;
+    color: #aebbd0 !important;
+}
+
+html.theme-dark table tbody {
+    background: #111317 !important;
+}
+
+html.theme-dark table tbody tr {
+    background-color: #111317 !important;
+    border-color: rgba(148, 163, 184, 0.18) !important;
+    color: #d7dee9 !important;
+}
+
+html.theme-dark table tbody tr:hover {
+    background-color: #1b1e23 !important;
+}
+
+html.theme-dark table th,
+html.theme-dark table td {
+    border-color: rgba(148, 163, 184, 0.18) !important;
+}
+
+html.theme-dark table th {
+    color: #aebbd0 !important;
+}
+
+html.theme-dark table td {
+    color: #d7dee9 !important;
+}
+
+/* Preserve row meaning without reintroducing bright light-mode fills. */
+html.theme-dark table tbody tr[class*="bg-red-"],
+html.theme-dark table tbody tr[class*="bg-rose-"] {
+    background-color: rgba(127, 29, 29, 0.48) !important;
+}
+
+html.theme-dark table tbody tr[class*="bg-amber-"],
+html.theme-dark table tbody tr[class*="bg-orange-"] {
+    background-color: rgba(120, 53, 15, 0.25) !important;
+}
+
+html.theme-dark table tbody tr[class*="bg-cyan-"],
+html.theme-dark table tbody tr[class*="bg-sky-"],
+html.theme-dark table tbody tr[class*="bg-blue-"] {
+    background-color: #111317 !important;
+}
+
+html.theme-dark table tbody tr[class*="bg-emerald-"] {
+    background-color: rgba(6, 78, 59, 0.24) !important;
+}
+
+/* Proxy state rows need an explicit hook because generic table normalization wins over legacy bg-red classes. */
+html.theme-dark table tbody tr.proxy-row-alert {
+    background-color: rgba(127, 29, 29, 0.62) !important;
+    box-shadow: inset 4px 0 0 #ef4444;
+}
+
+html.theme-dark table tbody tr.proxy-row-alert td,
+html.theme-dark table tbody tr.proxy-row-alert td .text-slate-700,
+html.theme-dark table tbody tr.proxy-row-alert td .text-slate-600 {
+    color: #fee2e2 !important;
+}
+
+html.theme-dark table tbody tr.proxy-row-warning {
+    background-color: rgba(120, 53, 15, 0.34) !important;
+    box-shadow: inset 4px 0 0 #f59e0b;
+}
+
+html.theme-dark table tbody tr[class*="bg-red-"]:hover,
+html.theme-dark table tbody tr[class*="bg-rose-"]:hover,
+html.theme-dark table tbody tr[class*="bg-amber-"]:hover,
+html.theme-dark table tbody tr[class*="bg-orange-"]:hover,
+html.theme-dark table tbody tr[class*="bg-cyan-"]:hover,
+html.theme-dark table tbody tr[class*="bg-sky-"]:hover,
+html.theme-dark table tbody tr[class*="bg-blue-"]:hover,
+html.theme-dark table tbody tr[class*="bg-emerald-"]:hover {
+    filter: brightness(1.12);
+}
+
+/* Give dark-mode dialogs a visible frame and layered surface instead of letting them merge into the page. */
+html.theme-dark [role="dialog"] {
+    inset: 0 !important;
+    height: 100% !important;
+    width: 100% !important;
+    align-items: center !important;
+    justify-content: center !important;
+    /* Keep the page visible behind every modal, like the Bounds Glass modal. */
+    background: rgba(15, 23, 42, 0.42) !important;
+    -webkit-backdrop-filter: blur(8px) saturate(0.9) !important;
+    backdrop-filter: blur(8px) saturate(0.9) !important;
+}
+
+/* Normalize legacy modal wrappers to the same Upload bounds backdrop. */
+html.theme-dark .fixed.inset-0.bg-slate-950\/70,
+html.theme-dark .fixed.inset-0.bg-slate-950\/40,
+html.theme-dark .fixed.inset-0.bg-slate-950\/45,
+html.theme-dark .fixed.inset-0.bg-gray-900\/50 {
+    background: rgba(15, 23, 42, 0.42) !important;
+    -webkit-backdrop-filter: blur(8px) saturate(0.9) !important;
+    backdrop-filter: blur(8px) saturate(0.9) !important;
+}
+
+html.theme-dark [role="dialog"] > form,
+html.theme-dark [role="dialog"] > div.relative,
+html.theme-dark [role="dialog"] > div > form,
+html.theme-dark [role="dialog"] > div > div.relative,
+html.theme-dark [role="dialog"] > div.relative > form,
+html.theme-dark [role="dialog"] > div.relative > div.relative {
+    border: 1px solid rgba(148, 163, 184, 0.52) !important;
+    border-radius: 0.75rem !important;
+    overflow: hidden !important;
+    background: #111317 !important;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.68), 0 0 0 1px rgba(255, 255, 255, 0.06) !important;
+}
+
+html.theme-dark [role="dialog"] > form > header,
+html.theme-dark [role="dialog"] > form > div.border-b,
+html.theme-dark [role="dialog"] > div.relative > header,
+html.theme-dark [role="dialog"] > div.relative > div.border-b,
+html.theme-dark [role="dialog"] > div.relative > form > header,
+html.theme-dark [role="dialog"] > div.relative > form > div.border-b {
+    border-color: rgba(148, 163, 184, 0.28) !important;
+    background: #181b21 !important;
+}
+
+html.theme-dark [role="dialog"] > form > footer,
+html.theme-dark [role="dialog"] > form > div.border-t,
+html.theme-dark [role="dialog"] > div.relative > footer,
+html.theme-dark [role="dialog"] > div.relative > div.border-t,
+html.theme-dark [role="dialog"] > div.relative > form > footer,
+html.theme-dark [role="dialog"] > div.relative > form > div.border-t {
+    border-color: rgba(148, 163, 184, 0.28) !important;
+    background: #0b0d10 !important;
+}
+
+html.theme-dark [role="dialog"] button[aria-label*="Close"],
+html.theme-dark [role="dialog"] button[aria-label*="close"],
+html.theme-dark [role="dialog"] button[aria-label="Dong"] {
+    border: 1px solid rgba(148, 163, 184, 0.28) !important;
+    background: #0b0d10 !important;
+    color: #cbd5e1 !important;
 }

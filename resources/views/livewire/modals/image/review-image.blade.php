@@ -38,8 +38,9 @@
             $displayOriginalUrl = $normalizeAssetUrl($displayOriginalUrl);
             $boundsGuideDataUrl = null;
             $boundsGuideDisk = \Illuminate\Support\Facades\Storage::disk('public');
-            if ($boundsGuideDisk->exists('admin/glass/bounds-guide.png')) {
-                $boundsGuideDataUrl = 'data:image/png;base64,'.base64_encode($boundsGuideDisk->get('admin/glass/bounds-guide.png'));
+            $boundsGuidePath = app(\App\Services\Glass\GlassBoundsGuideStorage::class)->paths(auth()->user())['image'];
+            if ($boundsGuideDisk->exists($boundsGuidePath)) {
+                $boundsGuideDataUrl = 'data:image/png;base64,'.base64_encode($boundsGuideDisk->get($boundsGuidePath));
             }
             // Bounds must use the same renderable/preview URL as the visible image;
             // the raw source URL may be private or blocked while the preview works.
