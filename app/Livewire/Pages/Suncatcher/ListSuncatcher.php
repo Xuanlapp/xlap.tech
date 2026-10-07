@@ -5,6 +5,7 @@ namespace App\Livewire\Pages\Suncatcher;
 use App\Services\Suncatcher\SuncatcherService;
 use App\Services\Suncatcher\PsdMockupTemplateService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Session;
 use Livewire\Component;
@@ -127,11 +128,12 @@ class ListSuncatcher extends Component
         $textModelOptions = $service->textModelOptionsForProvider($this->selectedAiProvider);
         $this->selectedImageModel = $this->validModelKey($this->selectedImageModel, 'image', $imageModelOptions);
         $this->selectedTextModel = $this->validModelKey($this->selectedTextModel, 'text', $textModelOptions);
-        $v98StoreBalance = $service->v98StoreBalanceForUser(auth()->user(), $this->selectedAiProvider);
-        $cheapKeyAiBalance = $service->cheapKeyAiBalanceForUser(auth()->user(), $this->selectedAiProvider);
+        $cacheKey = auth()->id().':'.($this->selectedAiProvider ?? 'none');
+        $v98StoreBalance = Cache::remember("suncatcher:v98-balance:$cacheKey", 30, fn () => $service->v98StoreBalanceForUser(auth()->user(), $this->selectedAiProvider));
+        $cheapKeyAiBalance = Cache::remember("suncatcher:cheapkey-balance:$cacheKey", 30, fn () => $service->cheapKeyAiBalanceForUser(auth()->user(), $this->selectedAiProvider));
 
         return view('livewire.pages.suncatcher.list-suncatcher', [
-            'statusCounts' => $service->statusCountsForUser(auth()->user()),
+            'statusCounts' => Cache::remember('suncatcher:status-counts:'.auth()->id(), 5, fn () => $service->statusCountsForUser(auth()->user())),
             'activePsdTemplateName' => app(PsdMockupTemplateService::class)->activeSuncatcherTemplateForUser(auth()->user())?->name,
             'perPageOptions' => self::PER_PAGE_OPTIONS,
             'providerOptions' => $providerOptions,

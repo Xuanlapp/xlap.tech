@@ -12639,3 +12639,17 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 - Updated `.design/edit-keyword-save-speed/DESIGN_BRIEF.md` to document the targeted refresh behavior.
 - Deploy impact: shared Edit Keyword post-save refresh only; database update, validation, activity log, toast, modal close, and card update remain unchanged.
 - Validation: PHP lint passed, `php artisan view:cache` passed, `npm run build` passed. Diff check reports existing CRLF/trailing-whitespace warnings only.
+
+### 2026-10-07 — Repair Git object directory deletion failure
+
+- Root cause: empty `.git/objects/00` had ReadOnly attributes and a stale DENY ACL, so Git cleanup could not remove the directory and prompted “Deletion of directory .git/objects/00 failed”. No Git process or lock file was active.
+- Changed repository metadata only: removed ReadOnly/system attributes and reset the ACL on `.git/objects/00`, then removed that empty directory. No working-tree files or application code were deleted.
+- Validation: `git status` completed successfully on `main`, the latest commit remained readable, `.git/objects/00` no longer exists, and no `.lock` files were found. `git fsck --full` completed; reported dangling objects only, which are recoverable unreferenced Git objects and not corruption by themselves.
+
+### 2026-10-07 — Reduce Livewire render blocking across workflow pages
+
+- Root cause: Decal, Sticker, Ornament Etsy, Ornament Amazon 2, and Suncatcher parent Livewire renders called external provider balance APIs and status-count queries on every render. Any slow provider request could occupy PHP-FPM workers and make several concurrent users experience a frozen site. Glass already had short-lived caching.
+- Changed `app/Livewire/Pages/Decal/ListDecal.php`, `app/Livewire/Pages/Sticker/ListSticker.php`, `app/Livewire/Pages/OrnamentEtsy/ListOrnamentEtsy.php`, `app/Livewire/Pages/OrnamentAmazonTwo/ListOrnamentAmazonTwo.php`, and `app/Livewire/Pages/Suncatcher/ListSuncatcher.php`: cache provider balances per user/provider for 30 seconds and status counts for 5 seconds, preserving authorization and business results while avoiding duplicate external calls during Livewire interactions.
+- Deploy impact: PHP/Livewire performance only; no database schema, queue, worker, credential, or `.env` changes. Existing cache storage is used.
+- Validation: PHP lint, `php artisan view:cache`, and `npm run build` passed. `git diff --check` reported only existing `AI_MEMORY.md` whitespace and CRLF normalization warnings.
+- Follow-up: deploy these files, clear Laravel caches, reload the active PHP-FPM service, and collect VPS metrics (`free -h`, `vmstat`, FPM slowlog, supervisor status, MySQL processlist) before changing worker counts or database indexes.

@@ -5,6 +5,7 @@ namespace App\Livewire\Pages\OrnamentAmazonTwo;
 use App\Services\OrnamentAmazonTwo\OrnamentAmazonTwoService;
 use App\Services\OrnamentAmazonTwo\PsdMockupTemplateService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Session;
 use Livewire\Component;
@@ -126,11 +127,12 @@ class ListOrnamentAmazonTwo extends Component
         $textModelOptions = $service->textModelOptionsForProvider($this->selectedAiProvider);
         $this->selectedImageModel = $this->validModelKey($this->selectedImageModel, 'image', $imageModelOptions);
         $this->selectedTextModel = $this->validModelKey($this->selectedTextModel, 'text', $textModelOptions);
-        $v98StoreBalance = $service->v98StoreBalanceForUser(auth()->user(), $this->selectedAiProvider);
-        $cheapKeyAiBalance = $service->cheapKeyAiBalanceForUser(auth()->user(), $this->selectedAiProvider);
+        $cacheKey = auth()->id().':'.($this->selectedAiProvider ?? 'none');
+        $v98StoreBalance = Cache::remember("ornament-amazon-2:v98-balance:$cacheKey", 30, fn () => $service->v98StoreBalanceForUser(auth()->user(), $this->selectedAiProvider));
+        $cheapKeyAiBalance = Cache::remember("ornament-amazon-2:cheapkey-balance:$cacheKey", 30, fn () => $service->cheapKeyAiBalanceForUser(auth()->user(), $this->selectedAiProvider));
 
         return view('livewire.pages.ornament-amazon-two.list-ornament-amazon-two', [
-            'statusCounts' => $service->statusCountsForUser(auth()->user()),
+            'statusCounts' => Cache::remember('ornament-amazon-2:status-counts:'.auth()->id(), 5, fn () => $service->statusCountsForUser(auth()->user())),
             'activePsdTemplateName' => app(PsdMockupTemplateService::class)->activeOrnamentTemplateForUser(auth()->user())?->name,
             'perPageOptions' => self::PER_PAGE_OPTIONS,
             'providerOptions' => $providerOptions,

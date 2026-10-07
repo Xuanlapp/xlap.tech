@@ -5,6 +5,7 @@ namespace App\Livewire\Pages\Decal;
 use App\Services\Decal\DecalService;
 use App\Services\Decal\PsdMockupTemplateService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Session;
 use Livewire\Component;
@@ -93,11 +94,12 @@ class ListDecal extends Component
         $this->selectedAiProvider = array_key_exists((string) $this->selectedAiProvider, $providerOptions) ? $this->selectedAiProvider : array_key_first($providerOptions);
         $imageModelOptions = $service->imageModelOptionsForProvider($this->selectedAiProvider);
         $this->selectedImageModel = array_key_exists((string) $this->selectedImageModel, $imageModelOptions) ? $this->selectedImageModel : array_key_first($imageModelOptions);
-        $v98StoreBalance = $service->v98StoreBalanceForUser(auth()->user(), $this->selectedAiProvider);
-        $cheapKeyAiBalance = $service->cheapKeyAiBalanceForUser(auth()->user(), $this->selectedAiProvider);
+        $cacheKey = auth()->id().':'.($this->selectedAiProvider ?? 'none');
+        $v98StoreBalance = Cache::remember("decal:v98-balance:$cacheKey", 30, fn () => $service->v98StoreBalanceForUser(auth()->user(), $this->selectedAiProvider));
+        $cheapKeyAiBalance = Cache::remember("decal:cheapkey-balance:$cacheKey", 30, fn () => $service->cheapKeyAiBalanceForUser(auth()->user(), $this->selectedAiProvider));
 
         return view('livewire.pages.decal.list-decal', [
-            'statusCounts' => $service->statusCountsForUser(auth()->user(), $this->search),
+            'statusCounts' => Cache::remember('decal:status-counts:'.auth()->id().':'.sha1(trim($this->search)), 5, fn () => $service->statusCountsForUser(auth()->user(), $this->search)),
             'activePsdTemplateName' => app(PsdMockupTemplateService::class)->activeDecalTemplateForUser(auth()->user())?->name,
             'perPageOptions' => self::PER_PAGE_OPTIONS,
             'providerOptions' => $providerOptions,

@@ -5,6 +5,7 @@ namespace App\Livewire\Pages\OrnamentEtsy;
 use App\Services\OrnamentEtsy\OrnamentEtsyService;
 use App\Services\OrnamentEtsy\PsdMockupTemplateService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Session;
 use Livewire\Component;
@@ -105,11 +106,12 @@ class ListOrnamentEtsy extends Component
         $providerOptions = $service->providerOptionsForUser(auth()->user());
         $this->syncProviderSelection($providerOptions);
         $imageModelOptions = $service->imageModelOptionsForProvider($this->selectedAiProvider);
-        $v98StoreBalance = $service->v98StoreBalanceForUser(auth()->user(), $this->selectedAiProvider);
-        $cheapKeyAiBalance = $service->cheapKeyAiBalanceForUser(auth()->user(), $this->selectedAiProvider);
+        $cacheKey = auth()->id().':'.($this->selectedAiProvider ?? 'none');
+        $v98StoreBalance = Cache::remember("ornament-etsy:v98-balance:$cacheKey", 30, fn () => $service->v98StoreBalanceForUser(auth()->user(), $this->selectedAiProvider));
+        $cheapKeyAiBalance = Cache::remember("ornament-etsy:cheapkey-balance:$cacheKey", 30, fn () => $service->cheapKeyAiBalanceForUser(auth()->user(), $this->selectedAiProvider));
 
         return view('livewire.pages.ornament-etsy.list-ornament-etsy', [
-            'statusCounts' => $service->statusCountsForUser(auth()->user()),
+            'statusCounts' => Cache::remember('ornament-etsy:status-counts:'.auth()->id(), 5, fn () => $service->statusCountsForUser(auth()->user())),
             'activePsdTemplateName' => app(PsdMockupTemplateService::class)->activeOrnamentTemplateForUser(auth()->user())?->name,
             'perPageOptions' => self::PER_PAGE_OPTIONS,
             'providerOptions' => $providerOptions,
