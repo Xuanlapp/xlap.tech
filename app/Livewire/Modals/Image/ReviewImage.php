@@ -147,15 +147,17 @@ class ReviewImage extends Component
             return;
         }
 
-        $this->loadCurrentMockupGenerationState();
-        $this->loadSourcePreviewContext();
-        if ($this->productSlug === 'glass') {
-            $this->loadGlassApprovalState();
-        } else {
-            $this->loadListingInfo();
+        try {
+            $this->loadCurrentMockupGenerationState();
+            $this->loadSourcePreviewContext();
+            if ($this->productSlug === 'glass') {
+                $this->loadGlassApprovalState();
+            } else {
+                $this->loadListingInfo();
+            }
+        } finally {
+            $this->detailsLoading = false;
         }
-
-        $this->detailsLoading = false;
     }
     public function previous(): void
     {

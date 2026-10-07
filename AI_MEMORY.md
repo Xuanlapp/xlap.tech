@@ -12623,3 +12623,19 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 - Added `.design/edit-keyword-save-speed/DESIGN_BRIEF.md`.
 - Deploy impact: shared Edit Keyword modal refresh behavior only; no schema, queue, worker, or API changes.
 - Validation: PHP lint passed, `php artisan view:cache` passed, `npm run build` passed. Diff check had no new functional findings.
+
+### 2026-10-07 — Scope Preview loading spinner and guarantee loading completion
+
+- Root cause: the deferred `loadPreviewDetails` spinner was positioned as a full modal overlay, visually blocking the image even though only secondary metadata was loading. The loading flag also lacked a `finally` safeguard if deferred context loading threw.
+- Changed `resources/views/livewire/modals/image/review-image.blade.php`: move the spinner into the right information panel with a relative positioning context, leaving the main image and controls usable immediately.
+- Changed `app/Livewire/Modals/Image/ReviewImage.php`: wrap deferred detail loading in `try/finally` so `detailsLoading` always clears after the request.
+- Deploy impact: shared image ReviewImage loading presentation only; no schema, queue, worker, or image storage changes.
+- Validation: PHP lint passed, Blade cache passed, `npm run build` passed. Diff check reports existing CRLF/trailing-whitespace warnings.
+
+### 2026-10-07 — Target only the status panel after Edit Keyword save
+
+- Root cause: the first duplicate-render reduction still refreshed the parent product page. On Glass, that parent render also recalculated provider options, balances, counts, and page layout, so the keyword modal stayed in `Saving...` while unrelated work completed.
+- Changed `app/Livewire/Modals/Product/EditKeyword.php`: keyword saves now dispatch only to the product's `StatusPanel` component; they no longer refresh the expensive parent page. Removed unused parent page imports.
+- Updated `.design/edit-keyword-save-speed/DESIGN_BRIEF.md` to document the targeted refresh behavior.
+- Deploy impact: shared Edit Keyword post-save refresh only; database update, validation, activity log, toast, modal close, and card update remain unchanged.
+- Validation: PHP lint passed, `php artisan view:cache` passed, `npm run build` passed. Diff check reports existing CRLF/trailing-whitespace warnings only.

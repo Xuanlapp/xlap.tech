@@ -457,11 +457,6 @@
                     </button>
 
                     <div class="grid gap-5 p-5 {{ $imageOnly ? 'grid-cols-1' : 'lg:grid-cols-[minmax(0,3fr)_minmax(360px,2fr)]' }}">
-                        @if ($detailsLoading)
-                            <div wire:loading.flex wire:target="loadPreviewDetails" class="absolute inset-0 z-30 items-center justify-center bg-slate-950/20 backdrop-blur-[1px]">
-                                <div class="inline-flex items-center gap-2 rounded-xl bg-slate-900/90 px-4 py-3 text-xs font-semibold text-white shadow-lg"><x-spinner /> Đang tải thông tin...</div>
-                            </div>
-                        @endif
                         <section class="min-w-0">
                             <div class="relative flex h-[min(76vh,820px)] min-h-[460px] items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
                                 @if (count($gallery) > 1)
@@ -627,7 +622,12 @@
                         </section>
 
                         @unless ($imageOnly)
-                        <aside class="flex max-h-[76vh] min-h-[460px] min-w-0 flex-col gap-4 overflow-y-auto pr-1">
+                        <aside class="relative flex max-h-[76vh] min-h-[460px] min-w-0 flex-col gap-4 overflow-y-auto pr-1">
+                            @if ($detailsLoading)
+                                <div wire:loading.flex wire:target="loadPreviewDetails" class="absolute inset-0 z-10 items-center justify-center rounded-2xl bg-slate-950/20 backdrop-blur-[1px]">
+                                    <div class="inline-flex items-center gap-2 rounded-xl bg-slate-900/90 px-4 py-3 text-xs font-semibold text-white shadow-lg"><x-spinner /> Đang tải thông tin...</div>
+                                </div>
+                            @endif
                             <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-slate-900">
                                 <div class="mb-4 flex items-center gap-3">
                                     <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-blue-600">

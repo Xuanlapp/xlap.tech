@@ -3,16 +3,10 @@
 namespace App\Livewire\Modals\Product;
 
 use App\Livewire\Pages\Glass\GlassStatusPanel;
-use App\Livewire\Pages\Glass\ListGlass;
-use App\Livewire\Pages\OrnamentAmazonTwo\ListOrnamentAmazonTwo;
 use App\Livewire\Pages\OrnamentAmazonTwo\OrnamentAmazonTwoStatusPanel;
-use App\Livewire\Pages\OrnamentEtsy\ListOrnamentEtsy;
 use App\Livewire\Pages\OrnamentEtsy\OrnamentEtsyStatusPanel;
-use App\Livewire\Pages\Sticker\ListSticker;
 use App\Livewire\Pages\Sticker\StickerStatusPanel;
-use App\Livewire\Pages\Decal\ListDecal;
 use App\Livewire\Pages\Decal\DecalStatusPanel;
-use App\Livewire\Pages\Suncatcher\ListSuncatcher;
 use App\Livewire\Pages\Suncatcher\SuncatcherStatusPanel;
 use App\Services\Glass\GlassService;
 use App\Services\Logging\ActivityLogService;
@@ -107,12 +101,12 @@ class EditKeyword extends Component
     private function dispatchProductRefresh(): void
     {
         match ($this->productSlug) {
-            'glass' => $this->dispatch('glass-product-design-updated')->to(ListGlass::class),
-            'sticker' => $this->dispatch('sticker-product-design-updated')->to(ListSticker::class),
-            'decal' => $this->dispatch('decal-product-design-updated')->to(ListDecal::class),
-            'ornament-etsy' => $this->dispatch('ornament-etsy-product-design-updated')->to(ListOrnamentEtsy::class),
-            'ornament-amazon-2' => $this->dispatch('ornament-amazon-two-product-design-updated')->to(ListOrnamentAmazonTwo::class),
-            'suncatcher' => $this->dispatch('suncatcher-product-design-updated')->to(ListSuncatcher::class),
+            'glass' => $this->dispatch('glass-product-design-updated')->to(GlassStatusPanel::class),
+            'sticker' => $this->dispatch('sticker-product-design-updated')->to(StickerStatusPanel::class),
+            'decal' => $this->dispatch('decal-product-design-updated')->to(DecalStatusPanel::class),
+            'ornament-etsy' => $this->dispatch('ornament-etsy-product-design-updated')->to(OrnamentEtsyStatusPanel::class),
+            'ornament-amazon-2' => $this->dispatch('ornament-amazon-two-product-design-updated')->to(OrnamentAmazonTwoStatusPanel::class),
+            'suncatcher' => $this->dispatch('suncatcher-product-design-updated')->to(SuncatcherStatusPanel::class),
             default => null,
         };
     }
