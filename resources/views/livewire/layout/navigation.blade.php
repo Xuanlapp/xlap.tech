@@ -77,7 +77,7 @@ new class extends Component
     $iconClass = 'h-5 w-5 shrink-0';
     $isAdminUser = auth()->user()?->role === 'admin' || (bool) auth()->user()?->is_admin;
     $isWaliUser = (bool) (auth()->user()?->can_access_wali) && ! $isAdminUser && ! auth()->user()?->isManager();
-    $pageProducts = $products->whereIn('slug', ['decal', 'suncatcher', 'ornament', 'ornament-etsy', 'ornament-amazon-2', 'sticker', 'glass']);
+    $pageProducts = $products->whereIn('slug', ['decal', 'suncatcher', 'ornament', 'ornament-etsy', 'ornament-amazon-2', 'sticker', 'glass', 'ceramic']);
     $supportSlugs = ['camp', 'proxy', 'ytrends', 'idea-amazon', 'idea-etsy'];
     $supportProducts = $products
         ->whereIn('slug', $supportSlugs)
@@ -114,7 +114,7 @@ new class extends Component
         <a
             href="{{ route('dashboard') }}"
             wire:navigate
-            class="absolute top-1/2 z-10 flex -translate-y-1/2 items-center gap-2 whitespace-nowrap text-slate-900 transition-all duration-500 ease-in-out focus:outline-none dark:text-slate-100"
+            class="absolute top-1/2 z-10 flex -translate-y-1/2 items-center gap-2 whitespace-nowrap text-slate-900 transition-transform duration-300 ease-out focus:outline-none dark:text-slate-100"
             :class="scrolled ? 'left-1/2 -translate-x-1/2' : 'left-12 translate-x-0'"
         >
             <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 shadow-sm dark:bg-slate-800">
@@ -571,4 +571,5 @@ new class extends Component
         </aside>
     </div>
 </div>
+
 

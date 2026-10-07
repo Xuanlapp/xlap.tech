@@ -9,6 +9,7 @@ use App\Livewire\Pages\Proxy\Index as ProxyPage;
 use App\Livewire\Pages\Sticker\ListSticker;
 use App\Livewire\Pages\Decal\ListDecal;
 use App\Livewire\Pages\Glass\ListGlass;
+use App\Livewire\Pages\Ceramic\ListCeramic;
 use App\Livewire\Pages\YTrends\Index as YTrendsPage;
 use App\Livewire\Pages\IdeaEtsy\IdeaEtsy as IdeaEtsyPage;
 use App\Livewire\Pages\IdeaAmazon\IdeaAmazon as IdeaAmazonPage;
@@ -51,6 +52,16 @@ class ProductRegistry
                 'path' => 'glass',
                 'component' => ListGlass::class,
                 'sort_order' => 31,
+                'is_active' => true,
+            ],
+            [
+                'name' => 'Ceramic',
+                'slug' => 'ceramic',
+                'description' => 'Create ceramic-ready artwork.',
+                'route_name' => 'offorest.products.ceramic',
+                'path' => 'ceramic',
+                'component' => ListCeramic::class,
+                'sort_order' => 32,
                 'is_active' => true,
             ],
             [

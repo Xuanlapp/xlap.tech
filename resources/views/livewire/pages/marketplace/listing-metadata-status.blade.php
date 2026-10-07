@@ -77,10 +77,17 @@
                     <tbody class="divide-y divide-slate-200">
                         @forelse ($assets as $asset)
                             @php
-                                $derivedStatus = $asset->marketplace_listing_status
-                                    ?: ($asset->title ? 'completed' : 'waiting');
                                 $marketplace = $asset->marketplace_listing_marketplace
                                     ?: ($asset->user?->can_generate_amazon_listing ? 'amazon' : ($asset->user?->can_generate_etsy_listing ? 'etsy' : 'none'));
+                                $requiredFields = $marketplace === 'etsy'
+                                    ? ['title', 'description', 'tags']
+                                    : ['title', 'description', 'item_highlight', 'bullet_point_1', 'bullet_point_2', 'bullet_point_3', 'bullet_point_4', 'bullet_point_5', 'generic_keyword'];
+                                $metadataComplete = collect($requiredFields)->every(fn (string $field): bool => is_string($asset->getAttribute($field)) && trim((string) $asset->getAttribute($field)) !== '');
+                                $derivedStatus = $asset->marketplace_listing_status
+                                    ?: ($metadataComplete ? 'completed' : 'waiting');
+                                if ($derivedStatus === 'completed' && ! $metadataComplete) {
+                                    $derivedStatus = 'failed';
+                                }
                                 $statusClasses = [
                                     'waiting' => 'bg-amber-100 text-amber-700',
                                     'processing' => 'bg-blue-100 text-blue-700',
@@ -118,7 +125,7 @@
                                     <p class="mt-1">Done: {{ optional($asset->marketplace_listing_completed_at)->format('Y-m-d H:i:s') ?: '-' }}</p>
                                 </td>
                                 <td class="px-4 py-4 align-top">
-                                    @if ($asset->title)
+                                    @if ($metadataComplete)
                                         <p class="max-w-md font-medium text-slate-950">{{ $asset->title }}</p>
                                         <p class="mt-2 max-w-md text-xs text-slate-400">Item Highlight: {{ $asset->item_highlight ?: '-' }}</p>
                                         @if ($asset->generic_keyword)
@@ -137,7 +144,7 @@
                                                 wire:target="retryListing({{ $asset->id }})"
                                                 class="mt-3 inline-flex items-center rounded-md bg-amber-100 px-3 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-200 disabled:cursor-wait disabled:opacity-60"
                                             >
-                                                <span wire:loading.remove wire:target="retryListing({{ $asset->id }})">Retry title</span>
+                                                <span wire:loading.remove wire:target="retryListing({{ $asset->id }})">Retry metadata</span>
                                                 <span wire:loading wire:target="retryListing({{ $asset->id }})">Generating...</span>
                                             </button>
                                         @endif

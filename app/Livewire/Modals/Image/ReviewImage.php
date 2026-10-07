@@ -13,6 +13,8 @@ use App\Livewire\Pages\Decal\ListDecal;
 use App\Livewire\Pages\Decal\DecalStatusPanel;
 use App\Livewire\Pages\Glass\ListGlass;
 use App\Livewire\Pages\Glass\GlassStatusPanel;
+use App\Livewire\Pages\Ceramic\ListCeramic;
+use App\Livewire\Pages\Ceramic\CeramicStatusPanel;
 use App\Models\DataOrnamentAmazon;
 use App\Models\ProductDesignAsset;
 use App\Services\Image\ImageLinkPreviewService;
@@ -22,8 +24,11 @@ use App\Services\OrnamentEtsy\OrnamentEtsyService;
 use App\Services\Sticker\StickerService;
 use App\Services\Decal\DecalService;
 use App\Services\Glass\GlassService;
+use App\Services\Ceramic\CeramicService;
 use App\Services\Glass\GlassBoundsGuideAnalyzer;
 use App\Services\Glass\GlassBoundsGuideStorage;
+use App\Services\Ceramic\CeramicBoundsGuideStorage;
+use App\Services\Ceramic\CeramicBoundsGuideAnalyzer;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -442,6 +447,26 @@ class ReviewImage extends Component
         $this->close();
     }
 
+    public function selectAsCeramicRedesign(): void
+    {
+        if ($this->action !== 'ceramic-redesign' || ! $this->assetId || ! $this->original) {
+            return;
+        }
+
+        try {
+            app(CeramicService::class)->selectRedesign(auth()->user(), $this->assetId, $this->original);
+        } catch (RuntimeException $exception) {
+            $this->reportUserActionError($exception, 'ceramic.select_redesign', ['asset_id' => $this->assetId, 'original' => $this->original]);
+            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
+            return;
+        }
+
+        $this->dispatch('ceramic-product-design-workflow-updated')->to(ListCeramic::class);
+        $this->dispatch('ceramic-product-design-workflow-updated')->to(CeramicStatusPanel::class);
+        $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da chon lai anh Create Master Ceramic.');
+        $this->close();
+    }
+
     public function selectAsOrnamentEtsyRedesign(): void
     {
         if ($this->action !== 'ornament-etsy-redesign' || ! $this->assetId || ! $this->original) {
@@ -612,6 +637,21 @@ class ReviewImage extends Component
         $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da custom anh so 2.');
     }
 
+    public function createCeramicItemFromImage(): void
+    {
+        if ($this->action !== 'ceramic-redesign' || ! $this->original) {
+            return;
+        }
+
+        $this->dispatch('openModal', component: 'modals.ceramic.add-product-design', arguments: [
+            'keyword' => $this->keyword ?: '',
+            'imageLink' => $this->original,
+            'sourceAssetId' => $this->assetId,
+            'sourceRedesignCandidate' => $this->original,
+        ]);
+        $this->close();
+    }
+
     public function customizeGlassRedesign(): void
     {
         if ($this->action !== 'glass-redesign' || ! $this->assetId || ! $this->original) {
@@ -646,6 +686,36 @@ class ReviewImage extends Component
     {
         $this->reset(['isOpen', 'src', 'original', 'gallery', 'currentIndex', 'action', 'productSlug', 'assetId', 'keyword', 'customPrompt', 'editTarget', 'imagePrompt', 'modalProviderKey', 'modalImageModel', 'currentMockupSlotGenerating', 'listingInfo', 'sourcePreviewImages', 'sourceListingFields', 'imageOnly', 'detailsLoading']);
         $this->title = 'Review image';
+    }
+
+    public function customizeCeramicRedesign(): void
+    {
+        if ($this->action !== 'ceramic-redesign' || ! $this->assetId || ! $this->original) {
+            return;
+        }
+
+        try {
+            $asset = app(CeramicService::class)->customizeRedesign(auth()->user(), $this->assetId, $this->original, $this->customPrompt);
+            app(ActivityLogService::class)->record(event: 'ceramic.master_customized', description: 'User customized Ceramic master image from preview.', subject: $asset, properties: ['item_number' => $asset->item_number, 'redesign' => $asset->redesign]);
+        } catch (InvalidArgumentException|RuntimeException $exception) {
+            $this->reportUserActionError($exception, 'ceramic.customize_redesign', ['asset_id' => $this->assetId, 'original' => $this->original]);
+            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
+            return;
+        } catch (Throwable $exception) {
+            $this->reportUserActionError($exception, 'ceramic.customize_redesign', ['asset_id' => $this->assetId]);
+            Log::error('Ceramic master customization failed unexpectedly.', ['asset_id' => $this->assetId, 'message' => $exception->getMessage()]);
+            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: 'Loi he thong khi custom anh Ceramic.');
+            return;
+        }
+
+        $previewUrl = app(ImageLinkPreviewService::class)->previewUrl($asset->redesign);
+        $this->gallery[] = ['src' => $previewUrl, 'original' => $asset->redesign, 'title' => 'Create Master '.(count($this->gallery) + 1)];
+        $this->currentIndex = count($this->gallery) - 1;
+        $this->customPrompt = '';
+        $this->setCurrentFromGallery();
+        $this->dispatch('ceramic-product-design-workflow-updated')->to(ListCeramic::class);
+        $this->dispatch('ceramic-product-design-workflow-updated')->to(CeramicStatusPanel::class);
+        $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da custom anh Ceramic.');
     }
 
     public function saveGlassBounds(string $dataUrl): void
@@ -692,6 +762,50 @@ class ReviewImage extends Component
         }
     }
 
+    public function saveCeramicBounds(string $dataUrl): void
+    {
+        if ($this->productSlug !== 'ceramic' || $this->action !== 'ceramic-redesign' || ! $this->assetId) {
+            return;
+        }
+
+        if ($this->assetApproved) {
+            return;
+        }
+
+        if (! preg_match('#^data:image/png;base64,(?<payload>[A-Za-z0-9+/=\r\n]+)$#', $dataUrl, $matches)) {
+            $this->dispatch('toast', type: 'error', title: 'Save failed', message: 'Du lieu anh bounds PNG khong hop le.');
+            return;
+        }
+
+        $pngBytes = base64_decode($matches['payload'], true);
+        if (! is_string($pngBytes)) {
+            $this->dispatch('toast', type: 'error', title: 'Save failed', message: 'Khong doc duoc anh bounds.');
+            return;
+        }
+
+        try {
+            $asRedesign = true;
+            $asset = app(CeramicService::class)->saveBoundedImage(auth()->user(), $this->assetId, $pngBytes, $asRedesign);
+            app(ActivityLogService::class)->record(
+                event: 'ceramic.source_bounds_saved',
+                description: 'User saved a Ceramic image with updated bounds from the bounds editor.',
+                subject: $asset,
+                properties: ['width_bytes' => strlen($pngBytes), 'target' => $asRedesign ? 'redesign' : 'image_link', 'image_link' => $asset->image_link, 'redesign' => $asset->redesign],
+            );
+            $this->dispatch('ceramic-product-design-updated')->to(ListCeramic::class);
+            $this->dispatch('ceramic-product-design-updated')->to(CeramicStatusPanel::class);
+            $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da luu anh Ceramic theo bounds moi.');
+            $this->close();
+        } catch (InvalidArgumentException|RuntimeException $exception) {
+            $this->reportUserActionError($exception, 'ceramic.save_source_bounds', ['asset_id' => $this->assetId]);
+            $this->dispatch('toast', type: 'error', title: 'Save failed', message: $exception->getMessage());
+        } catch (Throwable $exception) {
+            $this->reportUserActionError($exception, 'ceramic.save_source_bounds', ['asset_id' => $this->assetId]);
+            Log::error('Ceramic bounds save failed unexpectedly.', ['asset_id' => $this->assetId, 'message' => $exception->getMessage()]);
+            $this->dispatch('toast', type: 'error', title: 'Save failed', message: 'Loi he thong khi luu anh bounds.');
+        }
+    }
+
     public function prepareGlassBoundsEditor(): void
     {
         if ($this->productSlug !== 'glass' || $this->action !== 'glass-redesign' || ! $this->assetId) return;
@@ -716,6 +830,30 @@ class ReviewImage extends Component
         }
     }
 
+    public function prepareCeramicBoundsEditor(): void
+    {
+        if ($this->productSlug !== 'ceramic' || $this->action !== 'ceramic-redesign' || ! $this->assetId) return;
+        if ($this->assetApproved) {
+            $this->dispatch('toast', type: 'error', title: 'Bounds failed', message: 'Item da duyet. Hay bo duyet truoc khi chinh bounds.');
+            return;
+        }
+        try {
+            $sourceBefore = $this->original ?: $this->src;
+            $asset = app(CeramicService::class)->useCachedOriginalForBounds(auth()->user(), $this->assetId, $sourceBefore);
+            $currentUrl = $sourceBefore === (string) $asset->image_link ? $asset->image_link : $asset->redesign;
+            $this->original = $currentUrl;
+            $this->src = app(ImageLinkPreviewService::class)->previewUrl($currentUrl);
+            if (isset($this->gallery[$this->currentIndex])) {
+                $this->gallery[$this->currentIndex]['original'] = $this->original;
+                $this->gallery[$this->currentIndex]['src'] = $this->src;
+            }
+            $this->dispatch('ceramic-bounds-editor-ready');
+        } catch (Throwable $exception) {
+            $this->reportUserActionError($exception, 'ceramic.prepare_bounds_editor', ['asset_id' => $this->assetId]);
+            $this->dispatch('toast', type: 'error', title: 'Bounds failed', message: $exception->getMessage());
+        }
+    }
+
     public function saveGlassBoundsFromTransform(array $transform): void
     {
         if ($this->productSlug !== 'glass' || $this->action !== 'glass-redesign' || ! $this->assetId) return;
@@ -732,15 +870,29 @@ class ReviewImage extends Component
         }
     }
 
-    public function render(): View
+    public function saveCeramicBoundsFromTransform(array $transform): void
     {
+        if ($this->productSlug !== 'ceramic' || $this->action !== 'ceramic-redesign' || ! $this->assetId) return;
+        if ($this->assetApproved) return;
+        try {
+            app(CeramicService::class)->saveBoundedCacheImage(auth()->user(), $this->assetId, $transform, true);
+            $this->dispatch('ceramic-product-design-updated')->to(ListCeramic::class);
+            $this->dispatch('ceramic-product-design-workflow-updated')->to(CeramicStatusPanel::class);
+            $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da luu anh Ceramic theo bounds moi.');
+            $this->close();
+        } catch (Throwable $exception) {
+            $this->reportUserActionError($exception, 'ceramic.save_source_bounds_server', ['asset_id' => $this->assetId]);
+            $this->dispatch('toast', type: 'error', title: 'Save failed', message: $exception->getMessage());
+        }
+    }
 
-        $guide = app(GlassBoundsGuideStorage::class);
+    public function render(): View
+    {        $guide = $this->productSlug === 'ceramic' ? app(CeramicBoundsGuideStorage::class) : app(GlassBoundsGuideStorage::class);
         $this->glassBoundsGuideUrl = $guide->url(auth()->user());
         try {
             $config = $guide->config(auth()->user());
         } catch (InvalidArgumentException $exception) {
-            Log::warning('Glass bounds guide analysis failed.', ['message' => $exception->getMessage()]);
+            Log::warning('Bounds guide analysis failed.', ['message' => $exception->getMessage()]);
             $config = null;
         }
         $this->glassBoundsConfig = is_array($config) ? $config : [];
@@ -950,3 +1102,16 @@ class ReviewImage extends Component
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+

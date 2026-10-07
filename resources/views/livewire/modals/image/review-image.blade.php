@@ -168,7 +168,7 @@
                     this.boundsEditing = true;
                     this.boundsLoading = true;
                     this.boundsImage = null;
-                    await this.$wire.prepareGlassBoundsEditor();
+                    await this.$wire.{{  === 'ceramic' ? 'prepareCeramicBoundsEditor' : 'prepareGlassBoundsEditor' }}();
                     this.$nextTick(() => this.initBoundsEditor());
                 },
                 initBoundsEditor() {
@@ -412,7 +412,7 @@
                     if (! dataUrl || dataUrl.length < 100) {
                         throw new Error('Canvas export returned an empty image.');
                     }
-                    await this.$wire.saveGlassBounds(dataUrl);
+                    await this.$wire.{{  === 'ceramic' ? 'saveCeramicBounds' : 'saveGlassBounds' }}(dataUrl);
                     this.boundsEditing = false;
                     } catch (error) {
                         console.error('Glass bounds save failed', error);
@@ -488,7 +488,7 @@
                                             <path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M16 21h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
                                         </svg>
                                     </button>
-                                    @if (!$assetApproved && $productSlug === 'glass' && $assetId && $src && $action === 'glass-redesign')
+                                    @if (!$assetApproved && $productSlugin_array(, ['glass', 'ceramic'], true) && $assetId && $src && $action === 'glass-redesign')
                                         <button
                                             type="button"
                                             x-on:click="startBoundsEditor()"
@@ -522,7 +522,7 @@
                                     </button>
                                 @endif
 
-                                @if (!$assetApproved && $productSlug === 'glass' && $assetId && $src && $action === 'glass-redesign')
+                                @if (!$assetApproved && $productSlugin_array(, ['glass', 'ceramic'], true) && $assetId && $src && $action === 'glass-redesign')
                                     <div x-show="boundsEditing" x-cloak class="absolute inset-0 z-20 flex items-center justify-center bg-white p-5">
                                         <div class="relative flex h-full w-full max-w-4xl items-center justify-center overflow-hidden rounded-xl bg-white" x-ref="boundsStage">
                                             <canvas
@@ -938,7 +938,7 @@
                                 </section>
                             @endif
 
-                            @if (! $assetApproved && in_array($action, ['sticker-redesign', 'decal-redesign', 'glass-redesign', 'ornament-etsy-redesign'], true))
+                            @if (! $assetApproved && in_array($action, ['sticker-redesign', 'decal-redesign', 'glass-redesign', 'ceramic-redesign', 'ornament-etsy-redesign'], true))
                                 <section x-show="! boundsEditing" x-cloak class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-slate-900">
                                     <div class="mb-4 flex items-center gap-3">
                                         <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
@@ -988,7 +988,7 @@
                                     </div>
 
                                     <div class="space-y-3">
-                                        <button type="button" wire:click="{{ $action === 'glass-redesign' ? 'selectAsGlassRedesign' : 'selectAsStickerRedesign' }}" class="group flex w-full items-center gap-4 rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 text-left transition hover:-translate-y-0.5 hover:border-emerald-300 hover:bg-emerald-50 hover:shadow-md">
+                                        <button type="button" wire:click="{{ $action === 'glass-redesign' ? 'selectAsGlassRedesign' : ( === 'ceramic-redesign' ? 'selectAsCeramicRedesign' : 'selectAsStickerRedesign') }}" class="group flex w-full items-center gap-4 rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 text-left transition hover:-translate-y-0.5 hover:border-emerald-300 hover:bg-emerald-50 hover:shadow-md">
                                             <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-emerald-600 shadow-sm">
                                                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                                     <path d="M20 6 9 17l-5-5" />
@@ -1046,8 +1046,8 @@
                                     <button type="button" x-show="boundsEditing" x-cloak x-on:click="cancelBoundsEditor()" class="inline-flex min-w-32 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700">
                                         Cancel
                                     </button>
-                                    @if (in_array($action, ['sticker-redesign', 'decal-redesign', 'glass-redesign', 'ornament-etsy-redesign'], true))
-                                        <button type="button" x-show="! boundsEditing" wire:click="{{ $action === 'ornament-etsy-redesign' ? 'selectAsOrnamentEtsyRedesign' : ($action === 'glass-redesign' ? 'selectAsGlassRedesign' : 'selectAsStickerRedesign') }}" class="inline-flex min-w-40 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition hover:-translate-y-0.5 hover:bg-blue-700">
+                                    @if (in_array($action, ['sticker-redesign', 'decal-redesign', 'glass-redesign', 'ceramic-redesign', 'ornament-etsy-redesign'], true))
+                                        <button type="button" x-show="! boundsEditing" wire:click="{{ $action === 'ornament-etsy-redesign' ? 'selectAsOrnamentEtsyRedesign' : ($action === 'glass-redesign' ? 'selectAsGlassRedesign' : ( === 'ceramic-redesign' ? 'selectAsCeramicRedesign' : 'selectAsStickerRedesign')) }}" class="inline-flex min-w-40 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition hover:-translate-y-0.5 hover:bg-blue-700">
                                             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                                 <path d="M20 6 9 17l-5-5" />
                                             </svg>
@@ -1070,3 +1070,4 @@
         </div>
     @endif
 </div>
+

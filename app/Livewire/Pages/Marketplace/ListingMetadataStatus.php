@@ -113,12 +113,8 @@ class ListingMetadataStatus extends Component
                         ->orWhere('marketplace_listing_status', 'waiting');
                 }),
             'processing' => $query->where('marketplace_listing_status', 'processing'),
-            'completed' => $query->where(function (Builder $query): void {
-                $query
-                    ->where('marketplace_listing_status', 'completed')
-                    ->orWhereNotNull('title');
-            }),
-            'failed' => $query->where('marketplace_listing_status', 'failed'),
+            'completed' => $this->applyCompletedMetadataFilter($query),
+            'failed' => $this->applyFailedMetadataFilter($query),
             default => $query,
         };
     }
@@ -143,15 +139,61 @@ class ListingMetadataStatus extends Component
                 })
                 ->count(),
             'processing' => (clone $query)->where('marketplace_listing_status', 'processing')->count(),
-            'completed' => (clone $query)
-                ->where(function (Builder $query): void {
-                    $query
-                        ->where('marketplace_listing_status', 'completed')
-                        ->orWhereNotNull('title');
-                })
-                ->count(),
-            'failed' => (clone $query)->where('marketplace_listing_status', 'failed')->count(),
+            'completed' => $this->applyCompletedMetadataFilter(clone $query)->count(),
+            'failed' => $this->applyFailedMetadataFilter(clone $query)->count(),
         ];
+    }
+
+    private function applyCompletedMetadataFilter(Builder $query): Builder
+    {
+        $amazonFields = ['title', 'description', 'item_highlight', 'bullet_point_1', 'bullet_point_2', 'bullet_point_3', 'bullet_point_4', 'bullet_point_5', 'generic_keyword'];
+
+        return $query
+            ->where('marketplace_listing_status', 'completed')
+            ->where(function (Builder $query) use ($amazonFields): void {
+                $query->where(function (Builder $query) use ($amazonFields): void {
+                    $query->where('marketplace_listing_marketplace', 'amazon');
+                    foreach ($amazonFields as $field) {
+                        $query->whereNotNull($field)->where($field, '!=', '');
+                    }
+                })->orWhere(function (Builder $query): void {
+                    $query->where('marketplace_listing_marketplace', 'etsy')
+                        ->whereNotNull('title')->where('title', '!=', '')
+                        ->whereNotNull('description')->where('description', '!=', '')
+                        ->whereNotNull('tags')->where('tags', '!=', '');
+                });
+            });
+    }
+
+    private function applyFailedMetadataFilter(Builder $query): Builder
+    {
+        return $query->where(function (Builder $query): void {
+            $query->where('marketplace_listing_status', 'failed')
+                ->orWhere(function (Builder $query): void {
+                    $query->where('marketplace_listing_status', 'completed')
+                        ->where(function (Builder $query): void {
+                            $this->applyIncompleteAmazonMetadata($query)
+                                ->orWhere(function (Builder $query): void {
+                                    $query->where('marketplace_listing_marketplace', 'etsy')
+                                        ->where(function (Builder $query): void {
+                                            $query->whereNull('title')->orWhere('title', '')
+                                                ->orWhereNull('description')->orWhere('description', '')
+                                                ->orWhereNull('tags')->orWhere('tags', '');
+                                        });
+                                });
+                        });
+                });
+        });
+    }
+
+    private function applyIncompleteAmazonMetadata(Builder $query): Builder
+    {
+        return $query->where('marketplace_listing_marketplace', 'amazon')
+            ->where(function (Builder $query): void {
+                foreach (['title', 'description', 'item_highlight', 'bullet_point_1', 'bullet_point_2', 'bullet_point_3', 'bullet_point_4', 'bullet_point_5', 'generic_keyword'] as $field) {
+                    $query->orWhereNull($field)->orWhere($field, '');
+                }
+            });
     }
 
     private function normalizedSearch(): ?string

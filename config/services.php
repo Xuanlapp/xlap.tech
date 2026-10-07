@@ -109,6 +109,11 @@ return [
         'local_mockup_fallback_seconds' => env('GLASS_LOCAL_MOCKUP_FALLBACK_SECONDS', 120),
     ],
 
+    'ceramic' => [
+        'local_mockup_fallback_enabled' => true,
+        'local_mockup_fallback_seconds' => 120,
+    ],
+
     'sticker' => [
         // VPS fallback starts only after no Sticker Generate has happened during this idle period.
         'local_mockup_fallback_enabled' => env('STICKER_LOCAL_MOCKUP_FALLBACK_ENABLED', true),
@@ -156,3 +161,4 @@ return [
         ],
     ],
 ];
+

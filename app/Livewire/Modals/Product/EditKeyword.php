@@ -3,12 +3,14 @@
 namespace App\Livewire\Modals\Product;
 
 use App\Livewire\Pages\Glass\GlassStatusPanel;
+use App\Livewire\Pages\Ceramic\CeramicStatusPanel;
 use App\Livewire\Pages\OrnamentAmazonTwo\OrnamentAmazonTwoStatusPanel;
 use App\Livewire\Pages\OrnamentEtsy\OrnamentEtsyStatusPanel;
 use App\Livewire\Pages\Sticker\StickerStatusPanel;
 use App\Livewire\Pages\Decal\DecalStatusPanel;
 use App\Livewire\Pages\Suncatcher\SuncatcherStatusPanel;
 use App\Services\Glass\GlassService;
+use App\Services\Ceramic\CeramicService;
 use App\Services\Logging\ActivityLogService;
 use App\Services\OrnamentAmazonTwo\OrnamentAmazonTwoService;
 use App\Services\OrnamentEtsy\OrnamentEtsyService;
@@ -90,6 +92,7 @@ class EditKeyword extends Component
     {
         return [
             'glass' => GlassService::class,
+            'ceramic' => CeramicService::class,
             'sticker' => StickerService::class,
             'decal' => DecalService::class,
             'ornament-etsy' => OrnamentEtsyService::class,
@@ -102,6 +105,7 @@ class EditKeyword extends Component
     {
         match ($this->productSlug) {
             'glass' => $this->dispatch('glass-product-design-updated')->to(GlassStatusPanel::class),
+            'ceramic' => $this->dispatch('ceramic-product-design-updated')->to(CeramicStatusPanel::class),
             'sticker' => $this->dispatch('sticker-product-design-updated')->to(StickerStatusPanel::class),
             'decal' => $this->dispatch('decal-product-design-updated')->to(DecalStatusPanel::class),
             'ornament-etsy' => $this->dispatch('ornament-etsy-product-design-updated')->to(OrnamentEtsyStatusPanel::class),

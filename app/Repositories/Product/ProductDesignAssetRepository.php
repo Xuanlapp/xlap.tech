@@ -649,6 +649,44 @@ class ProductDesignAssetRepository
             }
         });
     }
+
+    /**
+     * Create one imported Ceramic asset with an optional source image,
+     * required Create Master image, and up to six imported mockups.
+     *
+     * @param array<int, string> $mockups
+     */
+    public function createImportedCeramic(int $userId, int $productId, string $sku, string $keyword, ?string $sourceImage, string $masterImage, array $mockups = []): ProductDesignAsset
+    {
+        return DB::transaction(function () use ($userId, $productId, $sku, $keyword, $sourceImage, $masterImage, $mockups): ProductDesignAsset {
+            $this->ensureSkuUniqueForUserAndProduct($userId, $productId, $sku);
+            $lastNumber = ProductDesignAsset::query()
+                ->where('user_id', $userId)
+                ->where('product_id', $productId)
+                ->lockForUpdate()
+                ->max('item_number');
+
+            $attributes = [
+                'user_id' => $userId,
+                'product_id' => $productId,
+                'item_number' => ((int) $lastNumber) + 1,
+                'sku' => $sku,
+                'keyword' => $keyword,
+                'image_link' => $sourceImage,
+                'redesign' => $masterImage,
+            ];
+
+            foreach (array_values($mockups) as $index => $mockup) {
+                $slot = $index + 1;
+                if ($slot > 6) {
+                    break;
+                }
+                $attributes["mockup{$slot}"] = $mockup;
+            }
+
+            return ProductDesignAsset::create($attributes);
+        });
+    }
     private function normalizedSearch(?string $search): ?string
     {
         $search = trim((string) $search);

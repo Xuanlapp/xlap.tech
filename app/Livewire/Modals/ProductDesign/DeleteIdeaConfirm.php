@@ -15,6 +15,8 @@ use App\Livewire\Pages\Decal\ListDecal;
 use App\Livewire\Pages\Decal\DecalStatusPanel;
 use App\Livewire\Pages\Glass\ListGlass;
 use App\Livewire\Pages\Glass\GlassStatusPanel;
+use App\Livewire\Pages\Ceramic\ListCeramic;
+use App\Livewire\Pages\Ceramic\CeramicStatusPanel;
 use App\Models\ProductDesignAsset;
 use App\Services\Logging\ActivityLogService;
 use App\Services\Suncatcher\SuncatcherService;
@@ -23,6 +25,7 @@ use App\Services\OrnamentEtsy\OrnamentEtsyService;
 use App\Services\Sticker\StickerService;
 use App\Services\Decal\DecalService;
 use App\Services\Glass\GlassService;
+use App\Services\Ceramic\CeramicService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\On;
@@ -57,7 +60,7 @@ class DeleteIdeaConfirm extends Component
         $assetId = (int) ($arguments['assetId'] ?? 0);
         $productSlug = (string) ($arguments['productSlug'] ?? '');
 
-        if ($assetId < 1 || ! in_array($productSlug, ['sticker', 'decal', 'glass', 'suncatcher', 'ornament-etsy', 'ornament-amazon-2'], true)) {
+        if ($assetId < 1 || ! in_array($productSlug, ['sticker', 'decal', 'glass', 'ceramic', 'suncatcher', 'ornament-etsy', 'ornament-amazon-2'], true)) {
             return;
         }
 
@@ -120,6 +123,7 @@ class DeleteIdeaConfirm extends Component
             'sticker' => app(StickerService::class)->deleteAsset(auth()->user(), $this->assetId),
             'decal' => app(DecalService::class)->deleteAsset(auth()->user(), $this->assetId),
             'glass' => app(GlassService::class)->deleteAsset(auth()->user(), $this->assetId),
+            'ceramic' => app(CeramicService::class)->deleteAsset(auth()->user(), $this->assetId),
             'suncatcher' => app(SuncatcherService::class)->deleteAsset(auth()->user(), $this->assetId),
             'ornament-etsy' => app(OrnamentEtsyService::class)->deleteAsset(auth()->user(), $this->assetId),
             'ornament-amazon-2' => app(OrnamentAmazonTwoService::class)->deleteAsset(auth()->user(), $this->assetId),
@@ -133,6 +137,7 @@ class DeleteIdeaConfirm extends Component
             'sticker' => 'Sticker Workspace',
             'decal' => 'Decal Workspace',
             'glass' => 'Glass Workspace',
+            'ceramic' => 'Ceramic Workspace',
             'suncatcher' => 'Suncatcher',
             'ornament-etsy' => 'Ornament Etsy',
             'ornament-amazon-2' => 'Ornament Amazon 2',
@@ -146,6 +151,7 @@ class DeleteIdeaConfirm extends Component
             'sticker' => 'sticker.item_deleted',
             'decal' => 'decal.item_deleted',
             'glass' => 'glass.item_deleted',
+            'ceramic' => 'ceramic.item_deleted',
             'suncatcher' => 'suncatcher.item_deleted',
             'ornament-etsy' => 'ornament_etsy.item_deleted',
             'ornament-amazon-2' => 'ornament_amazon_2.item_deleted',
@@ -166,6 +172,7 @@ class DeleteIdeaConfirm extends Component
             'sticker' => $this->dispatchStickerEvents(),
             'decal' => $this->dispatchDecalEvents(),
             'glass' => $this->dispatchGlassEvents(),
+            'ceramic' => $this->dispatchCeramicEvents(),
             'suncatcher' => $this->dispatchSuncatcherEvents(),
             'ornament-etsy' => $this->dispatchOrnamentEtsyEvents(),
             'ornament-amazon-2' => $this->dispatchOrnamentAmazonTwoEvents(),
@@ -195,6 +202,14 @@ class DeleteIdeaConfirm extends Component
         $this->dispatch('glass-product-design-workflow-updated')->to(GlassStatusPanel::class);
         $this->dispatch('glass-counts-updated')->to(ListGlass::class);
         $this->dispatch('glass-counts-updated')->to(GlassStatusPanel::class);
+    }
+
+    private function dispatchCeramicEvents(): void
+    {
+        $this->dispatch('ceramic-product-design-workflow-updated')->to(ListCeramic::class);
+        $this->dispatch('ceramic-product-design-workflow-updated')->to(CeramicStatusPanel::class);
+        $this->dispatch('ceramic-counts-updated')->to(ListCeramic::class);
+        $this->dispatch('ceramic-counts-updated')->to(CeramicStatusPanel::class);
     }
 
     private function dispatchSuncatcherEvents(): void

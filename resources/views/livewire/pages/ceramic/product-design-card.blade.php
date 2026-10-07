@@ -1,22 +1,22 @@
 <article
     x-data="{
-        showMasterBounds: localStorage.getItem('glass-show-master-bounds') === '1',
-        masterBoundsOpacity: Number(localStorage.getItem('glass-master-bounds-opacity') || '0.72'),
+        showMasterBounds: localStorage.getItem('ceramic-show-master-bounds') === '1',
+        masterBoundsOpacity: Number(localStorage.getItem('ceramic-master-bounds-opacity') || '0.72'),
         init() {
-            window.addEventListener('glass-master-bounds-changed', (event) => {
+            window.addEventListener('ceramic-master-bounds-changed', (event) => {
                 this.showMasterBounds = Boolean(event.detail?.visible);
                 if (event.detail?.opacity !== undefined) this.masterBoundsOpacity = Number(event.detail.opacity);
             });
         },
         toggleMasterBounds() {
             this.showMasterBounds = ! this.showMasterBounds;
-            localStorage.setItem('glass-show-master-bounds', this.showMasterBounds ? '1' : '0');
-            window.dispatchEvent(new CustomEvent('glass-master-bounds-changed', { detail: { visible: this.showMasterBounds } }));
+            localStorage.setItem('ceramic-show-master-bounds', this.showMasterBounds ? '1' : '0');
+            window.dispatchEvent(new CustomEvent('ceramic-master-bounds-changed', { detail: { visible: this.showMasterBounds } }));
         },
     }"
-    class="glass-item-card rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/[0.02] dark:border-slate-700 dark:bg-slate-900 dark:ring-white/[0.03]"
+    class="ceramic-item-card rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-black/[0.02] dark:border-slate-700 dark:bg-slate-900 dark:ring-white/[0.03]"
 >
-    <div class="glass-item-header mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-2 dark:border-slate-700 dark:bg-slate-800/70">
+    <div class="ceramic-item-header mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-2 dark:border-slate-700 dark:bg-slate-800/70">
         <div class="flex min-w-0 flex-1 flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white/60 p-1.5 dark:border-slate-700 dark:bg-slate-900/50">
             <span class="inline-flex h-8 shrink-0 items-center rounded-lg bg-white px-3 text-xs font-bold text-slate-950 shadow-sm dark:bg-slate-800 dark:text-slate-100">
                 STT: {{ $asset->item_number }}
@@ -26,7 +26,7 @@
             </span>
 
             <h2 class="min-w-0 flex-1 truncate text-base font-bold text-slate-950 sm:text-lg">
-                {{ $asset->keyword ?: 'Glass item' }}
+                {{ $asset->keyword ?: 'Ceramic item' }}
             </h2>
 
             @if (! $asset->is_approved)
@@ -35,7 +35,7 @@
                     variant="ghost"
                     size="xs"
                     type="button"
-                    wire:click="$dispatch('openModal', { component: 'modals.product.edit-keyword', arguments: { assetId: {{ $asset->id }}, productSlug: 'glass' } })"
+                    wire:click="$dispatch('openModal', { component: 'modals.product.edit-keyword', arguments: { assetId: {{ $asset->id }}, productSlug: 'ceramic' } })"
                 >
                     Edit
                 </x-button>
@@ -66,7 +66,7 @@
         <div class="flex shrink-0 items-center gap-2 rounded-lg border border-slate-200 bg-white/60 p-1.5 dark:border-slate-700 dark:bg-slate-900/50">
             <button
                 type="button"
-                wire:click="$dispatch('openModal', { component: 'modals.product-design.delete-idea-confirm', arguments: { productSlug: 'glass', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) } })"
+                wire:click="$dispatch('openModal', { component: 'modals.product-design.delete-idea-confirm', arguments: { productSlug: 'ceramic', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) } })"
                 class="inline-flex h-8 items-center rounded-md border border-rose-200 bg-white px-3 text-xs font-bold text-rose-600 transition hover:border-rose-300 hover:bg-rose-50 dark:border-rose-500/40 dark:bg-slate-800"
             >
                 Delete
@@ -81,7 +81,7 @@
             </div>
 
             <div class="relative aspect-[4/4.45] overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
-                <x-image-preview reviewable class="h-full w-full rounded-none border-0 bg-slate-50" image-class="object-contain" :src="$asset->image_preview_url" :original="$asset->image_link" alt="Source image" :asset-id="$asset->id" product-slug="glass" :keyword="$asset->keyword">
+                <x-image-preview reviewable class="h-full w-full rounded-none border-0 bg-slate-50" image-class="object-contain" :src="$asset->image_preview_url" :original="$asset->image_link" alt="Source image" :asset-id="$asset->id" product-slug="ceramic" :keyword="$asset->keyword">
                     <span class="px-4 text-center text-sm font-medium text-slate-400">Dan link anh nguon vao day</span>
                 </x-image-preview>
             </div>
@@ -90,7 +90,7 @@
                 @if ($asset->image_link)
                     <button
                         type="button"
-                        x-on:click.stop="$dispatch('review-image', { src: @js($asset->image_preview_url ?: $asset->image_link), original: @js($asset->image_link), title: 'Source image', productSlug: 'glass', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
+                        x-on:click.stop="$dispatch('review-image', { src: @js($asset->image_preview_url ?: $asset->image_link), original: @js($asset->image_link), title: 'Source image', productSlug: 'ceramic', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
                         class="text-xs font-semibold text-blue-600 hover:text-blue-700"
                     >
                         Xem anh nguon
@@ -136,16 +136,16 @@
                     @if ($asset->redesign)
                         <button
                             type="button"
-                            wire:click="$dispatch('review-image', { src: @js($asset->redesign_preview_url), original: @js($asset->redesign), title: 'Create Master', gallery: @js($redesignGallery), currentIndex: @js($selectedRedesignIndex), action: @js($asset->hasCustomMockupOutput() ? null : 'glass-redesign'), productSlug: 'glass', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
+                            wire:click="$dispatch('review-image', { src: @js($asset->redesign_preview_url), original: @js($asset->redesign), title: 'Create Master', gallery: @js($redesignGallery), currentIndex: @js($selectedRedesignIndex), action: @js($asset->hasCustomMockupOutput() ? null : 'ceramic-redesign'), productSlug: 'ceramic', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
                             class="flex h-full w-full items-center justify-center p-4"
                         >
                             <span class="relative block h-[88%] max-w-[88%] aspect-square">
-                                <img src="{{ $asset->redesign_preview_url }}" width="640" height="640" alt="Redesign image" loading="lazy" decoding="async" fetchpriority="low" class="h-full w-full object-contain">
-                                @if ($glassBoundsGuideUrl)
+                                <img src="{{ $asset->redesign_preview_url }}" alt="Redesign image" loading="lazy" decoding="async" fetchpriority="low" class="h-full w-full object-contain">
+                                @if ($ceramicBoundsGuideUrl)
                                     <img
                                         x-show="showMasterBounds"
                                         x-cloak
-                                        src="{{ $glassBoundsGuideUrl }}"
+                                        src="{{ $ceramicBoundsGuideUrl }}"
                                         alt=""
                                         aria-hidden="true"
                                         class="pointer-events-none absolute inset-0 h-full w-full object-contain"
@@ -169,15 +169,15 @@
                         @foreach ($redesignGallery as $index => $image)
                             <button
                                 type="button"
-                                wire:click="$dispatch('review-image', { src: @js($image['src']), original: @js($image['original']), title: @js($image['title']), gallery: @js($redesignGallery), currentIndex: {{ $index }}, action: @js($asset->hasCustomMockupOutput() ? null : 'glass-redesign'), productSlug: 'glass', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
+                                wire:click="$dispatch('review-image', { src: @js($image['src']), original: @js($image['original']), title: @js($image['title']), gallery: @js($redesignGallery), currentIndex: {{ $index }}, action: @js($asset->hasCustomMockupOutput() ? null : 'ceramic-redesign'), productSlug: 'ceramic', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
                                 class="relative h-16 w-16 shrink-0 overflow-hidden rounded-md border {{ ($image['original'] ?? null) === $asset->redesign ? 'border-blue-500 ring-2 ring-blue-100' : 'border-slate-200' }} bg-slate-50"
                             >
-                                <img src="{{ $image['src'] }}" width="64" height="64" alt="{{ $image['title'] }}" loading="lazy" decoding="async" fetchpriority="low" class="h-full w-full object-contain">
-                                @if ($glassBoundsGuideUrl)
+                                <img src="{{ $image['src'] }}" alt="{{ $image['title'] }}" loading="lazy" decoding="async" fetchpriority="low" class="h-full w-full object-contain">
+                                @if ($ceramicBoundsGuideUrl)
                                     <img
                                         x-show="showMasterBounds"
                                         x-cloak
-                                        src="{{ $glassBoundsGuideUrl }}"
+                                        src="{{ $ceramicBoundsGuideUrl }}"
                                         alt=""
                                         aria-hidden="true"
                                         class="pointer-events-none absolute inset-0 h-full w-full object-contain"
@@ -200,7 +200,7 @@
                 @if ($asset->redesign && ! $asset->is_approved && ! in_array($localMockupJob?->status, ['waiting', 'processing'], true))
                     <button
                         type="button"
-                        x-on:click="window.dispatchEvent(new CustomEvent('glass-generation-started'))"
+                        x-on:click="window.dispatchEvent(new CustomEvent('ceramic-generation-started'))"
                         wire:click="generatePsdMockups"
                         wire:loading.attr="disabled"
                         wire:target="generatePsdMockups"
@@ -244,7 +244,7 @@
                 <div wire:loading.class="invisible" wire:target="generatePsdMockups" class="flex h-full min-h-0 flex-col">
                     @if (in_array($localMockupJob?->status, ['waiting', 'processing'], true))
                         <div class="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">
-                            {{ $localMockupJob->status === 'waiting' ? 'Waiting: dang cho may local nhan job. VPS se xu ly sau 2 phut ke tu lan Generate Glass cuoi cung.' : 'May local hoac VPS dang render PSD...' }}
+                            {{ $localMockupJob->status === 'waiting' ? 'Waiting: dang cho may local nhan job. VPS se xu ly sau 2 phut ke tu lan Generate Ceramic cuoi cung.' : 'May local hoac VPS dang render PSD...' }}
                         </div>
                     @elseif ($localMockupJob?->status === 'failed')
                         <div class="mb-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700" title="{{ $localMockupJob->error_message }}">
@@ -274,10 +274,10 @@
                                 @foreach ($psdMockups as $mockup)
                                     <button
                                         type="button"
-                                        wire:click="$dispatch('review-image', { src: @js($mockup['src']), original: @js($mockup['original']), title: @js('MOCKUP '.$mockup['slot']), gallery: @js($psdMockupGallery), currentIndex: {{ $loop->index }}, productSlug: 'glass', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
+                                        wire:click="$dispatch('review-image', { src: @js($mockup['src']), original: @js($mockup['original']), title: @js('MOCKUP '.$mockup['slot']), gallery: @js($psdMockupGallery), currentIndex: {{ $loop->index }}, productSlug: 'ceramic', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
                                         class="aspect-[4/3] overflow-hidden rounded-lg border border-slate-100 bg-slate-50 shadow-sm transition hover:border-indigo-300 hover:ring-2 hover:ring-indigo-100"
                                     >
-                                        <img wire:key="glass-mockup-{{ $asset->id }}-{{ $mockup['slot'] }}" src="{{ $mockup['src'] }}" width="400" height="300" alt="MOCKUP {{ $mockup['slot'] }}" loading="lazy" decoding="async" fetchpriority="low" data-original="{{ $mockup['original'] }}" x-on:error="if ($el.dataset.original && $el.src !== $el.dataset.original) $el.src = $el.dataset.original" class="h-full w-full object-cover">
+                                        <img wire:key="ceramic-mockup-{{ $asset->id }}-{{ $mockup['slot'] }}" src="{{ $mockup['src'] }}" alt="MOCKUP {{ $mockup['slot'] }}" loading="lazy" decoding="async" fetchpriority="low" data-original="{{ $mockup['original'] }}" x-on:error="if ($el.dataset.original && $el.src !== $el.dataset.original) $el.src = $el.dataset.original" class="h-full w-full object-cover">
                                     </button>
                                 @endforeach
                             </div>
@@ -297,7 +297,7 @@
                     </span>
                     <button
                         type="button"
-                        wire:click="$dispatch('openModal', { component: 'modals.glass.psd-mockup-template' })"
+                        wire:click="$dispatch('openModal', { component: 'modals.ceramic.psd-mockup-template' })"
                         class="shrink-0 font-semibold text-indigo-600 hover:text-indigo-700"
                     >
                         Chon PSD
@@ -308,9 +308,9 @@
     </div>
 
     @if ($showClearMockupsConfirmation)
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" role="dialog" aria-modal="true" aria-labelledby="clear-glass-mockups-title">
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" role="dialog" aria-modal="true" aria-labelledby="clear-ceramic-mockups-title">
             <div class="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl">
-                <h3 id="clear-glass-mockups-title" class="text-base font-bold text-slate-950">Xoa toan bo mockup?</h3>
+                <h3 id="clear-ceramic-mockups-title" class="text-base font-bold text-slate-950">Xoa toan bo mockup?</h3>
                 <p class="mt-2 text-sm text-slate-600">Thao tac nay se xoa cac anh MOCKUP 1 den MOCKUP 6 cua item nay. Anh Create Master van duoc giu lai.</p>
                 <div class="mt-5 flex justify-end gap-3">
                     <button type="button" wire:click="cancelClearPsdMockups" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50">No</button>
@@ -322,3 +322,6 @@
             </div>
         </div>
     @endif</article>
+
+
+

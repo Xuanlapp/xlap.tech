@@ -22,6 +22,14 @@ use Throwable;
 
 class MarketplaceListingMetadataService
 {
+    private const AMAZON_REQUIRED_FIELDS = [
+        'title', 'description', 'item_highlight',
+        'bullet_point_1', 'bullet_point_2', 'bullet_point_3', 'bullet_point_4', 'bullet_point_5',
+        'generic_keyword',
+    ];
+
+    private const ETSY_REQUIRED_FIELDS = ['title', 'description', 'tags'];
+
     private const AMAZON_REQUIRED_SCHEMA = <<<'PROMPT'
 REQUIRED OUTPUT CONTRACT (MANDATORY, CANNOT BE OVERRIDDEN BY CUSTOM PROMPT):
 Return ONLY one valid JSON object with exactly these keys and string values:
@@ -335,7 +343,7 @@ PROMPT;
             throw new RuntimeException('Item nay chua duyet nen khong the tao listing metadata.');
         }
 
-        if ($asset->title) {
+        if ($this->hasCompleteMetadata($asset, $this->marketplaceForAsset($asset))) {
             return $asset;
         }
 
@@ -404,7 +412,6 @@ PROMPT;
     {
         return ProductDesignAsset::query()
             ->where('is_approved', true)
-            ->whereNull('title')
             ->where('marketplace_listing_status', 'processing')
             ->where(function (Builder $query): void {
                 $query
@@ -447,7 +454,11 @@ PROMPT;
         return ProductDesignAsset::query()
             ->with(['user', 'product'])
             ->where('is_approved', true)
-            ->whereNull('title')
+            ->where(function (Builder $query): void {
+                $query
+                    ->whereNull('marketplace_listing_status')
+                    ->orWhere('marketplace_listing_status', '!=', 'completed');
+            })
             ->where(function (Builder $query): void {
                 $query
                     ->whereNull('marketplace_listing_status')
@@ -765,6 +776,7 @@ PROMPT;
         $payload = $this->jsonPayload(
             $this->generateListingText($asset, $this->prompt($this->defaultPromptFor($asset->product, 'etsy'), $asset)),
         );
+        $this->validateEtsyPayload($payload);
 
         $updatedAsset = $this->assets->updateListingMetadata($asset, [
             'title' => $this->stringValue($payload, 'title', 199),
@@ -785,7 +797,7 @@ PROMPT;
 
     private function marketplaceForAsset(ProductDesignAsset $asset): string
     {
-        return in_array($asset->product?->slug, ['glass', 'ornament-amazon-2', 'sticker', 'decal'], true)
+        return in_array($asset->product?->slug, ['glass', 'ceramic', 'ornament-amazon-2', 'sticker', 'decal'], true)
             ? 'amazon'
             : ($asset->user->can_generate_amazon_listing ? 'amazon' : 'etsy');
     }
@@ -794,6 +806,7 @@ PROMPT;
     {
         return match (true) {
             $asset->product?->slug === 'glass' => self::AMAZON_GLASS_PROMPT_TEMPLATE,
+            $asset->product?->slug === 'ceramic' => self::AMAZON_GLASS_PROMPT_TEMPLATE,
             in_array($asset->product?->slug, ['sticker', 'decal'], true) => self::AMAZON_STICKER_PROMPT_TEMPLATE,
             default => self::AMAZON_PROMPT_TEMPLATE,
         };
@@ -817,6 +830,7 @@ PROMPT;
         $slug = $product?->slug;
         return match (true) {
             $slug === 'glass' => self::AMAZON_GLASS_PROMPT_TEMPLATE,
+            $slug === 'ceramic' => self::AMAZON_GLASS_PROMPT_TEMPLATE,
             in_array($slug, ['sticker', 'decal'], true) => self::AMAZON_STICKER_PROMPT_TEMPLATE,
             default => self::AMAZON_PROMPT_TEMPLATE,
         };
@@ -926,14 +940,33 @@ PROMPT;
     /** @param array<string, mixed> $payload */
     private function validateAmazonPayload(array $payload): void
     {
-        $required = ['title', 'item_highlight', 'description', 'bullet_point_1', 'bullet_point_2', 'bullet_point_3', 'bullet_point_4', 'bullet_point_5', 'generic_keyword'];
+        $required = self::AMAZON_REQUIRED_FIELDS;
         $missing = array_values(array_diff($required, array_keys($payload)));
         $extra = array_values(array_diff(array_keys($payload), $required));
-        $invalid = array_values(array_filter($required, fn (string $key): bool => ! is_string($payload[$key] ?? null)));
+        $invalid = array_values(array_filter($required, fn (string $key): bool => ! is_string($payload[$key] ?? null) || trim((string) ($payload[$key] ?? '')) === ''));
 
         if ($missing !== [] || $extra !== [] || $invalid !== []) {
             throw new RuntimeException('Amazon listing metadata JSON schema khong hop le. Missing: '.implode(', ', $missing).'; Extra: '.implode(', ', $extra).'; Invalid: '.implode(', ', $invalid));
         }
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function validateEtsyPayload(array $payload): void
+    {
+        $required = self::ETSY_REQUIRED_FIELDS;
+        $missing = array_values(array_diff($required, array_keys($payload)));
+        $invalid = array_values(array_filter($required, fn (string $key): bool => ! is_string($payload[$key] ?? null) || trim((string) ($payload[$key] ?? '')) === ''));
+
+        if ($missing !== [] || $invalid !== []) {
+            throw new RuntimeException('Etsy listing metadata JSON schema khong hop le. Missing: '.implode(', ', $missing).'; Invalid: '.implode(', ', $invalid));
+        }
+    }
+
+    private function hasCompleteMetadata(ProductDesignAsset $asset, string $marketplace): bool
+    {
+        $fields = $marketplace === 'etsy' ? self::ETSY_REQUIRED_FIELDS : self::AMAZON_REQUIRED_FIELDS;
+
+        return collect($fields)->every(fn (string $field): bool => is_string($asset->getAttribute($field)) && trim((string) $asset->getAttribute($field)) !== '');
     }
 
     private function shortErrorPayload(string $text, int $limit = 1500): string
@@ -976,4 +1009,9 @@ PROMPT;
         );
     }
 }
+
+
+
+
+
 

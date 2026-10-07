@@ -363,10 +363,14 @@ class Index extends Component
         }
 
         foreach ($validRows as $row) {
-            HistoryOrderReport::firstOrCreate(
-                ['user_id' => auth()->id(), 'order_id' => $row['id_order'], 'sku' => (string) ($row['sku'] ?? ''), 'size' => (string) ($row['size'] ?? ''), 'quantity' => (string) ($row['quantity'] ?? '')],
-                ['images_link' => array_values(array_filter([(string) $row['link_design']])),'report_data' => $row, 'ordered_at' => now()],
-            );
+            $history = HistoryOrderReport::query()->firstOrNew(['user_id' => auth()->id(), 'order_id' => $row['id_order']]);
+            $previousData = is_array($history->report_data) ? $history->report_data : [];
+            $row['export_count'] = max(0, (int) ($previousData['export_count'] ?? ($history->exists ? 1 : 0))) + 1;
+            $history->fill([
+                'images_link' => array_values(array_filter([(string) $row['link_design']])),
+                'report_data' => $row,
+                'ordered_at' => now(),
+            ])->save();
         }
         app(ActivityLogService::class)->record('order.report_confirmed', 'Confirmed Amazon order report and exported valid rows.', properties: ['count' => $validRows->count(), 'fulfillment' => $this->orderReportFulfillment, 'holo' => $this->orderReportHolo, 'product_tag' => trim($this->orderReportProductTag)]);
 
@@ -392,32 +396,149 @@ class Index extends Component
             $incomingSku = trim($source['sku'] ?? '');
             $matched = $this->matchOrderItemSku($incomingSku, $items);
             $size = null;
-            if (preg_match('/(\d+(?:\.\d+)?)\s*["”]/', $source['product-name'] ?? '', $matches)) $size = $matches[1].'in';
-            $productKeyword = strtolower((string) ($matched?->product?->name ?? ''));
-            $catalogMatch = $matched ? $catalog->first(function (OrderProduct $product) use ($productKeyword, $size): bool {
-                $name = strtolower($product->product_name);
-                $tag = strtolower(trim($this->orderReportProductTag));
-                $pack = trim($this->orderReportPack);
-                $isHoloProduct = str_contains($name, 'holo');
-                return $productKeyword !== '' && str_contains($name, $productKeyword)
-                    && (! $this->orderReportHolo || $isHoloProduct)
-                    && ($tag === '' || str_contains($name, $tag))
-                    && ($this->orderReportFulfillment !== 'FBA' || ($pack !== '' && str_contains($name, 'pack '.strtolower($pack))))
-                    && ($size === null || str_contains($name, strtolower($size)));
-            }) : null;
+            $importedProductTitle = trim((string) ($source['product-name'] ?? ''));
+            if (preg_match('/(\d+(?:\.\d+)?)\s*["”]/', $importedProductTitle, $matches)) $size = $matches[1].'in';
+            $skuProductName = trim((string) ($matched?->product?->name ?? ''));
+            $productTitle = $importedProductTitle !== '' ? $importedProductTitle : $skuProductName;
+            $productKeyword = strtolower($skuProductName);
+            if ($size === null && $productTitle !== '' && preg_match('/(\d+(?:\.\d+)?)\s*["”]/', $productTitle, $matches)) $size = $matches[1].'in';
+            $catalogMatch = $matched ? $this->matchOrderProduct($catalog, $productKeyword, $size, $productTitle) : null;
             $orderId = trim((string) ($source['order-id'] ?? ''));
             $historyVariant = ['user_id' => auth()->id(), 'order_id' => $orderId, 'sku' => $this->normalizeSku($incomingSku), 'size' => (string) ($size ?? ''), 'quantity' => (string) ($source['quantity-purchased'] ?? '')];
-            $duplicate = $orderId !== '' && HistoryOrderReport::query()->where($historyVariant)->exists();
-            $error = $duplicate ? 'Don nay da len roi, vui long kiem tra lai.' : ($this->orderReportFulfillment === 'FBA' && trim($this->orderReportPack) === '' ? 'FBA vui long nhap Pack (vi du: 3).' : ($matched ? ($catalogMatch ? '' : 'Khong tim thay Order Product dung Product/size/Pack.') : "SKU {$incomingSku} khong co trong SKU Order Items."));
+            $previousHistory = $orderId !== '' ? HistoryOrderReport::query()->where('user_id', auth()->id())->where('order_id', $orderId)->first() : null;
+            $exportCount = $previousHistory ? max(1, (int) data_get($previousHistory->report_data, 'export_count', 1)) : 0;
+            $error = $this->orderReportFulfillment === 'FBA' && trim($this->orderReportPack) === '' ? 'FBA vui long nhap Pack (vi du: 3).' : ($matched ? ($catalogMatch ? '' : 'Khong tim thay Order Product dung Product/size/Pack.') : "SKU {$incomingSku} khong co trong SKU Order Items.");
             $this->orderFulfillmentPreviewRows[] = [
                 'id_order' => $orderId, 'sku' => $historyVariant['sku'], 'product_id' => (string) ($catalogMatch?->order_product_id ?? ''),
                 'quantity' => $source['quantity-purchased'] ?? '', 'link_design' => (string) ($matched?->image_link ?? ''),
-                'size' => $size ?? '',
+                'size' => $size ?? '', 'export_count' => $exportCount,
                 'to_name' => $source['recipient-name'] ?? '', 'to_address_1' => $source['ship-address-1'] ?? '', 'to_address_2' => $source['ship-address-2'] ?? '',
                 'to_city' => $source['ship-city'] ?? '', 'to_state' => $source['ship-state'] ?? '', 'to_postcode' => $source['ship-postal-code'] ?? '',
                 'to_country' => $source['ship-country'] ?? '', 'error' => $error,
             ];
         }
+    }
+
+    private function matchOrderProduct($catalog, string $productKeyword, ?string $reportSize, string $sourceTitle = ''): ?OrderProduct
+    {
+        $keyword = strtolower(trim($productKeyword));
+        if ($keyword === '') return null;
+
+        $tag = strtolower(trim($this->orderReportProductTag));
+        $pack = strtolower(trim($this->orderReportPack));
+        $keywordSize = $this->extractProductSize($keyword);
+        $requiredSize = $keywordSize ?? ($reportSize !== null ? strtolower(trim($reportSize)) : null);
+
+        $matchTitle = trim($sourceTitle) !== '' ? strtolower(trim($sourceTitle)) : $keyword;
+        $sourceTokens = $this->productNameTokens($matchTitle);
+        $families = $this->productFamilies($matchTitle);
+        return $catalog->filter(function (OrderProduct $product) use ($tag, $pack, $requiredSize, $sourceTokens, $families): bool {
+            $name = strtolower(trim($product->product_name));
+            if ($families !== [] && ! $this->hasProductFamily($name, $families)) return false;
+            foreach ($this->catalogVariantMarkers($name) as $marker) {
+                if (! in_array($marker, $sourceTokens, true)) return false;
+            }
+            if ($this->orderReportHolo && ! $this->containsProductToken($name, 'holo')) return false;
+            if ($tag !== '' && ! $this->containsProductToken($name, $tag)) return false;
+            if ($this->orderReportFulfillment === 'FBA' && ($pack === '' || ! $this->containsProductToken($name, 'pack '.$pack))) return false;
+            return $requiredSize === null || $this->containsProductSize($name, $requiredSize);
+        })->sort(function (OrderProduct $left, OrderProduct $right) use ($matchTitle, $requiredSize, $tag, $pack): int {
+            $leftScore = $this->orderProductMatchScore($left->product_name, $matchTitle, $requiredSize, $tag, $pack);
+            $rightScore = $this->orderProductMatchScore($right->product_name, $matchTitle, $requiredSize, $tag, $pack);
+            $scoreComparison = $rightScore <=> $leftScore;
+            return $scoreComparison !== 0 ? $scoreComparison : ((int) $left->id <=> (int) $right->id);
+        })->first();
+    }
+
+    /** @return array<int, string> */
+    private function catalogVariantMarkers(string $name): array
+    {
+        return array_values(array_unique(array_filter(
+            $this->productNameTokens($name),
+            fn (string $token): bool => preg_match('/^c\d+[a-z]?$/i', $token) === 1
+        )));
+    }
+
+    /** @return array<int, string> */
+    private function productFamilies(string $title): array
+    {
+        $title = strtolower($title);
+        $families = [];
+        // Amazon titles often contain descriptive words such as "decal" after
+        // the actual product type. Prefer the explicit primary family marker.
+        foreach (['sticker', 'glass', 'ornament', 'suncatcher', 'camp', 'decal'] as $family) {
+            $pattern = $family === 'sticker' ? 'stickers?' : preg_quote($family, '/');
+            if (preg_match('/(?<![a-z])'.$pattern.'(?![a-z])/i', $title) === 1) {
+                $families[] = $family;
+            }
+        }
+
+        return array_values(array_unique($families));
+    }
+
+    /** @param array<int, string> $families */
+    private function hasProductFamily(string $name, array $families): bool
+    {
+        foreach ($families as $family) {
+            if ($this->containsProductToken($name, $family)) return true;
+        }
+
+        return false;
+    }
+
+    private function orderProductMatchScore(string $name, string $keyword, ?string $size, string $tag, string $pack): int
+    {
+        $nameTokens = $this->productNameTokens($name);
+        $keywordTokens = $this->productNameTokens($keyword);
+        $commonTokens = count(array_intersect($nameTokens, $keywordTokens));
+        $extraTokens = count(array_diff($nameTokens, $keywordTokens));
+        $score = ($commonTokens * 100) - ($extraTokens * 12);
+
+        if ($this->containsProductPhrase(strtolower($name), $keyword)) $score += 80;
+        if ($size !== null && $this->containsProductSize(strtolower($name), $size)) $score += 200;
+        if ($tag !== '' && $this->containsProductToken(strtolower($name), $tag)) $score += 120;
+        if ($pack !== '' && $this->containsProductToken(strtolower($name), 'pack '.$pack)) $score += 120;
+        if ($this->orderReportHolo && $this->containsProductToken(strtolower($name), 'holo')) $score += 120;
+
+        return $score;
+    }
+
+    /** @return array<int, string> */
+    private function productNameTokens(string $value): array
+    {
+        $value = strtolower($value);
+        $value = preg_replace('/(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)/', ' ', $value) ?? $value;
+        $value = preg_replace('/[^a-z0-9]+/', ' ', $value) ?? $value;
+        $tokens = array_values(array_unique(array_filter(preg_split('/\s+/', trim($value)) ?: [])));
+        return array_values(array_unique(array_map(
+            fn (string $token): string => in_array($token, ['stickers', 'decals'], true) ? substr($token, 0, -1) : $token,
+            $tokens,
+        )));
+    }
+
+    private function extractProductSize(string $value): ?string
+    {
+        return preg_match('/(?<![0-9])([0-9]+(?:\.[0-9]+)?)\s*(?:in|inch|inches|["”])/i', $value, $match)
+            ? $match[1].'in' : null;
+    }
+
+    private function containsProductSize(string $name, string $size): bool
+    {
+        $number = preg_quote((string) preg_replace('/\s*(?:in|inch|inches)$/i', '', trim($size)), '/');
+        return preg_match('/(?<![0-9])'.$number.'\s*(?:in|inch|inches|["”])(?![0-9])/i', $name) === 1;
+    }
+
+    private function containsProductToken(string $name, string $token): bool
+    {
+        $token = trim($token);
+        if ($token === '') return true;
+        return preg_match('/(?<![a-z0-9])'.preg_quote($token, '/').'(?![a-z0-9])/i', $name) === 1;
+    }
+
+    private function containsProductPhrase(string $name, string $phrase): bool
+    {
+        $phrase = trim($phrase);
+        return $phrase !== '' && preg_match('/(?<![a-z0-9])'.preg_quote($phrase, '/').'(?![a-z0-9])/i', $name) === 1;
     }
 
     /**

@@ -28,6 +28,11 @@ if ((bool) env('OFFOREST_SCHEDULER_ENABLED', true)) {
             ->runInBackground();
     }
 
+    Schedule::command('ceramic:local-mockup-fallback')
+        ->everyMinute()
+        ->withoutOverlapping(30)
+        ->runInBackground();
+
     if ((bool) config('services.sticker.local_mockup_fallback_enabled', true)) {
         Schedule::command('sticker:local-mockup-fallback')
             ->everyMinute()
@@ -56,3 +61,4 @@ if ((bool) env('OFFOREST_SCHEDULER_ENABLED', true)) {
             ->runInBackground();
     }
 }
+

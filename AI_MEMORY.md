@@ -12001,6 +12001,20 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 - Preserved the user selector and added an accessible `aria-label`.
 - Validation: Blade cache passed.
 
+### 2026-10-07 — Enforce Marketplace Listing metadata contracts
+
+- Amazon generation now requires non-empty title, description, item highlight, five bullet points, and generic keyword before completion.
+- Etsy generation now requires non-empty title, description, and tags, with exact-key validation.
+- Incomplete existing metadata is eligible for retry instead of being skipped solely because title exists; validation errors are caught by the existing failure path and shown as Failed.
+- Validation: PHP lint and Blade cache passed.
+- Listing Metadata Status now hides incomplete output and offers `Retry metadata` when a failed/incomplete item has partial fields.
+
+### 2026-10-07 — Diagnose invalid livewire:list command
+
+- Root cause: an external/manual Artisan invocation called `php artisan livewire:list`, which is not provided by installed Livewire 3.8; the project scheduler and source contain no reference to that command.
+- Valid alternatives include `php artisan livewire:attribute`, `livewire:make`, `route:list`, and `schedule:list`; no application code change was required.
+- Follow-up: remove/replace `livewire:list` in VPS cron, deploy script, panel task, or health check if it is configured there.
+
 ### 2026-10-03 — Fix PSD template reactive prop mutation
 
 - Root cause: `activePsdTemplateName` was marked `#[Reactive]` in product cards/status panels while PSD upload event handlers assigned a refreshed template name to it.
@@ -12653,3 +12667,29 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 - Deploy impact: PHP/Livewire performance only; no database schema, queue, worker, credential, or `.env` changes. Existing cache storage is used.
 - Validation: PHP lint, `php artisan view:cache`, and `npm run build` passed. `git diff --check` reported only existing `AI_MEMORY.md` whitespace and CRLF normalization warnings.
 - Follow-up: deploy these files, clear Laravel caches, reload the active PHP-FPM service, and collect VPS metrics (`free -h`, `vmstat`, FPM slowlog, supervisor status, MySQL processlist) before changing worker counts or database indexes.
+
+### 2026-10-07 - Order product matching
+- Fixed `app/Livewire/Pages/Order/Index.php` catalog matching so similar sticker names cannot cross-match sizes/variants.
+- Matching now uses exact token boundaries for product phrase, size, tag, pack, and holo; size from the stored product keyword is preferred over report size.
+- Validation: `php -l app/Livewire/Pages/Order/Index.php` passed.- Updated order catalog selection to rank all matching candidates by shared tokens, exact variant markers, exact size, and minimal extra tokens; database/STT order is only a final stable tie-break.- Added source-title variant safety: a catalog-only variant marker such as C18 is rejected unless Amazon product title also contains that marker, preventing `Sticker Vinyl C18-4in #ST` (35185) from being selected for a plain 4in order; expected catalog ID is 168.- Corrected order matching to treat imported Amazon TXT `product-name` as primary source for product family and variant; SKU is only used to locate the linked asset/product context.- Finalized fallback order: imported `product-name` is authoritative when non-empty; only blank/missing `product-name` falls back to SKU-linked product name and its size.- Order re-import behavior changed: existing order IDs are no longer blocked as duplicates. Confirming export updates the existing history row and increments `report_data.export_count`; preview exposes prior export count.
+- Fixed family precedence for imported Amazon titles containing both Sticker and descriptive Decal wording; Sticker is now the primary family and Decal candidates are excluded, yielding ID 170 for the 2in example.- Product-name parsing now recognizes full imported title and plural family terms (`Sticker`/`Stickers`), normalizing plural tokens for scoring so `Vinyl Stickers` is treated as Sticker rather than falling to Decal.
+- Corrected product family precedence so Glass is recognized before Ornament; `Personalized Paris Glass Ornament` now routes to Glass catalog as required by the product system.
+### 2026-10-07 — Add Ceramic workflow cloned from Glass
+
+- Root cause/request: Ceramic needed the full Glass workflow without sharing Glass product data or storage paths.
+- Changed: added independent Ceramic Livewire pages/cards/status panel, modals, service, PSD renderer/template support, bounds guide services, local mockup model and worker/fallback commands; added Ceramic to `ProductRegistry`, navigation, shared keyword/delete flows, shared ReviewImage actions, repository import support, scheduler fallback, service config, and product migration.
+- Data isolation: Ceramic uses product slug `ceramic`, separate `generated/ceramic/*` storage, `ceramic` events, and a separate `psd_local_mockup_jobs` product row; existing Glass assets and model remain intact.
+- Deploy impact: run the new migration, deploy PHP/Blade files, clear/cache Laravel views, and register the Ceramic local worker if a synced workstation should render Ceramic mockups. No existing data is migrated or changed.
+- Validation: PHP lint passed for new/changed Ceramic and shared files, `php artisan view:cache` passed, Vite build passed, route `/offorest/ceramic` exists, and Ceramic service container resolution passed. Visual browser/authenticated review was not available in this environment.
+- Follow-up: verify Ceramic permissions in the admin product access UI, run migration in staging first, and test add/import/source/Create Master/bounds/mockup/delete/approval end-to-end before production use.
+- Replaced fixed family precedence with name-driven family matching: collect all family words from imported product-name and SKU-linked product name, use their intersection when available, and only fallback to imported families when no shared family exists.- Fixed ambiguous family logic: when imported `product-name` is present, matching and family scoring now use only that full title; SKU-linked Product is fallback only when `product-name` is blank.
+
+### 2026-10-07 — Frontend performance follow-up (Lighthouse findings)
+
+- Root cause: shared layouts loaded Bunny Fonts as render-blocking CSS; the logo was JPEG-only; a repositioning control used a broad `transition-all`; static cache policy marked every CSS/JS file immutable; motion had no reduced-motion fallback.
+- Changed: `resources/views/layouts/app.blade.php` and `resources/views/layouts/guest.blade.php` now load Bunny Fonts asynchronously with a `noscript` fallback; `resources/views/auth/login.blade.php` and `resources/views/livewire/pages/auth/login.blade.php` use the generated WebP logo with JPEG fallback and intrinsic dimensions; `public/.htaccess` caches hashed Vite assets for one year, runtime JS/CSS for one hour with revalidation, and images for 30 days; `resources/views/livewire/layout/navigation.blade.php` narrows the brand transition; `resources/css/app.css` adds a reduced-motion media query; Glass preview images keep intrinsic dimensions and lazy decoding.
+- Affected modules: shared Blade layouts, authentication logo, navigation, Glass preview card, Apache static delivery, global motion behavior.
+- Deploy impact: deploy the changed Blade/CSS/.htaccess files and `public/images/offorest-logo.webp`; Apache must have `mod_headers` enabled for cache headers. Clear Laravel view/cache after deploy if the host does not run the deploy hooks.
+- Queue impact: none. No backend, database, API, Livewire action, or queue behavior changed.
+- Validation: `php artisan view:cache` passed; `npm run build` passed; `php artisan test --filter=Glass --no-ansi` passed (1 test, 4 assertions); `git diff --check` reports only pre-existing CRLF/trailing-whitespace warnings in the dirty worktree. Better Design review was unavailable because the account quota returned HTTP 402; authenticated browser screenshots/Lighthouse rerun were not available, so visual/performance savings remain to be verified after deployment.
+- Follow-up: rerun Lighthouse at `/login` and an authenticated Glass route on desktop/mobile, compare LCP/render-blocking/cache/image diagnostics, and confirm Apache response headers for `/build/assets/*`, `/js/*`, and images.

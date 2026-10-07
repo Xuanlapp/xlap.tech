@@ -15,7 +15,10 @@
         <div class="w-full max-w-md rounded-[2rem] border border-white/40 bg-white/45 p-8 shadow-[0_25px_80px_rgba(15,23,42,0.18)] backdrop-blur-2xl ring-1 ring-white/50 sm:p-10">
             <div class="text-center">
                 <div class="mx-auto flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-white/75 shadow-inner shadow-white/70 ring-1 ring-white/70">
-                    <img src="{{ asset('images/offorest-logo.jpg') }}" alt="{{ config('app.name', 'Offorest') }}" class="h-full w-full object-cover">
+                    <picture class="block h-full w-full">
+                        <source srcset="{{ asset('images/offorest-logo.webp') }}" type="image/webp">
+                        <img src="{{ asset('images/offorest-logo.jpg') }}" width="580" height="578" alt="{{ config('app.name', 'Offorest') }}" class="h-full w-full object-cover">
+                    </picture>
                 </div>
                 <h1 class="mt-6 text-2xl font-semibold tracking-[0.18em] text-slate-900">OFFOREST</h1>
                 <p class="mt-2 text-sm text-slate-600">Chào mừng bạn. Vui lòng đăng nhập để tiếp tục.</p>
