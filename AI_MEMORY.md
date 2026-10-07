@@ -12542,3 +12542,10 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 - Changed `app/Livewire/Pages/Marketplace/MarketplaceExports.php`: normalize comma/full-width-comma/newline separators, trim and deduplicate tokens, then match each token within a grouped `OR LIKE` clause. Single and multiple SKU searches now use the same tolerant behavior without changing export selection logic.
 - Deploy impact: Livewire/PHP query behavior only; no migration, queue, worker, or external API impact.
 - Validation: PHP lint passed, `php artisan view:cache` passed, `npm run build` passed. `git diff --check` reports only the repository's pre-existing trailing whitespace in `AI_MEMORY.md` and CRLF normalization warnings.
+
+### 2026-10-07 — Enforce Amazon title and item highlight limits on persistence
+
+- Root cause: Amazon metadata persistence allowed title up to 199 and item highlight up to 125 characters, so provider output could exceed the requested limits before entering `product_design_assets`.
+- Changed `app/Services/Marketplace/MarketplaceListingMetadataService.php`: Amazon title is truncated to 74 characters and Amazon item highlight to 124 characters using the existing multibyte-safe sanitizer; Amazon prompt rules now match those limits. Etsy title behavior remains unchanged.
+- Deploy impact: marketplace metadata generation only; no schema, queue, or API credential changes. Existing records are not rewritten automatically.
+- Validation: PHP lint passed, `php artisan view:cache` passed, `npm run build` passed. `git diff --check` reports only the existing trailing whitespace/CRLF warnings.

@@ -51,7 +51,7 @@ personalized christmas ornaments glass; personalized glass ornaments; personaliz
 Do not add irrelevant terms just to meet a length target. Avoid keyword stuffing and repeated words.
 
 Return ONLY valid JSON with exactly these keys: title, item_highlight, bullet_point_1, bullet_point_2, bullet_point_3, bullet_point_4, bullet_point_5, generic_keyword, description.
-Rules: title must be 70-75 characters including spaces and never exceed 75; item_highlight must be under 125 characters including spaces; each of the 5 bullets must be 460-480 characters including spaces and must START with one suitable icon followed by a space. Count the icon and the space in each bullet's limit. Bullet 1 describes the actual glass ornament and only verified personalization options. Do not repeat the same icon for all five bullets. Generic_keyword uses semicolon-separated accurate terms, aims for 230-240 characters when enough relevant terms exist, and never exceeds 240. Description aims for 1800-1900 characters including spaces and never exceeds 2000. Never invent features or pad with inaccurate claims to meet a target. Do not output character-count labels or extra keys.
+Rules: title must be 70-74 characters including spaces and never exceed 74; item_highlight must be at most 124 characters including spaces; each of the 5 bullets must be 460-480 characters including spaces and must START with one suitable icon followed by a space. Count the icon and the space in each bullet's limit. Bullet 1 describes the actual glass ornament and only verified personalization options. Do not repeat the same icon for all five bullets. Generic_keyword uses semicolon-separated accurate terms, aims for 230-240 characters when enough relevant terms exist, and never exceeds 240. Description aims for 1800-1900 characters including spaces and never exceeds 2000. Never invent features or pad with inaccurate claims to meet a target. Do not output character-count labels or extra keys.
 PROMPT;
 
     private const AMAZON_PROMPT_TEMPLATE = <<<'PROMPT'
@@ -71,7 +71,7 @@ TITLE AMAZON
 
 ITEM HIGHLIGHT
 
-Write one concise Amazon Item Highlight under 125 characters including spaces. Return it as `item_highlight`.
+Write one concise Amazon Item Highlight under 124 characters including spaces. Return it as `item_highlight`.
 
 Viết 1 Title bằng tiếng Anh, tối ưu keyword, dễ đọc, tự nhiên, phù hợp Amazon US.
 
@@ -503,7 +503,7 @@ PROMPT;
         $this->validateAmazonPayload($payload);
 
         $updatedAsset = $this->assets->updateListingMetadata($asset, [
-            'title' => $this->stringValue($payload, 'title', 199),
+            'title' => $this->stringValue($payload, 'title', 74),
             'description' => $this->stringValue($payload, 'description', 2000),
             'bullet_point_1' => $this->stringValue($payload, 'bullet_point_1', 699),
             'bullet_point_2' => $this->stringValue($payload, 'bullet_point_2', 699),
@@ -511,7 +511,7 @@ PROMPT;
             'bullet_point_4' => $this->stringValue($payload, 'bullet_point_4', 699),
             'bullet_point_5' => $this->stringValue($payload, 'bullet_point_5', 699),
             'generic_keyword' => $this->stringValue($payload, 'generic_keyword', 249),
-            'item_highlight' => $this->stringValue($payload, 'item_highlight', 125),
+            'item_highlight' => $this->stringValue($payload, 'item_highlight', 124),
             'tags' => null,
         ]);
 
