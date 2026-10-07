@@ -12607,3 +12607,11 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 - Changed `resources/views/livewire/modals/image/review-image.blade.php`: added `wire:init="loadPreviewDetails"` and a scoped spinner overlay while deferred details load. The main image/modal shell remains visible rather than blocking the whole interaction.
 - Deploy impact: shared ReviewImage modal behavior only; no schema, queue, worker, or image storage changes.
 - Validation: PHP lint and Blade cache passed; `npm run build` passed. Diff check reports existing CRLF/trailing-whitespace warnings. Authenticated browser timing evidence was unavailable.
+
+### 2026-10-07 — Reduce duplicate Livewire renders after Glass approval
+
+- Root cause: Glass approval called `syncForAsset()` and then dispatched four overlapping refresh events to both the page and child status panel (`approval-updated` and `counts-updated`), causing duplicate Livewire renders and keeping the button in `Saving...` longer than necessary for a small database mutation.
+- Changed `app/Livewire/Pages/Glass/ProductDesignCard.php`: retain one parent-targeted approval refresh event; ListGlass owns the status panel and counts refresh through its normal render path. Approval persistence, Drive queue registration, activity log, authorization, and toast remain unchanged.
+- Added `.design/glass-approval-save-speed/DESIGN_BRIEF.md`.
+- Deploy impact: Glass approval UI refresh only; no schema or worker changes. Drive upload remains queued after approval and does not need to block the approval operation.
+- Validation: PHP lint passed, `php artisan view:cache` passed, `npm run build` passed, and diff check reported only CRLF normalization warning.

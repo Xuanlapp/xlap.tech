@@ -151,9 +151,6 @@ class ProductDesignCard extends Component
             );
 
             $this->dispatch('glass-product-design-approval-updated')->to(ListGlass::class);
-            $this->dispatch('glass-product-design-approval-updated')->to(GlassStatusPanel::class);
-            $this->dispatch('glass-counts-updated')->to(ListGlass::class);
-            $this->dispatch('glass-counts-updated')->to(GlassStatusPanel::class);
             $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: $message);
         } catch (RuntimeException $exception) {
             $this->reportUserActionError($exception, 'glass.toggle_approval', ['asset_id' => $this->assetId]);
