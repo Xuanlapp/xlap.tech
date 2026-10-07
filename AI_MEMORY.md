@@ -12615,3 +12615,11 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 - Added `.design/glass-approval-save-speed/DESIGN_BRIEF.md`.
 - Deploy impact: Glass approval UI refresh only; no schema or worker changes. Drive upload remains queued after approval and does not need to block the approval operation.
 - Validation: PHP lint passed, `php artisan view:cache` passed, `npm run build` passed, and diff check reported only CRLF normalization warning.
+
+### 2026-10-07 — Reduce duplicate renders when saving Edit Keyword
+
+- Root cause: the shared `EditKeyword` modal dispatched one refresh event to the parent product page and a second identical refresh event directly to the child status panel for every product, causing duplicate Livewire rendering after the keyword update.
+- Changed `app/Livewire/Modals/Product/EditKeyword.php`: each product now dispatches only the parent-targeted refresh event. Parent render updates the child panel through normal component ownership; validation, service update, activity log, toast, and close behavior remain unchanged.
+- Added `.design/edit-keyword-save-speed/DESIGN_BRIEF.md`.
+- Deploy impact: shared Edit Keyword modal refresh behavior only; no schema, queue, worker, or API changes.
+- Validation: PHP lint passed, `php artisan view:cache` passed, `npm run build` passed. Diff check had no new functional findings.

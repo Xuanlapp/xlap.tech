@@ -107,12 +107,12 @@ class EditKeyword extends Component
     private function dispatchProductRefresh(): void
     {
         match ($this->productSlug) {
-            'glass' => [$this->dispatch('glass-product-design-updated')->to(ListGlass::class), $this->dispatch('glass-product-design-updated')->to(GlassStatusPanel::class)],
-            'sticker' => [$this->dispatch('sticker-product-design-updated')->to(ListSticker::class), $this->dispatch('sticker-product-design-updated')->to(StickerStatusPanel::class)],
-            'decal' => [$this->dispatch('decal-product-design-updated')->to(ListDecal::class), $this->dispatch('decal-product-design-updated')->to(DecalStatusPanel::class)],
-            'ornament-etsy' => [$this->dispatch('ornament-etsy-product-design-updated')->to(ListOrnamentEtsy::class), $this->dispatch('ornament-etsy-product-design-updated')->to(OrnamentEtsyStatusPanel::class)],
-            'ornament-amazon-2' => [$this->dispatch('ornament-amazon-two-product-design-updated')->to(ListOrnamentAmazonTwo::class), $this->dispatch('ornament-amazon-two-product-design-updated')->to(OrnamentAmazonTwoStatusPanel::class)],
-            'suncatcher' => [$this->dispatch('suncatcher-product-design-updated')->to(ListSuncatcher::class), $this->dispatch('suncatcher-product-design-updated')->to(SuncatcherStatusPanel::class)],
+            'glass' => $this->dispatch('glass-product-design-updated')->to(ListGlass::class),
+            'sticker' => $this->dispatch('sticker-product-design-updated')->to(ListSticker::class),
+            'decal' => $this->dispatch('decal-product-design-updated')->to(ListDecal::class),
+            'ornament-etsy' => $this->dispatch('ornament-etsy-product-design-updated')->to(ListOrnamentEtsy::class),
+            'ornament-amazon-2' => $this->dispatch('ornament-amazon-two-product-design-updated')->to(ListOrnamentAmazonTwo::class),
+            'suncatcher' => $this->dispatch('suncatcher-product-design-updated')->to(ListSuncatcher::class),
             default => null,
         };
     }
