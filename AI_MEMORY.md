@@ -12021,6 +12021,12 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 - Restored the Ceramic/Glass method selection and product condition checks.
 - Validation: PHP lint passed; views were cleared and recompiled successfully.
 
+### 2026-10-07 — Fix remaining ReviewImage ternary ParseErrors
+
+- Found two additional malformed ternaries in `review-image.blade.php` where `$action` was missing before `=== 'ceramic-redesign'`.
+- Restored both Ceramic/Glass action handlers and rebuilt compiled views.
+- Validation: source-wide malformed-expression scan clean; `php artisan view:clear` and `view:cache` passed.
+
 ### 2026-10-03 — Fix PSD template reactive prop mutation
 
 - Root cause: `activePsdTemplateName` was marked `#[Reactive]` in product cards/status panels while PSD upload event handlers assigned a refreshed template name to it.

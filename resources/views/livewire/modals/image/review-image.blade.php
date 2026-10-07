@@ -988,7 +988,7 @@
                                     </div>
 
                                     <div class="space-y-3">
-                                        <button type="button" wire:click="{{ $action === 'glass-redesign' ? 'selectAsGlassRedesign' : ( === 'ceramic-redesign' ? 'selectAsCeramicRedesign' : 'selectAsStickerRedesign') }}" class="group flex w-full items-center gap-4 rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 text-left transition hover:-translate-y-0.5 hover:border-emerald-300 hover:bg-emerald-50 hover:shadow-md">
+                                        <button type="button" wire:click="{{ $action === 'glass-redesign' ? 'selectAsGlassRedesign' : ($action === 'ceramic-redesign' ? 'selectAsCeramicRedesign' : 'selectAsStickerRedesign') }}" class="group flex w-full items-center gap-4 rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 text-left transition hover:-translate-y-0.5 hover:border-emerald-300 hover:bg-emerald-50 hover:shadow-md">
                                             <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-emerald-600 shadow-sm">
                                                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                                     <path d="M20 6 9 17l-5-5" />
@@ -1047,7 +1047,7 @@
                                         Cancel
                                     </button>
                                     @if (in_array($action, ['sticker-redesign', 'decal-redesign', 'glass-redesign', 'ceramic-redesign', 'ornament-etsy-redesign'], true))
-                                        <button type="button" x-show="! boundsEditing" wire:click="{{ $action === 'ornament-etsy-redesign' ? 'selectAsOrnamentEtsyRedesign' : ($action === 'glass-redesign' ? 'selectAsGlassRedesign' : ( === 'ceramic-redesign' ? 'selectAsCeramicRedesign' : 'selectAsStickerRedesign')) }}" class="inline-flex min-w-40 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition hover:-translate-y-0.5 hover:bg-blue-700">
+                                        <button type="button" x-show="! boundsEditing" wire:click="{{ $action === 'ornament-etsy-redesign' ? 'selectAsOrnamentEtsyRedesign' : ($action === 'glass-redesign' ? 'selectAsGlassRedesign' : ($action === 'ceramic-redesign' ? 'selectAsCeramicRedesign' : 'selectAsStickerRedesign')) }}" class="inline-flex min-w-40 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition hover:-translate-y-0.5 hover:bg-blue-700">
                                             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                                 <path d="M20 6 9 17l-5-5" />
                                             </svg>
