@@ -168,7 +168,7 @@
                     this.boundsEditing = true;
                     this.boundsLoading = true;
                     this.boundsImage = null;
-                    await this.$wire.{{  === 'ceramic' ? 'prepareCeramicBoundsEditor' : 'prepareGlassBoundsEditor' }}();
+                    await this.$wire.{{ $productSlug === 'ceramic' ? 'prepareCeramicBoundsEditor' : 'prepareGlassBoundsEditor' }}();
                     this.$nextTick(() => this.initBoundsEditor());
                 },
                 initBoundsEditor() {
@@ -412,7 +412,7 @@
                     if (! dataUrl || dataUrl.length < 100) {
                         throw new Error('Canvas export returned an empty image.');
                     }
-                    await this.$wire.{{  === 'ceramic' ? 'saveCeramicBounds' : 'saveGlassBounds' }}(dataUrl);
+                    await this.$wire.{{ $productSlug === 'ceramic' ? 'saveCeramicBounds' : 'saveGlassBounds' }}(dataUrl);
                     this.boundsEditing = false;
                     } catch (error) {
                         console.error('Glass bounds save failed', error);
@@ -488,7 +488,7 @@
                                             <path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M16 21h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
                                         </svg>
                                     </button>
-                                    @if (!$assetApproved && $productSlugin_array(, ['glass', 'ceramic'], true) && $assetId && $src && $action === 'glass-redesign')
+                                    @if (!$assetApproved && in_array($productSlug, ['glass', 'ceramic'], true) && $assetId && $src && $action === 'glass-redesign')
                                         <button
                                             type="button"
                                             x-on:click="startBoundsEditor()"
@@ -522,7 +522,7 @@
                                     </button>
                                 @endif
 
-                                @if (!$assetApproved && $productSlugin_array(, ['glass', 'ceramic'], true) && $assetId && $src && $action === 'glass-redesign')
+                                @if (!$assetApproved && in_array($productSlug, ['glass', 'ceramic'], true) && $assetId && $src && $action === 'glass-redesign')
                                     <div x-show="boundsEditing" x-cloak class="absolute inset-0 z-20 flex items-center justify-center bg-white p-5">
                                         <div class="relative flex h-full w-full max-w-4xl items-center justify-center overflow-hidden rounded-xl bg-white" x-ref="boundsStage">
                                             <canvas

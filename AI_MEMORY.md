@@ -12015,6 +12015,12 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 - Valid alternatives include `php artisan livewire:attribute`, `livewire:make`, `route:list`, and `schedule:list`; no application code change was required.
 - Follow-up: remove/replace `livewire:list` in VPS cron, deploy script, panel task, or health check if it is configured there.
 
+### 2026-10-07 — Fix ReviewImage Blade ParseError
+
+- Root cause: `review-image.blade.php` contained malformed Blade expressions with the `$productSlug` variable missing, producing `{{ === 'ceramic' ... }}` and `productSlugin_array(...)`.
+- Restored the Ceramic/Glass method selection and product condition checks.
+- Validation: PHP lint passed; views were cleared and recompiled successfully.
+
 ### 2026-10-03 — Fix PSD template reactive prop mutation
 
 - Root cause: `activePsdTemplateName` was marked `#[Reactive]` in product cards/status panels while PSD upload event handlers assigned a refreshed template name to it.
