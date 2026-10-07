@@ -12549,3 +12549,10 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 - Changed `app/Services/Marketplace/MarketplaceListingMetadataService.php`: Amazon title is truncated to 74 characters and Amazon item highlight to 124 characters using the existing multibyte-safe sanitizer; Amazon prompt rules now match those limits. Etsy title behavior remains unchanged.
 - Deploy impact: marketplace metadata generation only; no schema, queue, or API credential changes. Existing records are not rewritten automatically.
 - Validation: PHP lint passed, `php artisan view:cache` passed, `npm run build` passed. `git diff --check` reports only the existing trailing whitespace/CRLF warnings.
+
+### 2026-10-07 — Remove Glass card flicker and bound mockup auto-refresh
+
+- Root cause: Glass product cards used Livewire lazy hydration, causing visible placeholder-to-card flicker on page load. Mockup polling also continued while files were missing because it checked an unbounded `awaitingMockupFiles` condition.
+- Changed `resources/views/livewire/pages/glass/glass-status-panel.blade.php`: render ProductDesignCard directly instead of Livewire lazy hydration. Changed `resources/views/livewire/pages/glass/product-design-card.blade.php`: keep polling while waiting/processing, then perform only two ten-second refreshes after completion; keep mockup image keys stable by asset and slot so refresh does not replace the card DOM. Create Master flow and image-level lazy loading remain unchanged.
+- Deploy impact: Glass Blade/Livewire rendering only; no database, storage, queue, worker, or API changes. The initial page now renders card components immediately, which trades lazy hydration for stable display and avoids the requested flicker.
+- Validation: PHP lint passed for Glass components, `php artisan view:cache` passed, `npm run build` passed, and `git diff --check` reported only CRLF normalization warnings. Authenticated before/after browser screenshots were unavailable, so visual verification remains unverified.

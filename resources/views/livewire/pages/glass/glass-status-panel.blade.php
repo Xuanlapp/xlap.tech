@@ -89,7 +89,7 @@
 
     <div class="space-y-5">
         @forelse ($assets as $asset)
-            <livewire:pages.glass.product-design-card lazy
+            <livewire:pages.glass.product-design-card
                 :asset-id="$asset->id"
                 :active-psd-template-name="$activePsdTemplateName"
                 :provider-key="$providerKey"
