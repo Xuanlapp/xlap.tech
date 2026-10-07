@@ -77,8 +77,8 @@ Viết 1 Title bằng tiếng Anh, tối ưu keyword, dễ đọc, tự nhiên, 
 
 Yêu cầu bắt buộc:
 
-* Độ dài Title nằm trong khoảng 180–195 ký tự tính cả dấu cách.
-* Không được vượt quá 200 ký tự bao gồm cả dấu cách.
+* Độ dài Title nằm trong khoảng 70–74 ký tự tính cả dấu cách.
+* Không được vượt quá 74 ký tự bao gồm cả dấu cách.
 * Ưu tiên keyword chính ở đầu Title.
 * Không nhồi keyword quá lộ.
 * Không dùng ALL CAPS.
@@ -159,8 +159,8 @@ KIỂM TRA CUỐI CÙNG
 
 Trước khi trả kết quả, hãy tự kiểm tra:
 
-* Title có nằm trong 180–195 ký tự không?
-* Title có vượt 200 ký tự không?
+* Title có nằm trong 70–74 ký tự không?
+* Title có vượt 74 ký tự không?
 * Mỗi bullet có nằm trong 460–480 ký tự không?
 * Có bullet nào vượt 480 ký tự không?
 * Generic Keywords có nằm trong 230–240 ký tự không?
@@ -240,7 +240,7 @@ LINK DOI THU : {competitor_link}
 KEYWORDS: {keyword_phrase}
 
 Ban hay viet cho toi:
-Title toi uu keyword, de doc, tuan thu do dai Amazon o cuoi tieu de co ( 3PCS,3") ( co do dai nam trong khoang 180-195 ky tu tinh ca dau cach, khong duoc vuot qua 200 ky tu bao gom ca dau cach, khong duoc lap lai tu stickers qua 2 lan )
+Title toi uu keyword, de doc, tuan thu do dai Amazon o cuoi tieu de co ( 3PCS,3") ( co do dai nam trong khoang 70-74 ky tu tinh ca dau cach, khong duoc vuot qua 74 ky tu bao gom ca dau cach, khong duoc lap lai tu stickers qua 2 lan )
 Bullet Points (5 dong) ( moi bullet points phai co do dai nam trong khoang 460 den 480 ky tu tinh ca dau cach, khong duoc vuot qua 480 ky tu bao gom ca dau cach - mo ta loi ich va tinh nang san pham
 + Bullet point dau mo ta ve san pham cua toi
 + Co cac icon phu hop o dau cac bullet point

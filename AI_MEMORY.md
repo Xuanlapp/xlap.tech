@@ -12556,3 +12556,54 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 - Changed `resources/views/livewire/pages/glass/glass-status-panel.blade.php`: render ProductDesignCard directly instead of Livewire lazy hydration. Changed `resources/views/livewire/pages/glass/product-design-card.blade.php`: keep polling while waiting/processing, then perform only two ten-second refreshes after completion; keep mockup image keys stable by asset and slot so refresh does not replace the card DOM. Create Master flow and image-level lazy loading remain unchanged.
 - Deploy impact: Glass Blade/Livewire rendering only; no database, storage, queue, worker, or API changes. The initial page now renders card components immediately, which trades lazy hydration for stable display and avoids the requested flicker.
 - Validation: PHP lint passed for Glass components, `php artisan view:cache` passed, `npm run build` passed, and `git diff --check` reported only CRLF normalization warnings. Authenticated before/after browser screenshots were unavailable, so visual verification remains unverified.
+
+## 2026-10-07 - Enforce Amazon Idea title and item highlight limits
+
+**Root cause:**
+- Amazon prompt variants were inconsistent: one still requested 180-195 character titles, while persistence truncated to 74; generated content could therefore violate the requested Idea Amazon range before storage.
+
+**Files changed:**
+- `app/Services/Marketplace/MarketplaceListingMetadataService.php`
+- `AI_MEMORY.md`
+
+**Changes:**
+- Updated Amazon prompt variants to require Title 70-74 characters including spaces and never above 74.
+- Kept backend persistence limits at 74 for `title` and 124 for `item_highlight`, with trimming before truncation and null preservation for empty values.
+
+**Validation:**
+- PHP lint passed.
+- Focused `git diff --check` passed with only the existing CRLF normalization warning.
+
+**Deploy/queue impact:**
+- Marketplace metadata generation only; no schema or queue changes.
+### 2026-10-07 — Hide Glass bounds controls for approved ideas
+
+- Root cause: the Glass status panel rendered Upload bounds, show/hide bounds, and opacity controls for every status, including approved ideas that had no Mockup Tu Chon.
+- Changed `resources/views/livewire/pages/glass/glass-status-panel.blade.php`: wrap the bounds control group in `status !== 'approved'`, so approved items no longer expose bounds controls while all non-approved tabs retain them.
+- Added `.design/glass-bounds-visibility/DESIGN_BRIEF.md` with the repair acceptance criteria.
+- Deploy impact: Blade visibility only; no database, image, mockup, queue, or approval behavior changes.
+- Validation: `php artisan view:cache` passed, PHP lint passed, `npm run build` passed, and diff check reported only CRLF normalization warnings.
+
+### 2026-10-07 — Prevent bounds editor actions on approved Glass items
+
+- Root cause: the ReviewImage modal showed the Glass “Chinh bounds” action based only on product/action/image values; it did not consider the approved state loaded for the item. A stale Livewire request then reached GlassService, which correctly rejected editing approved items and generated an error notification.
+- Changed `resources/views/livewire/modals/image/review-image.blade.php`: hide the Glass bounds action and editor surface when `assetApproved` is true. Changed `app/Livewire/Modals/Image/ReviewImage.php`: guard bounds preparation and save entry points for approved assets so stale requests safely stop without logging an avoidable user-action error.
+- Added `.design/glass-approved-bounds-action/DESIGN_BRIEF.md`.
+- Deploy impact: ReviewImage/Glass bounds UI and guards only; approval protection, Create Master, Mockup, and database behavior remain unchanged.
+- Validation: PHP lint passed, `php artisan view:cache` passed, `npm run build` passed. `git diff --check` reports existing CRLF/trailing-whitespace warnings only.
+
+### 2026-10-07 — Speed up Glass image Preview modal
+
+- Root cause: ReviewImage loaded the full listing metadata query whenever any image modal opened, even for Glass where the Preview only needed approval state to decide whether bounds editing is allowed.
+- Changed `app/Livewire/Modals/Image/ReviewImage.php`: Glass opens now perform a lightweight `is_approved` lookup; Amazon/Etsy and other listing preview flows continue using the existing full metadata loader. Bounds protection remains enforced in the UI and action methods.
+- Added `.design/glass-preview-modal-speed/DESIGN_BRIEF.md`.
+- Deploy impact: ReviewImage modal query path only; no schema, image URL, queue, worker, or listing data changes.
+- Validation: PHP lint passed, `php artisan view:cache` passed, `npm run build` passed, and diff check reported only existing CRLF/trailing-whitespace warnings.
+
+### 2026-10-07 — Open image modal immediately with scoped loading state
+
+- Root cause: ReviewImage performed secondary context loading during the same Livewire `open` request, so the modal could not render until unrelated database/preview work finished.
+- Changed `app/Livewire/Modals/Image/ReviewImage.php`: `open()` now sets the modal state and a `detailsLoading` flag immediately; `loadPreviewDetails()` performs the deferred context loading after mount. Glass uses the lightweight approval lookup, while non-Glass listing flows retain their existing detail loaders.
+- Changed `resources/views/livewire/modals/image/review-image.blade.php`: added `wire:init="loadPreviewDetails"` and a scoped spinner overlay while deferred details load. The main image/modal shell remains visible rather than blocking the whole interaction.
+- Deploy impact: shared ReviewImage modal behavior only; no schema, queue, worker, or image storage changes.
+- Validation: PHP lint and Blade cache passed; `npm run build` passed. Diff check reports existing CRLF/trailing-whitespace warnings. Authenticated browser timing evidence was unavailable.

@@ -95,6 +95,8 @@ class ReviewImage extends Component
 
     public array $glassBoundsConfig = [];
 
+    public bool $detailsLoading = false;
+
     #[On('review-image')]
     public function open(
         ?string $src,
@@ -135,12 +137,26 @@ class ReviewImage extends Component
         if (! $this->imagePrompt && is_string($imagePrompt) && trim($imagePrompt) !== '') {
             $this->imagePrompt = trim($imagePrompt);
         }
-        $this->loadCurrentMockupGenerationState();
-        $this->loadSourcePreviewContext();
-        $this->loadListingInfo();
+        $this->detailsLoading = true;
         $this->isOpen = true;
     }
 
+    public function loadPreviewDetails(): void
+    {
+        if (! $this->isOpen || ! $this->detailsLoading) {
+            return;
+        }
+
+        $this->loadCurrentMockupGenerationState();
+        $this->loadSourcePreviewContext();
+        if ($this->productSlug === 'glass') {
+            $this->loadGlassApprovalState();
+        } else {
+            $this->loadListingInfo();
+        }
+
+        $this->detailsLoading = false;
+    }
     public function previous(): void
     {
         if (count($this->gallery) <= 1) {
@@ -626,13 +642,17 @@ class ReviewImage extends Component
 
     public function close(): void
     {
-        $this->reset(['isOpen', 'src', 'original', 'gallery', 'currentIndex', 'action', 'productSlug', 'assetId', 'keyword', 'customPrompt', 'editTarget', 'imagePrompt', 'modalProviderKey', 'modalImageModel', 'currentMockupSlotGenerating', 'listingInfo', 'sourcePreviewImages', 'sourceListingFields', 'imageOnly']);
+        $this->reset(['isOpen', 'src', 'original', 'gallery', 'currentIndex', 'action', 'productSlug', 'assetId', 'keyword', 'customPrompt', 'editTarget', 'imagePrompt', 'modalProviderKey', 'modalImageModel', 'currentMockupSlotGenerating', 'listingInfo', 'sourcePreviewImages', 'sourceListingFields', 'imageOnly', 'detailsLoading']);
         $this->title = 'Review image';
     }
 
     public function saveGlassBounds(string $dataUrl): void
     {
         if ($this->productSlug !== 'glass' || $this->action !== 'glass-redesign' || ! $this->assetId) {
+            return;
+        }
+
+        if ($this->assetApproved) {
             return;
         }
 
@@ -673,6 +693,10 @@ class ReviewImage extends Component
     public function prepareGlassBoundsEditor(): void
     {
         if ($this->productSlug !== 'glass' || $this->action !== 'glass-redesign' || ! $this->assetId) return;
+        if ($this->assetApproved) {
+            $this->dispatch('toast', type: 'error', title: 'Bounds failed', message: 'Item da duyet. Hay bo duyet truoc khi chinh bounds.');
+            return;
+        }
         try {
             $sourceBefore = $this->original ?: $this->src;
             $asset = app(GlassService::class)->useCachedOriginalForBounds(auth()->user(), $this->assetId, $sourceBefore);
@@ -693,6 +717,7 @@ class ReviewImage extends Component
     public function saveGlassBoundsFromTransform(array $transform): void
     {
         if ($this->productSlug !== 'glass' || $this->action !== 'glass-redesign' || ! $this->assetId) return;
+        if ($this->assetApproved) return;
         try {
             app(GlassService::class)->saveBoundedCacheImage(auth()->user(), $this->assetId, $transform, true);
             $this->dispatch('glass-product-design-updated')->to(ListGlass::class);
@@ -848,6 +873,19 @@ class ReviewImage extends Component
         }
     }
 
+    private function loadGlassApprovalState(): void
+    {
+        $this->assetApproved = false;
+
+        if (! $this->assetId) {
+            return;
+        }
+
+        $this->assetApproved = (bool) ProductDesignAsset::query()
+            ->when(! auth()->user()->is_admin, fn ($query) => $query->where('user_id', auth()->id()))
+            ->whereKey($this->assetId)
+            ->value('is_approved');
+    }
     private function loadListingInfo(): void
     {
         $this->listingInfo = [];

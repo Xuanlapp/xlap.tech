@@ -63,6 +63,7 @@
         @endphp
 
         <div
+            wire:init="loadPreviewDetails"
             x-data="{
                 modalVisible: true,
                 zoomed: false,
@@ -456,6 +457,11 @@
                     </button>
 
                     <div class="grid gap-5 p-5 {{ $imageOnly ? 'grid-cols-1' : 'lg:grid-cols-[minmax(0,3fr)_minmax(360px,2fr)]' }}">
+                        @if ($detailsLoading)
+                            <div wire:loading.flex wire:target="loadPreviewDetails" class="absolute inset-0 z-30 items-center justify-center bg-slate-950/20 backdrop-blur-[1px]">
+                                <div class="inline-flex items-center gap-2 rounded-xl bg-slate-900/90 px-4 py-3 text-xs font-semibold text-white shadow-lg"><x-spinner /> Đang tải thông tin...</div>
+                            </div>
+                        @endif
                         <section class="min-w-0">
                             <div class="relative flex h-[min(76vh,820px)] min-h-[460px] items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
                                 @if (count($gallery) > 1)
@@ -487,7 +493,7 @@
                                             <path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M16 21h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
                                         </svg>
                                     </button>
-                                    @if ($productSlug === 'glass' && $assetId && $src && $action === 'glass-redesign')
+                                    @if (!$assetApproved && $productSlug === 'glass' && $assetId && $src && $action === 'glass-redesign')
                                         <button
                                             type="button"
                                             x-on:click="startBoundsEditor()"
@@ -521,7 +527,7 @@
                                     </button>
                                 @endif
 
-                                @if ($productSlug === 'glass' && $assetId && $src && $action === 'glass-redesign')
+                                @if (!$assetApproved && $productSlug === 'glass' && $assetId && $src && $action === 'glass-redesign')
                                     <div x-show="boundsEditing" x-cloak class="absolute inset-0 z-20 flex items-center justify-center bg-white p-5">
                                         <div class="relative flex h-full w-full max-w-4xl items-center justify-center overflow-hidden rounded-xl bg-white" x-ref="boundsStage">
                                             <canvas
