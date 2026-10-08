@@ -12694,6 +12694,20 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 - Deploy impact: run the new migration, deploy PHP/Blade files, clear/cache Laravel views, and register the Ceramic local worker if a synced workstation should render Ceramic mockups. No existing data is migrated or changed.
 - Validation: PHP lint passed for new/changed Ceramic and shared files, `php artisan view:cache` passed, Vite build passed, route `/offorest/ceramic` exists, and Ceramic service container resolution passed. Visual browser/authenticated review was not available in this environment.
 - Follow-up: verify Ceramic permissions in the admin product access UI, run migration in staging first, and test add/import/source/Create Master/bounds/mockup/delete/approval end-to-end before production use.
+
+### 2026-10-08 — Enable Ceramic in administrator product access
+
+- Root cause: the Ceramic implementation and product registry existed, but migration `2026_10_07_000006_add_ceramic_product` had not run. Therefore no active `products` row existed for slug `ceramic`, and `UserAccessService::activeProducts()` could not expose it in the administrator user-permission forms.
+- Changed database only: ran the idempotent Ceramic product migration locally. It created/activated product `Ceramic` (`id=15`, `slug=ceramic`) and granted it to existing administrator accounts through `product_user`.
+- Validation: migration status reports `Ran`; product verification reports `is_active=true`; two administrator permission rows exist; `php artisan view:cache` passed.
+- Deploy impact: run `php artisan migrate --force` on every deployed environment before expecting Ceramic in the admin access selector. No queue, worker, or application-code changes.
+
+### 2026-10-08 — Fix Ceramic Excel import page 500
+
+- Root cause: the Ceramic Livewire class was named `ExcelImportCeramic` but stored in `app/Livewire/Modals/Ceramic/ExcelImportGlass.php`. Livewire therefore resolved the view without the expected component state and `$isProcessing` was undefined during the Ceramic page render.
+- Changed: renamed the class file to `app/Livewire/Modals/Ceramic/ExcelImportCeramic.php`; made the polling guard in `resources/views/livewire/modals/ceramic/excel-import-ceramic.blade.php` null-safe.
+- Validation: `php -l` passed, `php artisan optimize:clear` passed, and `php artisan view:cache` passed.
+- Deploy impact: Ceramic Excel import component loading only; import logic, database, storage, and queue behavior are unchanged.
 - Replaced fixed family precedence with name-driven family matching: collect all family words from imported product-name and SKU-linked product name, use their intersection when available, and only fallback to imported families when no shared family exists.- Fixed ambiguous family logic: when imported `product-name` is present, matching and family scoring now use only that full title; SKU-linked Product is fallback only when `product-name` is blank.
 
 ### 2026-10-07 — Frontend performance follow-up (Lighthouse findings)

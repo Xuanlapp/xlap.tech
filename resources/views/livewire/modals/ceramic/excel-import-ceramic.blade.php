@@ -1,4 +1,4 @@
-<div @if($isProcessing) wire:poll.250ms="processNextRow" @endif>
+<div @if($isProcessing ?? false) wire:poll.250ms="processNextRow" @endif>
     @if ($isOpen)
         <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 p-4 md:p-6">
             <div class="relative mx-auto mt-6 w-full max-w-7xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.12)]">
