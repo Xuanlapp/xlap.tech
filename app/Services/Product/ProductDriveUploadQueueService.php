@@ -40,17 +40,30 @@ class ProductDriveUploadQueueService
             return;
         }
 
-        ProductDriveUpload::query()->updateOrCreate(
+        $upload = ProductDriveUpload::query()->firstOrCreate(
             ['product_design_asset_id' => $asset->id],
             [
                 'user_id' => $asset->user_id,
                 'product_id' => $asset->product_id,
                 'status' => 'waiting',
-                'error' => null,
-                'started_at' => null,
-                'completed_at' => null,
             ],
         );
+
+        // Never put an actively claimed upload back into the waiting queue.
+        // A save/refresh event can otherwise make a second worker upload the
+        // same local files before the first worker replaces their URLs.
+        if ($upload->status === 'processing') {
+            return;
+        }
+
+        $upload->update([
+            'user_id' => $asset->user_id,
+            'product_id' => $asset->product_id,
+            'status' => 'waiting',
+            'error' => null,
+            'started_at' => null,
+            'completed_at' => null,
+        ]);
     }
 
     public function hasLocalExportableImages(ProductDesignAsset $asset): bool

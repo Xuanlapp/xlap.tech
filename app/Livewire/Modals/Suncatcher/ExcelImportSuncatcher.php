@@ -462,7 +462,7 @@ class ExcelImportSuncatcher extends Component
 
         $xml = simplexml_load_string($sharedStringsXml);
 
-        if (! $xml) {
+        if ($xml === false) {
             return [];
         }
 
@@ -496,7 +496,7 @@ class ExcelImportSuncatcher extends Component
         $workbook = simplexml_load_string($workbookXml);
         $rels = simplexml_load_string($relsXml);
 
-        if (! $workbook || ! $rels) {
+        if ($workbook === false || $rels === false) {
             return null;
         }
 
@@ -538,7 +538,7 @@ class ExcelImportSuncatcher extends Component
     {
         $xml = simplexml_load_string($worksheetXml);
 
-        if (! $xml) {
+        if ($xml === false) {
             return [];
         }
 

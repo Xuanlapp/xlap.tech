@@ -126,7 +126,7 @@ class ApprovedAssetDriveExportService
         }
 
         try {
-            $images = $this->exportAsset($asset, $actor, $trigger);
+            $images = $this->exportAsset($asset, $actor, $trigger, alreadyClaimed: true);
         } catch (\Throwable $exception) {
             $upload->update([
                 'status' => 'failed',
@@ -155,21 +155,23 @@ class ApprovedAssetDriveExportService
         return $this->exportAsset($asset, $actor, $trigger);
     }
 
-    private function exportAsset(ProductDesignAsset $asset, ?User $actor, string $trigger): int
+    private function exportAsset(ProductDesignAsset $asset, ?User $actor, string $trigger, bool $alreadyClaimed = false): int
     {
         $upload = $this->uploadRecord($asset);
+        if (! $alreadyClaimed && ! $this->claimUpload($upload)) {
+            return 0;
+        }
+
+        // Another worker may have completed this item while this invocation was
+        // waiting for its claim. Reload before looking for local source URLs.
+        $asset = ProductDesignAsset::query()
+            ->with(['product', 'user'])
+            ->findOrFail($asset->id);
         $updates = [];
         $deletePaths = [];
         $uploaded = [];
         $fileInfo = [];
         $imageNumber = 1;
-
-        $upload->update([
-            'status' => 'processing',
-            'error' => null,
-            'started_at' => now(),
-            'completed_at' => null,
-        ]);
 
         $driveFolder = $this->drive->findOrCreateFolderPath([
             $this->folderNameForUser($asset),
@@ -351,6 +353,28 @@ class ApprovedAssetDriveExportService
                 'status' => 'waiting',
             ],
         );
+    }
+
+    private function claimUpload(ProductDriveUpload $upload): bool
+    {
+        return DB::transaction(function () use ($upload): bool {
+            $lockedUpload = ProductDriveUpload::query()
+                ->lockForUpdate()
+                ->find($upload->id);
+
+            if (! $lockedUpload || $lockedUpload->status === 'processing') {
+                return false;
+            }
+
+            $lockedUpload->update([
+                'status' => 'processing',
+                'error' => null,
+                'started_at' => now(),
+                'completed_at' => null,
+            ]);
+
+            return true;
+        });
     }
 
     public function markStaleProcessingUploadsAsFailed(): int

@@ -4,6 +4,8 @@ namespace App\Services\Order;
 
 use App\Models\ProductDesignAsset;
 use App\Models\SkuOrderItem;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 class SkuOrderItemService
@@ -24,16 +26,38 @@ class SkuOrderItemService
             return null;
         }
 
-        return SkuOrderItem::query()->updateOrCreate(
-            ['product_design_asset_id' => $asset->id],
-            [
+        return DB::transaction(function () use ($asset, $sku, $driveMasterUrl): ?SkuOrderItem {
+            $byAsset = SkuOrderItem::query()->where('product_design_asset_id', $asset->id)->lockForUpdate()->first();
+            $bySku = SkuOrderItem::query()->where('user_id', $asset->user_id)->where('sku', $sku)->lockForUpdate()->first();
+
+            if ($bySku && $bySku->product_design_asset_id && $bySku->product_design_asset_id !== $asset->id) {
+                Log::warning('Order SKU already belongs to another asset.', [
+                    'user_id' => $asset->user_id,
+                    'sku' => $sku,
+                    'asset_id' => $asset->id,
+                    'existing_asset_id' => $bySku->product_design_asset_id,
+                ]);
+
+                return null;
+            }
+
+            if ($bySku && $byAsset && $bySku->id !== $byAsset->id) {
+                $byAsset->delete();
+            }
+
+            $item = $bySku ?: $byAsset ?: new SkuOrderItem();
+            $item->fill([
+                'product_design_asset_id' => $asset->id,
                 'user_id' => $asset->user_id,
                 'product_id' => $asset->product_id,
                 'sku' => $sku,
                 'image_link' => $driveMasterUrl,
                 'source' => 'asset_sync',
-            ],
-        );
+            ]);
+            $item->save();
+
+            return $item->refresh();
+        });
     }
 
     private function isGoogleDriveUrl(string $url): bool

@@ -424,7 +424,7 @@ class ExcelImportSticker extends Component
 
         $xml = simplexml_load_string($sharedStringsXml);
 
-        if (! $xml) {
+        if ($xml === false) {
             return [];
         }
 
@@ -458,7 +458,7 @@ class ExcelImportSticker extends Component
         $workbook = simplexml_load_string($workbookXml);
         $rels = simplexml_load_string($relsXml);
 
-        if (! $workbook || ! $rels) {
+        if ($workbook === false || $rels === false) {
             return null;
         }
 
@@ -500,7 +500,7 @@ class ExcelImportSticker extends Component
     {
         $xml = simplexml_load_string($worksheetXml);
 
-        if (! $xml) {
+        if ($xml === false) {
             return [];
         }
 
@@ -515,7 +515,8 @@ class ExcelImportSticker extends Component
                 $cell->registerXPathNamespace('a', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
                 $cellType = (string) ($cell['t'] ?? '');
                 $cellIndex = $this->cellColumnIndex((string) ($cell['r'] ?? ''));
-                $value = trim((string) (($cell->v[0] ?? '') ?: ''));
+                $valueNode = $cell->xpath('./a:v');
+                $value = trim((string) ($valueNode[0] ?? ''));
 
                 if ($cellIndex === null) {
                     continue;

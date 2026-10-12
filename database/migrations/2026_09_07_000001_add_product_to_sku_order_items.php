@@ -14,7 +14,11 @@ return new class extends Migration
             $table->index(['user_id', 'product_id']);
         });
 
-        DB::statement('UPDATE sku_order_items soi JOIN product_design_assets pda ON pda.id = soi.product_design_asset_id SET soi.product_id = pda.product_id WHERE soi.product_id IS NULL');
+        if (DB::getDriverName() === 'sqlite') {
+            DB::statement('UPDATE sku_order_items SET product_id = (SELECT product_id FROM product_design_assets WHERE product_design_assets.id = sku_order_items.product_design_asset_id) WHERE product_id IS NULL AND product_design_asset_id IS NOT NULL');
+        } else {
+            DB::statement('UPDATE sku_order_items soi JOIN product_design_assets pda ON pda.id = soi.product_design_asset_id SET soi.product_id = pda.product_id WHERE soi.product_id IS NULL');
+        }
     }
 
     public function down(): void

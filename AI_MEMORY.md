@@ -12708,6 +12708,21 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 - Changed: renamed the class file to `app/Livewire/Modals/Ceramic/ExcelImportCeramic.php`; made the polling guard in `resources/views/livewire/modals/ceramic/excel-import-ceramic.blade.php` null-safe.
 - Validation: `php -l` passed, `php artisan optimize:clear` passed, and `php artisan view:cache` passed.
 - Deploy impact: Ceramic Excel import component loading only; import logic, database, storage, and queue behavior are unchanged.
+
+### 2026-10-08 — Audit triage for xlap.com.vn report
+
+- Scope: reviewed `D:\\CODER\\Playwright\\reports\\ai-export\\AI_HANDOFF.md` and `xlap-audit-sanitized.json` against the `XLAP Web Platform` repository at `D:\\FFACTORY\\API\\xlap`.
+- Domain/repository distinction: the audit inventory was collected from `xlap.com.vn`; the repository remote is `https://github.com/Xuanlapp/xlap.tech.git`. No audit conclusion was applied to `xlap.tech`.
+- Findings triage: `/image-preview` 404 entries are malformed probes without required `path`/`url`; `/offorest/admin/listing-prompts` 403 is expected for a non-admin session because the route has admin middleware; download navigation messages are expected Playwright download behavior; `/TOS` has no application route or source link and is a stale/nonexistent URL. Storage-image 403s require VPS filesystem/web-server permission reproduction and were not changed from this inventory alone.
+- Validation: `php artisan route:list` confirms the image-preview and admin listing-prompt routes; no TOS route exists; `tests/Feature/ImagePreviewControllerTest.php` passes (1 test, 5 assertions).
+- Deploy impact: none; no production data, credentials, or application source changed.
+
+### 2026-10-08 — Enable safe HTTP compression for static/runtime responses
+
+- Root cause: PageSpeed reported large text transfer and missing text compression across the audited `xlap.com.vn` routes. The existing public Apache rules only configured cache lifetimes; they did not advertise or enable DEFLATE for HTML, CSS, JavaScript, JSON, XML, SVG, or WASM responses.
+- Changed `public/.htaccess`: added `Vary: Accept-Encoding` and `mod_filter`/DEFLATE rules for compressible response types. Existing asset cache policies were preserved.
+- Validation: `php artisan view:cache` passed, `tests/Feature/ImagePreviewControllerTest.php` passed (1 test, 5 assertions), `npm run build` passed, and `git diff --check` reported no new issues.
+- Deploy impact: Apache must have `mod_filter` and `mod_deflate` enabled; no database, queue, worker, or production data changes. Re-run PageSpeed over HTTPS after deployment to measure the actual transfer reduction.
 - Replaced fixed family precedence with name-driven family matching: collect all family words from imported product-name and SKU-linked product name, use their intersection when available, and only fallback to imported families when no shared family exists.- Fixed ambiguous family logic: when imported `product-name` is present, matching and family scoring now use only that full title; SKU-linked Product is fallback only when `product-name` is blank.
 
 ### 2026-10-07 — Frontend performance follow-up (Lighthouse findings)
@@ -12719,3 +12734,42 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 - Queue impact: none. No backend, database, API, Livewire action, or queue behavior changed.
 - Validation: `php artisan view:cache` passed; `npm run build` passed; `php artisan test --filter=Glass --no-ansi` passed (1 test, 4 assertions); `git diff --check` reports only pre-existing CRLF/trailing-whitespace warnings in the dirty worktree. Better Design review was unavailable because the account quota returned HTTP 402; authenticated browser screenshots/Lighthouse rerun were not available, so visual/performance savings remain to be verified after deployment.
 - Follow-up: rerun Lighthouse at `/login` and an authenticated Glass route on desktop/mobile, compare LCP/render-blocking/cache/image diagnostics, and confirm Apache response headers for `/build/assets/*`, `/js/*`, and images.
+
+### 2026-10-12 — Prevent duplicate Google Drive image uploads
+
+- Root cause: the five-minute full Drive scan and the continuous waiting-upload worker could upload the same approved local files concurrently. The full scan did not claim `product_drive_uploads` before calling Google Drive; a save/refresh could also reset a `processing` record back to `waiting`.
+- Changed `app/Services/Product/ApprovedAssetDriveExportService.php`: every non-queue upload now claims the per-asset upload record inside a database row lock before contacting Drive. Concurrent callers return without uploading; queue workers retain their existing claim and reload the asset before reading local URLs.
+- Changed `app/Services/Product/ProductDriveUploadQueueService.php`: never requeue an already `processing` record during asset sync.
+- Affected module: approved image Drive export for all product types. Existing Drive duplicates are not automatically deleted.
+- Deploy impact: deploy both services and restart the Drive daemon/queue worker if one is configured. No migration. Queue impact: concurrent workers now safely skip records claimed by another worker.
+- Validation: PHP lint passed for both services. The Drive-filtered test command exceeded the local command window without producing a result, so integration behavior needs a production/staging verification with one newly approved item.
+
+### 2026-10-12 — Restore Laragon local Apache compatibility
+
+- Root cause: the PageSpeed compression optimization added `mod_filter`/DEFLATE directives and `Vary` handling to `public/.htaccess`. The active Laragon Apache setup returned a generic HTTP 500 before Laravel handled the request.
+- Changed `public/.htaccess`: removed the compression directives while preserving the existing rewrite and asset cache rules. Compression can be enabled later only after verifying the deployed Apache modules/configuration.
+- Validation: Laragon Apache `httpd -t` returned `Syntax OK`; `php artisan view:cache` passed; no application data or production environment was changed.
+- Deploy impact: local Apache should be restarted/reloaded after the file change. VPS compression configuration remains a separate deployment concern and must be tested on that server.
+
+### 2026-10-12 — Prevent duplicate SKU order sync failures
+
+- Root cause: `SkuOrderItemService::syncForAsset()` previously matched only `product_design_asset_id` in `updateOrCreate`, while the database also enforces one `sku` per user. A newly approved asset with an already existing user SKU attempted a second insert and raised MySQL `1062`.
+- Changed `app/Services/Order/SkuOrderItemService.php`: lock and check both asset and user/SKU rows inside a transaction. Existing manual SKU rows can be attached to the approved asset; re-syncing the same asset updates safely; if the SKU is already attached to a different asset, the sync skips and logs a warning instead of overwriting order data or throwing.
+- Changed `database/migrations/2026_09_07_000001_add_product_to_sku_order_items.php`: make its historical product backfill compatible with SQLite tests while preserving the MySQL join update.
+- Added `tests/Feature/SkuOrderItemSyncTest.php` covering manual SKU attachment and same-asset re-sync without duplicate records.
+- Validation: focused test passed (2 tests, 5 assertions), PHP lint passed, and focused diff check passed.
+- Deploy impact: deploy the service change; no new production migration is needed for the duplicate fix. Existing conflicting rows are preserved and require manual review if the user wants to merge assets.
+
+### 2026-10-12 — Retest duplicate SKU order sync
+
+- Expanded `tests/Feature/SkuOrderItemSyncTest.php` from two to four scenarios: attach an existing manually imported SKU, resync the same asset, preserve the existing owner/image on an order-SKU collision, and change an asset SKU to one present in a manual order row.
+- Focused result: 4 tests, 12 assertions passed; PHP lint and focused diff check passed. No production data was modified.
+- Broader `OfforestProductSchemaTest` run remains red with legacy product/route/Livewire expectations (19 passed, 9 failed, 22 errors); none of these failures concern the four focused SKU sync cases. Follow-up: modernize that legacy suite separately rather than changing unrelated production behavior.
+- Deploy/queue impact: unchanged from the SKU fix; service code needs deployment and PHP worker restart. Actual VPS row `RGF1-5` was not queried, so its conflicting owner needs read-only inspection before manual data changes.
+
+### 2026-10-12 — Read namespace-prefixed XLSX in Glass import
+
+- Root cause: the importers treated valid SimpleXML objects as false and read prefixed worksheet cells through unprefixed `$cell->v`; the supplied Glass workbook uses `x:` elements and valid worksheet relationships.
+- Changed: `app/Livewire/Modals/Glass/ExcelImportGlass.php`, `app/Livewire/Modals/Ceramic/ExcelImportCeramic.php`, `app/Livewire/Modals/Sticker/ExcelImportSticker.php`, `app/Livewire/Modals/Decal/ExcelImportDecal.php`, `app/Livewire/Modals/Suncatcher/ExcelImportSuncatcher.php`, `app/Livewire/Modals/OrnamentAmazonTwo/ExcelImportOrnament.php`, `app/Livewire/Modals/Camp/ImportCampRows.php`. SimpleXML failure checks are strict; affected cell parsers use namespace-aware XPath.
+- Validation: all seven importers passed PHP lint. The supplied XLSX parsed 124 rows including header (123 data rows); required fields were present, SKU values unique, and image URLs passed the importer format check. No database import was performed.
+- Deploy impact: deploy importer PHP files; no migration. Queue impact: none. Follow-up: retry the file on the deployed Glass page and verify actual row import/database behavior. Graphiti episode could not be written because the Graphiti tool is not available in this session.

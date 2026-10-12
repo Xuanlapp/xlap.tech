@@ -475,7 +475,7 @@ class ExcelImportOrnament extends Component
 
         $xml = simplexml_load_string($sharedStringsXml);
 
-        if (! $xml) {
+        if ($xml === false) {
             return [];
         }
 
@@ -509,7 +509,7 @@ class ExcelImportOrnament extends Component
         $workbook = simplexml_load_string($workbookXml);
         $rels = simplexml_load_string($relsXml);
 
-        if (! $workbook || ! $rels) {
+        if ($workbook === false || $rels === false) {
             return null;
         }
 
@@ -551,7 +551,7 @@ class ExcelImportOrnament extends Component
     {
         $xml = simplexml_load_string($worksheetXml);
 
-        if (! $xml) {
+        if ($xml === false) {
             return [];
         }
 
