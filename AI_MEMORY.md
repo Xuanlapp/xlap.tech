@@ -12910,3 +12910,20 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 - Changed: resources/views/layouts/app.blade.php adds a pre-mounted Alpine loading preview; resources/views/livewire/modals/image/review-image.blade.php signals when the full modal is ready; updated .design/modal-preview-performance/DESIGN_BRIEF.md.
 - Validation: Blade view:cache and Vite build passed; authenticated desktop/mobile visual testing remains pending. Deploy Blade/views and assets; no database or queue impact. Graphiti unavailable.
 
+
+### 2026-10-13 — Clean immediate image preview
+- Root cause: the instant shell displayed the clicked image before the full modal, which looked like an incorrect intermediate modal; relative storage paths were also shown without the website host.
+- Changed: the shell now shows only a loading spinner; Image Information renders absolute same-origin website URLs and clipboard uses the normalized URL.
+- Validation: Blade cache and Vite build passed. No database or queue impact; authenticated browser visual check remains pending.
+
+
+### 2026-10-13 — Remove intermediate preview shell
+- Root cause: the temporary Alpine loading shell was visible before the real Livewire Review Image modal and was perceived as an incorrect image/modal.
+- Changed: removed the intermediate shell from resources/views/layouts/app.blade.php so clicks go directly to the existing Review Image modal; retained absolute source URL display and copy normalization in resources/views/livewire/modals/image/review-image.blade.php.
+- Validation: Blade cache and Vite build passed. No database or queue impact; authenticated browser timing remains pending.
+
+### 2026-10-13 — Remove modal metadata loading overlay
+- Root cause: the Review Image modal displayed a blocking spinner over the information panel while deferred details loaded.
+- Changed: removed the detailsLoading overlay from esources/views/livewire/modals/image/review-image.blade.php; deferred metadata still loads in the background.
+- Validation: Blade cache passed. No database or queue impact; browser visual verification remains pending.
+

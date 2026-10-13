@@ -73,24 +73,6 @@
                 </button>
             </div>
 
-            <div
-                x-data="{ open: false, loading: true, src: null, title: '', show(event) { this.src = event.detail.src || event.detail.original || null; this.title = event.detail.title || 'Image preview'; this.loading = true; this.open = true; }, close() { this.open = false; } }"
-                x-on:review-image.window="show($event)"
-                x-on:review-image-ready.window="close()"
-                x-on:keydown.escape.window="close()"
-                x-show="open"
-                x-cloak
-                role="dialog"
-                aria-modal="true"
-                aria-label="Image preview"
-                class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"
-            >
-                <div class="relative flex h-[min(85vh,900px)] w-full max-w-5xl items-center justify-center rounded-2xl bg-white p-4 shadow-2xl dark:bg-slate-950">
-                    <button type="button" x-on:click="close()" aria-label="Close image preview" class="absolute right-4 top-4 z-10 rounded-full bg-white p-2 text-slate-800 shadow dark:bg-slate-800 dark:text-white">&times;</button>
-                    <span x-show="loading" role="status" class="absolute text-sm text-slate-600 dark:text-slate-300">Loading image...</span>
-                    <img x-show="!loading" x-bind:src="open ? src : null" x-bind:alt="title" x-on:load="loading = false" x-on:error="loading = false" class="max-h-full max-w-full object-contain" />
-                </div>
-            </div>
             <livewire:modals.image.review-image />
             <livewire:modals.suncatcher.review-image />
             <livewire:modals.account-manager.data-form />

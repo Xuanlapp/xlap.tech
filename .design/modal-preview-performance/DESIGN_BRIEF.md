@@ -7,4 +7,4 @@
 - Verify: PHP/Blade/build checks; authenticated before/after latency and visual captures pending.
 - Glass/Ceramic/Decal/Sticker/Etsy image card clicks dispatch directly in the browser; local `/storage/` URLs stay same-origin instead of being rewritten to a remote domain.
 - Gallery arrows in view-only image previews change Alpine state instantly; editing/generation modes retain Livewire navigation to preserve server-side target state. Full-size Drive files may still load slowly after the navigation itself.
-- A pre-mounted Alpine shell opens on image click before Livewire responds; the full modal replaces it once ready. Image loading remains asynchronous.
+- No intermediate preview shell or information-panel loading overlay. The Review Image modal renders available data immediately while deferred metadata loads; image transfer remains asynchronous.

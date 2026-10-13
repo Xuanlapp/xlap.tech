@@ -32,6 +32,9 @@
             };
 
             $displayOriginalUrl = $normalizeAssetUrl($displayOriginalUrl);
+            $publicOriginalUrl = $displayOriginalUrl && str_starts_with($displayOriginalUrl, '/')
+                ? request()->getSchemeAndHttpHost().$displayOriginalUrl
+                : $displayOriginalUrl;
             $boundsGuideUrl = $glassBoundsGuideUrl;
             // Bounds must use the same renderable/preview URL as the visible image;
             // the raw source URL may be private or blocked while the preview works.
@@ -63,6 +66,9 @@
                 clientIndex: @js($currentIndex),
                 clientSrc: @js($src),
                 clientOriginal: @js($original),
+                publicImageUrl(value) {
+                    return value ? new URL(value, window.location.origin).href : '';
+                },
                 clientTitle: @js($title),
                 switchClientImage(direction) {
                     if (this.clientGallery.length < 2) return;
@@ -146,7 +152,7 @@
                     return copied;
                 },
                 copyImageUrl() {
-                    const imageUrl = @js($action || $editTarget) ? @js($displayOriginalUrl) : this.clientOriginal;
+                    const imageUrl = this.publicImageUrl(@js($action || $editTarget) ? @js($displayOriginalUrl) : this.clientOriginal);
 
                     if (! imageUrl) {
                         return;
@@ -449,7 +455,6 @@
                     }
                 },            }"
             x-show="modalVisible"
-            x-init="window.dispatchEvent(new Event('review-image-ready'))"
             x-transition.opacity.duration.150ms
             x-on:keydown.escape.window="modalVisible = false; $wire.close()"
             x-on:keydown.window="handleBoundsKeydown($event)"
@@ -653,11 +658,7 @@
 
                         @unless ($imageOnly)
                         <aside class="relative flex max-h-[76vh] min-h-[460px] min-w-0 flex-col gap-4 overflow-y-auto pr-1">
-                            @if ($detailsLoading)
-                                <div wire:loading.flex wire:target="loadPreviewDetails" class="absolute inset-0 z-10 items-center justify-center rounded-2xl bg-slate-950/20 backdrop-blur-[1px]">
-                                    <div class="inline-flex items-center gap-2 rounded-xl bg-slate-900/90 px-4 py-3 text-xs font-semibold text-white shadow-lg"><x-spinner /> Đang tải thông tin...</div>
-                                </div>
-                            @endif
+
                             <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-slate-900">
                                 <div class="mb-4 flex items-center gap-3">
                                     <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
@@ -678,7 +679,7 @@
                                         <div>
                                             <div class="text-xs font-medium text-slate-500">Source Image</div>
                                             <div class="mt-2 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
-                                                <div class="min-w-0 flex-1 truncate text-sm text-slate-600">@if (!$action && !$editTarget)<span x-text="clientOriginal || ''"></span>@else{{ $displayOriginalUrl }}@endif</div>
+                                                <div class="min-w-0 flex-1 truncate text-sm text-slate-600">@if (!$action && !$editTarget)<span x-text="publicImageUrl(clientOriginal)"></span>@else{{ $publicOriginalUrl }}@endif</div>
                                                 <button type="button" x-on:click="copyImageUrl()" class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-900" aria-label="Copy image URL">
                                                     <svg x-show="! copied" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                                         <rect x="9" y="9" width="13" height="13" rx="2" />
