@@ -59,11 +59,28 @@
             </div>
         @endif
 
+        @if (auth()->user()->is_admin || auth()->user()->isManager())
+            <div class="mt-4 flex items-center gap-3">
+                <button type="button" wire:click="retrySelected" wire:confirm="Dua cac item da chon ve hang doi?" wire:loading.attr="disabled" class="rounded-md bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-800 disabled:opacity-50">
+                    Retry selected
+                </button>
+                @if (auth()->user()->is_admin)
+                    <button type="button" wire:click="retryAllFailed" wire:confirm="Dua {{ $statusCounts['failed'] }} item loi ve hang doi? Worker se xu ly dan." wire:loading.attr="disabled" class="rounded-md bg-slate-900 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">
+                        Retry all failed ({{ $statusCounts['failed'] }})
+                    </button>
+                @endif
+                <span class="text-xs text-slate-500">Retry selected chi ap dung cho trang nay.</span>
+            </div>
+        @endif
+
         <div class="mt-6 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
                     <thead class="bg-slate-50 text-left text-slate-500">
                         <tr>
+                            @if (auth()->user()->is_admin || auth()->user()->isManager())
+                                <th class="px-4 py-3 font-medium">Select</th>
+                            @endif
                             <th class="px-4 py-3 font-medium">Item</th>
                             @if ((auth()->user()->is_admin || auth()->user()->isManager()))
                                 <th class="px-4 py-3 font-medium">User</th>
@@ -96,6 +113,13 @@
                                 ];
                             @endphp
                             <tr wire:key="listing-metadata-row-{{ $asset->id }}">
+                                @if (auth()->user()->is_admin || auth()->user()->isManager())
+                                    <td class="px-4 py-4 align-top">
+                                        @if ($derivedStatus === 'failed' && $marketplace !== 'none')
+                                            <input type="checkbox" wire:model="selectedAssets.{{ $asset->id }}" aria-label="Chon item {{ $asset->item_number }}" class="rounded border-slate-300">
+                                        @endif
+                                    </td>
+                                @endif
                                 <td class="px-4 py-4 align-top">
                                     <p class="font-semibold text-slate-950">{{ $asset->item_number }} - SKU: {{ $asset->sku ?: '-' }}</p>
                                     <p class="mt-1 text-xs text-slate-400">{{ $asset->product?->name }} | approved {{ optional($asset->approved_at)->format('Y-m-d H:i') }}</p>
@@ -145,7 +169,7 @@
                                                 class="mt-3 inline-flex items-center rounded-md bg-amber-100 px-3 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-200 disabled:cursor-wait disabled:opacity-60"
                                             >
                                                 <span wire:loading.remove wire:target="retryListing({{ $asset->id }})">Retry metadata</span>
-                                                <span wire:loading wire:target="retryListing({{ $asset->id }})">Generating...</span>
+                                                <span wire:loading wire:target="retryListing({{ $asset->id }})">Queuing...</span>
                                             </button>
                                         @endif
                                     @endif
@@ -153,7 +177,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="{{ (auth()->user()->is_admin || auth()->user()->isManager()) ? 6 : 5 }}" class="px-4 py-10 text-center text-slate-400">
+                                <td colspan="{{ (auth()->user()->is_admin || auth()->user()->isManager()) ? 7 : 5 }}" class="px-4 py-10 text-center text-slate-400">
                                     Chua co listing metadata nao trong filter nay.
                                 </td>
                             </tr>

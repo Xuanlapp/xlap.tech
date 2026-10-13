@@ -59,6 +59,12 @@
             </div>
         @endif
 
+        @if (auth()->user()->is_admin && $statusCounts['failed'] > 0)
+            <button type="button" wire:click="retryAllFailed" wire:confirm="Dua {{ $statusCounts['failed'] }} item upload loi ve hang doi? Item khong con anh local se duoc bo qua." wire:loading.attr="disabled" class="mt-4 rounded-md bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-800 disabled:opacity-50">
+                Retry all failed ({{ $statusCounts['failed'] }})
+            </button>
+        @endif
+
         <div class="mt-6 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
@@ -146,7 +152,7 @@
                                             class="mt-2 inline-flex items-center rounded-md bg-amber-100 px-3 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-200 disabled:cursor-wait disabled:opacity-60"
                                         >
                                             <span wire:loading.remove wire:target="retryUpload({{ $upload->id }})">Reupload</span>
-                                            <span wire:loading wire:target="retryUpload({{ $upload->id }})">Uploading...</span>
+                                            <span wire:loading wire:target="retryUpload({{ $upload->id }})">Queuing...</span>
                                         </button>
                                     @endif
                                 </td>

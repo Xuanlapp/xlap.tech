@@ -333,6 +333,31 @@ PROMPT;
         throw new RuntimeException('User chua bat quyen tao listing metadata Amazon hoac Etsy.');
     }
 
+    public function queueRetryApprovedAsset(int $assetId): ProductDesignAsset
+    {
+        $asset = ProductDesignAsset::query()->findOrFail($assetId);
+
+        if (! $asset->is_approved) {
+            throw new RuntimeException('Item nay chua duyet nen khong the tao listing metadata.');
+        }
+
+        if ($this->hasCompleteMetadata($asset, $this->marketplaceForAsset($asset))) {
+            return $asset;
+        }
+
+        if ($asset->marketplace_listing_status === 'processing') {
+            throw new RuntimeException('Item nay dang tao listing metadata.');
+        }
+
+        $asset->update([
+            'marketplace_listing_status' => 'waiting',
+            'marketplace_listing_completed_at' => null,
+            'marketplace_listing_error' => null,
+        ]);
+
+        return $asset->refresh();
+    }
+
     public function retryApprovedAsset(int $assetId): ?ProductDesignAsset
     {
         $asset = ProductDesignAsset::query()
@@ -452,7 +477,6 @@ PROMPT;
                 $query
                     ->whereNull('marketplace_listing_status')
                     ->orWhere('marketplace_listing_status', 'waiting')
-                    ->orWhere('marketplace_listing_status', 'failed')
                     ->orWhere(function (Builder $query): void {
                         $query
                             ->where('marketplace_listing_status', 'processing')

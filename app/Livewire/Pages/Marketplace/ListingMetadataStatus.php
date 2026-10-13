@@ -29,6 +29,9 @@ class ListingMetadataStatus extends Component
 
     public ?string $retryError = null;
 
+    /** @var array<int, bool> */
+    public array $selectedAssets = [];
+
     public function updatedStatus(string $status): void
     {
         $this->status = in_array($status, self::STATUS_OPTIONS, true) ? $status : 'all';
@@ -43,22 +46,75 @@ class ListingMetadataStatus extends Component
 
     public function retryListing(int $assetId): void
     {
-        app(MarketplaceListingMetadataService::class)->recoverStaleProcessingAssets();
-
         $this->retryMessage = null;
         $this->retryError = null;
 
-        $asset = $this->baseQuery()->whereKey($assetId)->firstOrFail();
-
         try {
-            $result = app(MarketplaceListingMetadataService::class)->retryApprovedAsset($asset->id);
-
-            $this->retryMessage = $result?->title
-                ? "Da tao lai title cho item #{$asset->id}."
-                : "Item #{$asset->id} khong tao duoc title.";
+            app(MarketplaceListingMetadataService::class)->queueRetryApprovedAsset(
+                $this->baseQuery()->whereKey($assetId)->firstOrFail()->id,
+            );
+            $this->retryMessage = "Da dua item #{$assetId} ve hang doi. Worker se tu xu ly.";
         } catch (Throwable $exception) {
-            $this->reportUserActionError($exception, 'marketplace.retry_listing', ['asset_id' => $asset->id]);
+            $this->reportUserActionError($exception, 'marketplace.queue_retry_listing', ['asset_id' => $assetId]);
             $this->retryError = $exception->getMessage();
+        }
+    }
+
+    public function retrySelected(): void
+    {
+        abort_unless(auth()->user()->is_admin || auth()->user()->isManager(), 403);
+
+        $this->retryMessage = null;
+        $this->retryError = null;
+        $ids = array_keys(array_filter($this->selectedAssets));
+        $queued = 0;
+
+        foreach ($ids as $assetId) {
+            try {
+                app(MarketplaceListingMetadataService::class)->queueRetryApprovedAsset(
+                    $this->baseQuery()->whereKey((int) $assetId)->firstOrFail()->id,
+                );
+                $queued++;
+            } catch (Throwable $exception) {
+                $this->reportUserActionError($exception, 'marketplace.queue_retry_listing', ['asset_id' => $assetId]);
+            }
+        }
+
+        $this->selectedAssets = [];
+        $this->retryMessage = $queued > 0
+            ? "Da dua {$queued} item ve hang doi. Worker se tu xu ly."
+            : 'Khong co item nao duoc dua ve hang doi.';
+    }
+
+    public function retryAllFailed(): void
+    {
+        abort_unless(auth()->user()->is_admin, 403);
+
+        $this->retryMessage = null;
+        $this->retryError = null;
+        $queued = 0;
+        $failed = 0;
+        $service = app(MarketplaceListingMetadataService::class);
+
+        $this->applyFailedMetadataFilter(ProductDesignAsset::query()->where('is_approved', true))
+            ->select('id')
+            ->chunkById(100, function ($assets) use ($service, &$queued, &$failed): void {
+                foreach ($assets as $asset) {
+                    try {
+                        if ($service->queueRetryApprovedAsset($asset->id)->marketplace_listing_status === 'waiting') {
+                            $queued++;
+                        }
+                    } catch (Throwable $exception) {
+                        $failed++;
+                        $this->reportUserActionError($exception, 'marketplace.queue_retry_all', ['asset_id' => $asset->id]);
+                    }
+                }
+            });
+
+        $this->selectedAssets = [];
+        $this->retryMessage = "Da dua {$queued} item loi ve hang doi. Worker se tu xu ly.";
+        if ($failed > 0) {
+            $this->retryError = "Co {$failed} item khong the dua ve hang doi. Kiem tra log de biet chi tiet.";
         }
     }
 

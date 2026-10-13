@@ -100,6 +100,47 @@ class GoogleDriveService
         ];
     }
 
+    public function createUploadFolder(string $userFolder, string $itemFolder): array
+    {
+        $parent = $this->findOrCreateFolderPath([$userFolder]);
+        $name = $itemFolder.'-'.bin2hex(random_bytes(8));
+        $response = Http::withToken($this->accessToken())
+            ->withOptions($this->googleHttpOptions())
+            ->timeout(30)
+            ->post($this->createFolderEndpoint(), [
+                'name' => $name,
+                'mimeType' => 'application/vnd.google-apps.folder',
+                'parents' => [$parent['id']],
+            ]);
+
+        if ($response->failed() || ! is_string($response->json('id'))) {
+            throw new RuntimeException('Khong tao duoc folder moi cho luot upload Drive.');
+        }
+
+        $id = $response->json('id');
+
+        return ['id' => $id, 'link' => 'https://drive.google.com/drive/folders/'.$id];
+    }
+
+    public function copyFileToFolder(string $fileId, string $filename, string $folderId): string
+    {
+        $response = Http::withToken($this->accessToken())
+            ->withOptions($this->googleHttpOptions())
+            ->timeout(120)
+            ->post('https://www.googleapis.com/drive/v3/files/'.rawurlencode($fileId).'/copy?'.http_build_query([
+                'fields' => 'id,webViewLink',
+                'supportsAllDrives' => 'true',
+            ]), ['name' => $filename, 'parents' => [$folderId]]);
+
+        if ($response->failed() || ! is_string($response->json('id'))) {
+            throw new RuntimeException('Khong copy duoc file Drive cu vao folder moi. Kiem tra quyen doc file nguon.');
+        }
+
+        $id = $response->json('id');
+
+        return $response->json('webViewLink') ?: 'https://drive.google.com/file/d/'.$id.'/view';
+    }
+
     /**
      * Download an image file through the authenticated Google Drive API.
      *

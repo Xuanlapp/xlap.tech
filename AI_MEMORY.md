@@ -12963,3 +12963,27 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 - Changed: docs/xlap-vps-workers-supervisor.conf now uses numbered process_name, numprocs=10 and stopwaitsecs=3600 for xlap-drive-upload-daemon. No application behavior changed.
 - Queue/deploy impact: up to ten Drive upload items can be processed concurrently when the live Supervisor config matches. Database claim is transactional, but the 15-minute stale timeout can mark a still-running upload failed and permit another attempt; monitor duplicate Drive files and request duration. No migration.
 - Validation: PHP lint on Drive command/service and scoped diff check passed. VPS state and Drive API behavior not verified. Graphiti memory integration unavailable.
+
+### 2026-10-13 — Nonblocking listing metadata retry
+- Root cause: the failed-row button called the external metadata provider synchronously from Livewire; 418 failed rows remained manual-only and repeated clicks could duplicate requests.
+- Changed: app/Services/Marketplace/MarketplaceListingMetadataService.php adds queueRetryApprovedAsset to reset an approved incomplete item to waiting; automatic claims no longer retry failed rows without an explicit retry. app/Livewire/Pages/Marketplace/ListingMetadataStatus.php queues single retry for authorized visible items and adds admin/manager selected retry. The Blade view adds selection and confirmation. Added .design/listing-metadata-retry/DESIGN_BRIEF.md.
+- Flow: failed -> waiting -> processing -> completed/failed. Worker performs provider calls; running/completed items cannot be selected. No migration or direct queue table change.
+- Validation: PHP lint, Blade view:cache, Vite build, and scoped diff checks passed. Authenticated desktop/mobile visual review and live worker verification remain pending. Graphiti memory integration unavailable.
+
+### 2026-10-13 — Admin retry all failed listing metadata
+- Root cause: admin needed a safe way to requeue the complete failed set instead of manually clicking individual rows.
+- Changed: app/Livewire/Pages/Marketplace/ListingMetadataStatus.php adds admin-only retryAllFailed with chunked processing and per-item authorization through the service; the Blade view adds a confirmation button showing the failed count. Items return to waiting and are handled by workers, not by the browser request.
+- Safety: only approved items matching the existing failed/incomplete filter are requeued; running/completed items are not selected. Retry errors are counted and reported.
+- Validation: PHP lint, Blade view:cache and scoped diff check passed. Live admin browser/VPS verification remains pending. Bulk retry can create up to the configured worker concurrency of 10 provider calls. Graphiti memory integration unavailable.
+
+### 2026-10-13 — Drive upload failed recovery and admin bulk retry
+- Root cause observed: 15-minute stale threshold marked uploads failed after long processing, including 0/0 file rows; no VPS Drive/network log was supplied to prove why uploads stalled.
+- Changed: app/Services/Product/ApprovedAssetDriveExportService.php extends stale cutoff to 60 minutes and refreshes started_at before each image upload; app/Livewire/Pages/Drive/DriveUploads.php removes stale mutation on page render and queues individual/admin bulk retry only for approved failed records with local images; resources/views/livewire/pages/drive/drive-uploads.blade.php adds admin confirmation and count. Added .design/drive-upload-retry/DESIGN_BRIEF.md.
+- Queue/deploy impact: Drive daemon consumes waiting records, up to ten on configured VPS; no migration. Existing stale failures without local files are skipped for safety; actual Drive failure requires VPS logs and Drive file inspection.
+- Validation: PHP lint, Blade view:cache, Vite build and scoped diff check passed. Authenticated desktop/mobile and production behavior unverified; Better Design quota and Graphiti integration unavailable.
+
+### 2026-10-13 — Isolated Drive folder per retry
+- Root cause: findOrCreateFolderPath reused user/item ID folder, so reuploads mixed old and new files and a partial failure could leave new files without committed DB links.
+- Changed: app/Services/Google/GoogleDriveService.php creates a unique item-ID-suffixed folder and copies existing Drive files using the authenticated copy API; app/Services/Product/ApprovedAssetDriveExportService.php stages local uploads and Drive copies there, then swaps asset links and upload record only after all calls succeed. app/Livewire/Pages/Drive/DriveUploads.php now permits retry for failed items with existing Drive file records even without local images. Brief updated.
+- Impact: new Drive folder per attempt, no DB migration; failed attempts leave unreferenced staging folders for manual cleanup and preserve old DB links. Source read and target write permissions required. Cannot prove remote completeness or ownership without authenticated Drive verification.
+- Validation: PHP lint, Blade cache, Vite build and scoped diff check pass. No live Drive API integration test; deploy cautiously and try one item first. Graphiti unavailable.

@@ -3,7 +3,8 @@
 namespace App\Livewire\Pages\Drive;
 
 use App\Models\ProductDriveUpload;
-use App\Services\Product\ApprovedAssetDriveExportService;
+use App\Models\ProductDesignAsset;
+use App\Services\Product\ProductDriveUploadQueueService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Throwable;
@@ -64,25 +65,61 @@ class DriveUploads extends Component
                 throw new \RuntimeException('Manager chỉ được export dữ liệu của chính mình.');
             }
 
-            $count = app(ApprovedAssetDriveExportService::class)->exportAssetById(
-                $upload->product_design_asset_id,
-                auth()->user(),
-                'manual',
-            );
-
-            $itemNumber = $upload->asset?->item_number ?? $upload->product_design_asset_id;
-            $this->retryMessage = $count > 0
-                ? "Da upload lai {$count} anh cho item {$itemNumber}."
-                : "Item {$itemNumber} khong con anh local de upload.";
+            if ($this->queueFailedUpload($upload)) {
+                $itemNumber = $upload->asset?->item_number ?? $upload->product_design_asset_id;
+                $this->retryMessage = "Da dua item {$itemNumber} ve hang doi upload.";
+            } else {
+                $this->retryError = 'Item khong con anh local de upload. Kiem tra Drive truoc khi thu lai.';
+            }
         } catch (Throwable $exception) {
             $this->retryError = $exception->getMessage();
         }
     }
 
+    public function retryAllFailed(): void
+    {
+        abort_unless(auth()->user()->is_admin, 403);
+
+        $this->retryMessage = null;
+        $this->retryError = null;
+        $queued = 0;
+        $skipped = 0;
+
+        ProductDriveUpload::query()
+            ->where('status', 'failed')
+            ->select('id', 'product_design_asset_id')
+            ->chunkById(100, function ($uploads) use (&$queued, &$skipped): void {
+                foreach ($uploads as $upload) {
+                    try {
+                        $this->queueFailedUpload($upload) ? $queued++ : $skipped++;
+                    } catch (Throwable $exception) {
+                        $skipped++;
+                        report($exception);
+                    }
+                }
+            });
+
+        $this->retryMessage = "Da dua {$queued} item ve hang doi upload.";
+        if ($skipped > 0) {
+            $this->retryError = "Bo qua {$skipped} item khong con anh local hoac gap loi; kiem tra Drive truoc khi thu lai.";
+        }
+    }
+
+    private function queueFailedUpload(ProductDriveUpload $upload): bool
+    {
+        $asset = ProductDesignAsset::query()->find($upload->product_design_asset_id);
+        if (! $asset?->is_approved || (! app(ProductDriveUploadQueueService::class)->hasLocalExportableImages($asset) && empty($upload->drive_files))) {
+            return false;
+        }
+
+        return ProductDriveUpload::query()
+            ->whereKey($upload->id)
+            ->where('status', 'failed')
+            ->update(['status' => 'waiting', 'error' => null, 'started_at' => null, 'completed_at' => null]) === 1;
+    }
+
     public function render(): View
     {
-        app(ApprovedAssetDriveExportService::class)->markStaleProcessingUploadsAsFailed();
-
         return view('livewire.pages.drive.drive-uploads', [
             'uploads' => $this->visibleQuery()
                 ->latest('updated_at')

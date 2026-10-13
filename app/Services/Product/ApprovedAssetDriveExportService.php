@@ -13,7 +13,7 @@ use Illuminate\Support\Str;
 
 class ApprovedAssetDriveExportService
 {
-    private const STALE_PROCESSING_MINUTES = 15;
+    private const STALE_PROCESSING_MINUTES = 60;
 
     public function __construct(
         private readonly GoogleDriveService $drive,
@@ -173,28 +173,52 @@ class ApprovedAssetDriveExportService
         $fileInfo = [];
         $imageNumber = 1;
 
-        $driveFolder = $this->drive->findOrCreateFolderPath([
-            $this->folderNameForUser($asset),
-            (string) $asset->id,
-        ]);
+        $driveFolder = $this->drive->createUploadFolder($this->folderNameForUser($asset), (string) $asset->id);
+        $previousFiles = collect($upload->drive_files ?: [])->keyBy('field');
 
         foreach (ProductDriveUploadQueueService::IMAGE_FIELDS as $field) {
             $url = $asset->getAttribute($field);
 
-            if (! is_string($url) || ! str_starts_with($url, '/storage/')) {
+            if (! is_string($url) || $url === '') {
+                continue;
+            }
+
+            if (! str_starts_with($url, '/storage/')) {
+                $oldFile = $previousFiles->get($field);
+                $oldUrl = is_array($oldFile) && ! empty($oldFile['drive_url'])
+                    ? (string) $oldFile['drive_url']
+                    : $url;
+                if (! preg_match('#/file/d/([^/]+)#', $oldUrl, $matches)) {
+                    throw new \RuntimeException("Khong xac dinh duoc Drive file ID cho {$field}.");
+                }
+
+                $filename = is_array($oldFile) ? (string) ($oldFile['filename'] ?? "{$asset->id}_{$field}.png") : "{$asset->id}_{$field}.png";
+                $upload->update(['started_at' => now()]);
+                $driveUrl = $this->drive->copyFileToFolder($matches[1], $filename, $driveFolder['id']);
+                $updates[$field] = $driveUrl;
+                $fileInfo[] = ['item' => 'item'.$imageNumber, 'field' => $field, 'filename' => $filename];
+                $uploaded[] = [
+                    'item' => 'item'.$imageNumber,
+                    'field' => $field,
+                    'drive_url' => $driveUrl,
+                    'preview_url' => $this->drivePreviewUrl($driveUrl),
+                    'filename' => $filename,
+                ];
+                $imageNumber++;
                 continue;
             }
 
             $absolutePath = $this->absoluteStoragePath($url);
 
             if (! $absolutePath || ! File::exists($absolutePath)) {
-                continue;
+                throw new \RuntimeException("Khong tim thay file local cho {$field}.");
             }
 
             $filename = $this->driveFilename($asset, $imageNumber, $absolutePath);
             $mimeType = File::mimeType($absolutePath) ?: null;
             // Read local metadata before uploading; Syncthing may remove the source immediately after upload.
             $bytes = File::size($absolutePath);
+            $upload->update(['started_at' => now()]);
             $driveUrl = $this->drive->uploadLocalFile(
                 $absolutePath,
                 $filename,
@@ -230,15 +254,9 @@ class ApprovedAssetDriveExportService
         }
 
         if ($updates === []) {
-            $alreadyOnDrive = $this->assetHasDriveImages($asset);
-
             $upload->update([
-                'status' => $alreadyOnDrive ? 'completed' : 'failed',
-                'file_info' => $fileInfo,
-                'drive_files' => $uploaded,
-                'drive_folder_id' => $driveFolder['id'],
-                'drive_folder_link' => $driveFolder['link'],
-                'error' => $alreadyOnDrive ? null : 'Khong tim thay file local de upload.',
+                'status' => 'failed',
+                'error' => 'Khong tim thay file co the upload hoac copy.',
                 'completed_at' => now(),
             ]);
 
