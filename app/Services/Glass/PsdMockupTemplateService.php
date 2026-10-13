@@ -42,6 +42,21 @@ class PsdMockupTemplateService
         );
     }
 
+    public function glassTemplateForUser(User $user, int $templateId): PsdMockupTemplate
+    {
+        return $this->templates->findForUserProductAndFunction(
+            $templateId,
+            $user->id,
+            $this->glassProduct()->id,
+            self::GLASS_CUSTOM_MOCKUP,
+        );
+    }
+
+    public function availableGlassTemplateForUser(User $user, int $templateId): ?PsdMockupTemplate
+    {
+        return $this->glassTemplatesForUser($user)->firstWhere('id', $templateId);
+    }
+
     public function uploadGlassTemplate(User $user, UploadedFile $file, ?string $name = null): PsdMockupTemplate
     {
         $this->ensurePsdFile($file);

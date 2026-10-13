@@ -293,16 +293,27 @@
 
             <div class="mt-2 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-xs text-slate-500">
                 <div class="flex items-center justify-between gap-2">
-                    <span class="min-w-0 truncate">
-                        PSD: {{ $activePsdTemplateName ?? 'Chua chon PSD' }}
+                    <span class="min-w-0 truncate text-slate-700 dark:text-slate-200">
+                        PSD chính: {{ $activePsdTemplateName ?? 'Chưa chọn PSD' }}
                     </span>
                     <button
                         type="button"
                         wire:click="$dispatch('openModal', { component: 'modals.glass.psd-mockup-template' })"
-                        class="shrink-0 font-semibold text-indigo-600 hover:text-indigo-700"
+                        class="shrink-0 font-semibold text-blue-700 dark:text-blue-300"
                     >
-                        Chon PSD
+                        Chọn PSD chính
                     </button>
+                </div>
+                <div class="mt-2 flex flex-wrap items-center gap-2 border-t border-slate-200 pt-2 dark:border-slate-700">
+                    <label for="glass-item-psd-{{ $asset->id }}" class="shrink-0 text-xs font-semibold text-blue-700 dark:text-blue-300">PSD riêng</label>
+                    <select id="glass-item-psd-{{ $asset->id }}" wire:change="selectItemPsd($event.target.value)" class="w-full min-w-0 flex-1 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
+                        <option value="" @selected(!$itemPsdTemplates->firstWhere('id', $asset->glass_item_psd_template_id) || $itemPsdTemplates->firstWhere('id', $asset->glass_item_psd_template_id)?->is_active)>Dùng PSD chính: {{ $activePsdTemplateName ?? 'Chưa chọn' }}</option>
+                        @foreach ($itemPsdTemplates as $template)
+                            @if (!$template->is_active)
+                                <option value="{{ $template->id }}" @selected($asset->glass_item_psd_template_id == $template->id)>{{ $template->name }}</option>
+                            @endif
+                        @endforeach
+                    </select>
                 </div>
             </div>
         </div>

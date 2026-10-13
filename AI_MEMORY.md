@@ -12818,3 +12818,49 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 ### 2026-10-12 — Backfill categorized error log
 - Moved the concurrently added IMG-20261012-02 entry into the Image & Mockup section without rewriting it. Added verified historical cases IMP-20261012-01 (XLSX namespace parsing), IMP-20261012-02 (duplicate SKU sync), and DAS-20261012-01 (stale status counters) to their functional sections in ERROR_LOG.md. Documentation-only; no deploy, queue, or database impact. Graphiti tooling unavailable in this session.
 
+
+### 2026-10-13 — Build local thumbnail batch app
+
+- Project: XLAP Web Platform (`D:\FFACTORY\API\xlap`) and explicitly requested standalone local utility (`D:\CODER\thumbnail`).
+- Root cause: older PSD mockups have no matching WebP files; web cards fall back to full original images. Operators need a safe local backfill without modifying original PNGs or VPS image processing.
+- Created `D:\CODER\thumbnail\thumbnail_core.py`, `thumbnail_app.py`, `test_thumbnail_core.py`, `requirements.txt`, `start.bat`, `README.md`. The GUI selects source/destination storage folders and writes alpha-preserving WebP to `thumbnails/generated/{product}/mockups/{asset_id}/MOCKUP N.webp`. Existing current thumbnails are skipped; stale files are replaced atomically, originals untouched.
+- Validation: 4 focused unit tests passed; Python compile passed; an 800x400 transparent PNG yielded a 320x160 RGBA WebP. No real production image batch or authenticated browser screenshot was run.
+- Deploy impact: none to Laravel code. Run app on machine holding originals and sync the output `thumbnails/` folder with existing storage synchronization; no migration or queue impact. Graphiti tooling unavailable in this session.
+
+### 2026-10-13 — Expand local thumbnail folder selection
+
+- Project: XLAP Web Platform; standalone app: `D:\CODER\thumbnail`. Root cause: initial utility description and discovery were too narrow for arbitrary image folders; different source extensions could map to one `.webp` target.
+- Changed: `D:\CODER\thumbnail\thumbnail_core.py`, `test_thumbnail_core.py`, `README.md`. Any selected folder within `generated` is scanned recursively; output mirrors its path beneath `thumbnails/generated` and uses `.webp`. Conflicting target names fail before processing; originals remain untouched.
+- Validation: six unit tests and Python compilation passed. No production image batch was run.
+- Deploy impact: local utility only; no Laravel deploy, database migration, or queue impact. Follow-up: run against a small real folder and sync resulting `thumbnails/` directory; GUI render was not visually verified. Graphiti tooling unavailable.
+
+### 2026-10-13 — Glass per-item PSD override
+
+- Project: XLAP Web Platform. Root cause: Glass mockup generation always read the user's active PSD and could not select a different template for one item.
+- Changed: `app/Livewire/Pages/Glass/ProductDesignCard.php`, `app/Services/Glass/GlassService.php`, `app/Services/Glass/PsdMockupTemplateService.php`, `resources/views/livewire/pages/glass/product-design-card.blade.php`, `database/migrations/2026_10_13_000001_add_glass_item_psd_template_to_product_design_assets.php`, `.design/glass-item-custom-psd/DESIGN_BRIEF.md`, `AI_MEMORY.md`. Card selection is persisted per asset, ownership is validated, and generation falls back to primary when no valid override exists.
+- Validation: PHP lint and Blade view cache pass. No authenticated screenshot, real render, or database integration test available. Better Design exhausted quota; Graphiti unavailable.
+- Deploy impact: run migration before deploying app; restart long-running PHP processes. Existing mockup jobs keep their stored PSD ID. No change to queue names or worker contract. Follow-up: visually inspect Glass cards and test item-specific rendering on staging.
+
+### 2026-10-13 — Remove duplicate PSD choice in Glass card
+
+- Root cause: the active primary PSD was rendered in the summary row and again in the per-item select, making one PSD appear as three visual arrow/choice points.
+- Changed: `resources/views/livewire/pages/glass/product-design-card.blade.php` now labels the primary action explicitly, keeps the per-item selector collapsed by default, shows the primary PSD only as the fallback option, and excludes the active primary template from custom choices.
+- Validation: `php artisan view:cache` passed. Better Design review tools were unavailable due to quota exhaustion; authenticated visual capture remains pending. No queue or database impact.
+
+### 2026-10-13 — Always-visible Glass item PSD selector
+
+- Root cause: the per-item PSD dropdown required an extra disclosure click, slowing selection.
+- Changed: `resources/views/livewire/pages/glass/product-design-card.blade.php` keeps the labeled dropdown visible directly below the primary PSD row; removed the unused Livewire toggle state from `app/Livewire/Pages/Glass/ProductDesignCard.php`.
+- Validation: Blade cache and compiled view PHP lint pass. No queue, migration, or database logic changed.
+
+### 2026-10-13 — Resolve local Glass PSD selection failure
+
+- Root cause: the per-item PSD migration was Pending in the local database, so saving the selection failed.
+- Changed: ran only `2026_10_13_000001_add_glass_item_psd_template_to_product_design_assets.php` locally and documented `IMG-20261013-01`.
+- Validation: migration reports Ran, `Schema::hasColumn` true, and the referenced local asset/template belong to the same user/product. Browser selection remains to be retested.
+- Deploy impact: VPS still needs this migration when deploying the feature. Queue impact: none. Graphiti tooling unavailable.
+
+### 2026-10-13 — Verify local Glass PSD selection
+
+- Validation: Livewire component test on local asset 7880/user 24 selected template 19 without validation errors, rendered the selected option, and emitted the success toast. A second call with an empty value restored primary fallback. The whole test ran inside a transaction and rolled back; database remains unchanged. Migration is Ran and the column exists.
+- Deploy/queue impact: none. Browser-level click still depends on local authenticated UI, but component behavior is verified.

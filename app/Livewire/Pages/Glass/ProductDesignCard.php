@@ -107,6 +107,24 @@ class ProductDesignCard extends Component
         }
     }
 
+    public function selectItemPsd(string $templateId): void
+    {
+        try {
+            $user = auth()->user();
+            $asset = app(GlassService::class)->assetForUser($user, $this->assetId);
+            $selectedId = $templateId === '' ? null : (int) $templateId;
+            if ($selectedId !== null) {
+                app(PsdMockupTemplateService::class)->glassTemplateForUser($user, $selectedId);
+            }
+            $asset->glass_item_psd_template_id = $selectedId;
+            $asset->save();
+            $this->dispatch('toast', type: 'success', title: 'Da luu PSD', message: $selectedId ? 'PSD rieng chi ap dung cho item nay.' : 'Item nay su dung PSD chinh.');
+        } catch (Throwable $exception) {
+            $this->reportUserActionError($exception, 'glass.select_item_psd', ['asset_id' => $this->assetId]);
+            $this->dispatch('toast', type: 'error', title: 'Khong the chon PSD', message: 'Vui long thu lai.');
+        }
+    }
+
     public bool $showClearMockupsConfirmation = false;
 
     public function requestClearPsdMockups(): void
@@ -189,6 +207,7 @@ class ProductDesignCard extends Component
             'asset' => $asset,
             'localMockupJob' => $localMockupJob,
             'glassBoundsGuideUrl' => $this->glassBoundsGuideUrl(),
+            'itemPsdTemplates' => app(PsdMockupTemplateService::class)->glassTemplatesForUser(auth()->user()),
         ]);
     }
 

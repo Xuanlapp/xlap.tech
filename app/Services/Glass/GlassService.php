@@ -647,7 +647,10 @@ class GlassService
             throw new RuntimeException('Can tao anh master truoc khi render PSD.');
         }
 
-        $template = $this->psdTemplates->activeGlassTemplateForUser($user);
+        $template = $asset->glass_item_psd_template_id
+            ? $this->psdTemplates->availableGlassTemplateForUser($user, $asset->glass_item_psd_template_id)
+            : null;
+        $template ??= $this->psdTemplates->activeGlassTemplateForUser($user);
 
         if (! $template) {
             throw new RuntimeException('Chua chon PSD mockup cho chuc nang nay.');

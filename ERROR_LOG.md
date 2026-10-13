@@ -32,6 +32,16 @@ Mỗi lỗi thuộc **một khu chính**; nếu ảnh hưởng khu khác, ghi t�
 Khi cải tiến giải pháp, thêm dưới mục lỗi đó: `#### Cập nhật giải pháp YYYY-MM-DD` với lý do, thay đổi, kiểm chứng và trạng thái mới.
 
 ## IMG — Ảnh & Mockup
+### [IMG-20261013-01] Chon PSD rieng Glass that bai tren local
+- Ngay phat hien: 2026-10-13
+- Hien tuong: Card hien "Khong the chon PSD / Vui long thu lai" khi chon template rieng.
+- Pham vi: Glass, chon PSD theo item.
+- Nguyen nhan goc: migration tao `product_design_assets.glass_item_psd_template_id` van Pending trong database local.
+- Giai phap da ap dung: chay migration `2026_10_13_000001_add_glass_item_psd_template_to_product_design_assets.php` tren local.
+- Kiem chung: migration status Ran, `Schema::hasColumn` true; asset 7880 va template 19 cung user 24/product 13.
+- Anh huong deploy/queue/du lieu: them mot cot nullable tren local; khong doi du lieu hien co va khong anh huong queue.
+- Trang thai: Monitoring
+
 ### [IMG-20261012-01] Mockup thumbnail rollout audit
 - Symptom: Mockup cards previously loaded full PNG files; new thumbnails must not break originals or Drive URLs.
 - Scope: Glass, Ceramic, Decal, Sticker, Suncatcher, and Ornament Amazon 2 card flows; shared PSD renderer; local Glass worker.
@@ -105,3 +115,12 @@ _Chưa có mục._
 ## OTH — Khác
 
 _Chưa có mục._
+
+### [IMG-20261013-01] Backfill mockup thumbnails from local storage
+- Hiện tượng: Mockup cũ thiếu WebP nên card dùng PNG gốc nặng.
+- Nguyên nhân gốc: Trước đây chỉ ảnh mockup mới được renderer tạo thumbnail.
+- Giải pháp đã áp dụng: App `D:\CODER\thumbnail` chọn folder, tạo WebP RGBA đúng cây `thumbnails/generated/...`, bỏ qua ảnh đã cập nhật, ghi nguyên tử và không đổi PNG.
+- Kiểm chứng: 4 unit tests đạt; PNG trong suốt 800x400 tạo WebP RGBA 320x160; chưa chạy batch trên ảnh production.
+- Deploy/queue/dữ liệu: Không đổi Laravel, DB hoặc queue; cần đồng bộ folder `thumbnails/` lên VPS.
+- Giải pháp tốt hơn: Có thể thêm manifest/checksum xác minh Syncthing hoàn thành trước khi web công bố URL.
+- Trạng thái: Monitoring
