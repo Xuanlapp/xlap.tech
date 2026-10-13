@@ -28,20 +28,20 @@ class ListSticker extends Component
     #[On('sticker-product-design-updated')]
     public function productDesignCreated(): void
     {
-        //
+        Cache::forget('sticker:status-counts:'.auth()->id().':'.sha1(trim($this->search)));
     }
 
     #[On('sticker-product-design-approval-updated')]
     #[On('sticker-counts-updated')]
     public function productDesignApprovalUpdated(): void
     {
-        //
+        Cache::forget('sticker:status-counts:'.auth()->id().':'.sha1(trim($this->search)));
     }
 
     #[On('sticker-product-design-workflow-updated')]
     public function productDesignWorkflowUpdated(): void
     {
-        //
+        Cache::forget('sticker:status-counts:'.auth()->id().':'.sha1(trim($this->search)));
     }
 
     #[On('psd-mockup-template-updated')]

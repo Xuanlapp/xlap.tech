@@ -53,19 +53,19 @@ class ListOrnamentAmazonTwo extends Component
     #[On('product-design-created')]
     public function productDesignCreated(): void
     {
-        //
+        Cache::forget('ornament-amazon-2:status-counts:'.auth()->id());
     }
 
     #[On('ornament-amazon-two-product-design-approval-updated')]
     public function productDesignApprovalUpdated(): void
     {
-        //
+        Cache::forget('ornament-amazon-2:status-counts:'.auth()->id());
     }
 
     #[On('ornament-amazon-two-product-design-workflow-updated')]
     public function productDesignWorkflowUpdated(): void
     {
-        //
+        Cache::forget('ornament-amazon-2:status-counts:'.auth()->id());
     }
 
     #[On('psd-mockup-template-updated')]

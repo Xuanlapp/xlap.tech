@@ -12773,3 +12773,48 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 - Changed: `app/Livewire/Modals/Glass/ExcelImportGlass.php`, `app/Livewire/Modals/Ceramic/ExcelImportCeramic.php`, `app/Livewire/Modals/Sticker/ExcelImportSticker.php`, `app/Livewire/Modals/Decal/ExcelImportDecal.php`, `app/Livewire/Modals/Suncatcher/ExcelImportSuncatcher.php`, `app/Livewire/Modals/OrnamentAmazonTwo/ExcelImportOrnament.php`, `app/Livewire/Modals/Camp/ImportCampRows.php`. SimpleXML failure checks are strict; affected cell parsers use namespace-aware XPath.
 - Validation: all seven importers passed PHP lint. The supplied XLSX parsed 124 rows including header (123 data rows); required fields were present, SKU values unique, and image URLs passed the importer format check. No database import was performed.
 - Deploy impact: deploy importer PHP files; no migration. Queue impact: none. Follow-up: retry the file on the deployed Glass page and verify actual row import/database behavior. Graphiti episode could not be written because the Graphiti tool is not available in this session.
+
+### 2026-10-12 — Refresh product status counters immediately after mutations
+
+- Root cause: list-page Livewire handlers for create, approval, and workflow events were no-ops while status counts were cached for five seconds, so `Tất cả`, `Chưa duyệt`, `Đã duyệt`, and `No Mockup` could remain stale after import, approve/unapprove, or delete.
+- Changed: `app/Livewire/Pages/Glass/ListGlass.php`, `Ceramic/ListCeramic.php`, `Decal/ListDecal.php`, `Sticker/ListSticker.php`, `Suncatcher/ListSuncatcher.php`, `OrnamentAmazonTwo/ListOrnamentAmazonTwo.php`, and `OrnamentEtsy/ListOrnamentEtsy.php`. Mutation event handlers now invalidate the current user's status-count cache before Livewire re-renders.
+- Validation: PHP lint passed for all seven list components; diff check passed for the changed page files. No database or queue changes.
+- Deploy impact: deploy the seven Livewire page files; no migration. Queue impact: none. Graphiti episode could not be written because the Graphiti tool is unavailable in this session.
+
+### 2026-10-12 — Add local Glass mockup thumbnails
+
+- Root cause: Glass cards loaded the full local mockup PNG for every visible card; no separate thumbnail was produced or selected.
+- Changed `D:\CODER\MOCKUP\render.js`: after each PNG render, create an alpha-preserving WebP at `thumbnails/generated/glass/mockups/{asset_id}/MOCKUP N.webp` using a temporary file and atomic rename. Thumbnail failure logs only and does not fail the mockup job. The worker/database output remains the original PNG URL.
+- Changed `app/Livewire/Pages/Glass/ProductDesignCard.php` and `resources/views/livewire/pages/glass/product-design-card.blade.php`: card images use a verified, newer local thumbnail when available; preview gallery keeps the original preview URL; Drive URLs fall back safely to the original preview.
+- Changed `app/Services/Product/ProductDesignAssetFileCleanupService.php`: deleting an asset also removes its matching thumbnail directory.
+- Validation: Node syntax check, PHP lint, `php artisan view:cache`, and focused diff check passed. No migration, database update, or Drive upload behavior changed. Authenticated visual evidence and a real PSD render were unavailable, so the UI/render result remains unverified.
+- Deploy impact: deploy XLAP files and update the separate `D:\CODER\MOCKUP` worker. Restart the local mockup worker after updating. Existing mockups need a controlled re-render/backfill before thumbnails appear; originals remain usable.
+
+### 2026-10-12 — Extend mockup card thumbnails beyond Glass
+
+- Changed `app/Services/Image/MockupCardImageService.php` as the shared verified-thumbnail/fallback selector for product slug and mockup slot.
+- Extended Ceramic, Decal, Sticker and Suncatcher card data/views to use `thumbnails/generated/{product}/mockups/{asset_id}/MOCKUP N.webp` when present and newer; originals remain the fallback/source for modal and workflows. Ornament Amazon 2 now exposes card metadata for a later Alpine view integration; its view was intentionally not changed because its workflow image state is separate. Ornament Etsy has no matching mockup grid in the inspected view and was not changed.
+- Extended `scripts/psd-renderer/render.js` and the local mockup renderer to create alpha-preserving WebP thumbnails with atomic temp-file rename. Cleanup removes matching thumbnail directories.
+- Validation: Blade cache, PHP lint, Node syntax, and focused diff checks passed. No migration or Drive schema change. Authenticated visual evidence and real render/sync verification are still unavailable.
+- Deploy impact: deploy XLAP files and the shared renderer plus local worker. Restart relevant workers. Existing images need re-render/backfill; missing thumbnails safely use originals.
+
+### 2026-10-12 — Full mockup thumbnail audit and error log
+
+- Audit result: changed thumbnail paths and fallbacks pass PHP lint, Node syntax checks, Blade cache compilation, and focused diff checks. The card selector verifies thumbnail existence, non-zero size, and freshness against the original.
+- Important compatibility note: `ImageThumbnailService` still has a legacy `.png.webp` naming rule used by existing repository flows; it was not removed or changed during this audit. Mockup cards use the new `MOCKUP N.webp` contract only.
+- Added `ERROR_LOG.md` with a dated audit entry and reusable issue/solution template. Future errors should append entries with symptom, root cause, applied solution, validation, deploy impact, and better follow-up solution.
+- Remaining verification: authenticated browser screenshots, a real PSD render, Syncthing completion, and Drive-upload fallback on VPS. No production data was changed.
+
+### 2026-10-12 — Categorize error log
+- Reorganized ERROR_LOG.md into functional areas with stable issue IDs, table of contents, cross-references, and dated solution updates; preserved the original thumbnail audit as IMG-20261012-01. Documentation-only change; no deploy or queue impact. Graphiti memory tooling unavailable in this session.
+
+### 2026-10-12 — Limit PSD mockups per user/product page
+
+- Root cause: `psd_mockup_templates` only deactivated older templates and never removed old rows/files; the modal did not distinguish upload time from activation/update time.
+- Changed: `app/Repositories/Product/PsdMockupTemplateRepository.php` now serializes same-user uploads, creates the new record, retains only the two newest rows per user/product/function, removes obsolete files after commit, and cleans the new file if persistence fails. Glass, Ceramic, Decal, Sticker, Suncatcher, Ornament Amazon 2, and Ornament Etsy PSD services use the shared upload path. Their modals explain the two-file limit and display `created_at` as Upload time.
+- Deploy impact: deploy the repository, seven services, and seven Blade modals; no migration. Queue impact: none; PSD renderer/mockup queue contract is unchanged.
+- Validation: PHP lint for all changed PHP files passed; `php artisan view:cache` passed; focused PSD upload test passed (1 test, 4 assertions). Full legacy schema suite remains noisy with unrelated pre-existing failures.
+- Follow-up: verify a third upload per user/product on staging, confirm the oldest PSD row/file disappears after commit, and test concurrent uploads on the VPS.
+### 2026-10-12 — Backfill categorized error log
+- Moved the concurrently added IMG-20261012-02 entry into the Image & Mockup section without rewriting it. Added verified historical cases IMP-20261012-01 (XLSX namespace parsing), IMP-20261012-02 (duplicate SKU sync), and DAS-20261012-01 (stale status counters) to their functional sections in ERROR_LOG.md. Documentation-only; no deploy, queue, or database impact. Graphiti tooling unavailable in this session.
+

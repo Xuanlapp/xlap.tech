@@ -215,12 +215,46 @@ class ProductDesignCard extends Component
             ])
             ->all());
 
+        $driveFiles = \App\Models\ProductDriveUpload::query()
+            ->where('product_design_asset_id', $asset->id)
+            ->value('drive_files');
+        $driveFiles = is_string($driveFiles) ? (json_decode($driveFiles, true) ?: []) : [];
+
         for ($slot = 1; $slot <= 11; $slot++) {
             $previewUrl = $imagePreview->previewUrl($asset->{"mockup{$slot}"});
             $asset->setAttribute("mockup{$slot}_preview_url", $this->withPreviewVersion($previewUrl, $mockupPreviewVersion));
+            $asset->setAttribute("mockup{$slot}_card_url", $this->mockupThumbnailUrl($asset->{"mockup{$slot}"}, $previewUrl, $driveFiles, $slot));
         }
     }
 
+    private function mockupThumbnailUrl(?string $originalUrl, ?string $fallbackUrl, array $driveFiles, int $slot): ?string
+    {
+        if ($originalUrl && ! str_starts_with($originalUrl, '/storage/')) {
+            $uploaded = collect($driveFiles)->first(fn (array $file): bool => ($file['field'] ?? null) === "mockup{$slot}" && ($file['drive_url'] ?? null) === $originalUrl);
+            $originalUrl = $uploaded['local_url'] ?? null;
+        }
+
+        if (! $originalUrl || ! str_starts_with($originalUrl, '/storage/generated/glass/mockups/')) {
+            return $fallbackUrl;
+        }
+
+        $relative = substr(parse_url($originalUrl, PHP_URL_PATH) ?: '', strlen('/storage/'));
+        if (! preg_match('~^generated/glass/mockups/[0-9]+/MOCKUP [0-9]+\.png$~i', $relative)) {
+            return $fallbackUrl;
+        }
+
+        $thumbnail = 'thumbnails/'.preg_replace('/\.png$/i', '.webp', $relative);
+        $disk = \Illuminate\Support\Facades\Storage::disk('public');
+        if (! $disk->exists($thumbnail) || $disk->size($thumbnail) === 0) {
+            return $fallbackUrl;
+        }
+
+        if ($disk->exists($relative) && $disk->lastModified($thumbnail) < $disk->lastModified($relative)) {
+            return $fallbackUrl;
+        }
+
+        return '/storage/'.$thumbnail.'?v='.$disk->lastModified($thumbnail);
+    }
     public function awaitingMockupFiles(ProductDesignAsset $asset, ?\App\Models\GlassLocalMockupJob $job): bool
     {
         if ($job?->status !== 'completed' || ! $job->completed_at || $job->completed_at->lt(now()->subMinutes(5))) {

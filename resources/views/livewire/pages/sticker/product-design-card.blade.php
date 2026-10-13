@@ -179,6 +179,7 @@
                     ->map(fn ($slot) => [
                         'slot' => $slot,
                         'src' => $asset->getAttribute("mockup{$slot}_preview_url"),
+                        'card_src' => $asset->getAttribute("mockup{$slot}_card_url"),
                         'original' => $asset->getAttribute("mockup{$slot}"),
                     ])
                     ->filter(fn ($mockup) => filled($mockup['original']));
@@ -225,7 +226,7 @@
                                         wire:click="$dispatch('review-image', { src: @js($mockup['src']), original: @js($mockup['original']), title: @js('MOCKUP '.$mockup['slot']), gallery: @js($psdMockupGallery), currentIndex: {{ $loop->index }}, productSlug: 'sticker', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
                                         class="aspect-[4/3] overflow-hidden rounded-lg border border-slate-100 bg-slate-50 shadow-sm transition hover:border-indigo-300 hover:ring-2 hover:ring-indigo-100"
                                     >
-                                        <img wire:key="sticker-mockup-{{ $asset->id }}-{{ $mockup['slot'] }}-{{ md5($mockup['src']) }}" src="{{ $mockup['src'] }}" alt="MOCKUP {{ $mockup['slot'] }}" loading="lazy" decoding="async" fetchpriority="low" data-original="{{ $mockup['original'] }}" x-on:error="if ($el.dataset.original && $el.src !== $el.dataset.original) $el.src = $el.dataset.original" class="h-full w-full object-cover">
+                                        <img wire:key="sticker-mockup-{{ $asset->id }}-{{ $mockup['slot'] }}-{{ md5($mockup['src']) }}" src="{{ $mockup['card_src'] ?: $mockup['src'] }}" alt="MOCKUP {{ $mockup['slot'] }}" loading="lazy" decoding="async" fetchpriority="low" data-original="{{ $mockup['original'] }}" x-on:error="if ($el.dataset.original && $el.src !== $el.dataset.original) $el.src = $el.dataset.original" class="h-full w-full object-cover">
                                     </button>
                                 @endforeach
                             </div>

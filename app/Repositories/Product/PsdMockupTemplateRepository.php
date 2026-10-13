@@ -4,10 +4,35 @@ namespace App\Repositories\Product;
 
 use App\Models\PsdMockupTemplate;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class PsdMockupTemplateRepository
 {
+    public function uploadActive(
+        int $userId,
+        int $productId,
+        string $functionKey,
+        string $name,
+        UploadedFile $file,
+        string $directory,
+    ): PsdMockupTemplate {
+        $path = $file->storeAs($directory, \Illuminate\Support\Str::uuid().'.psd', 'public');
+
+        if (! $path) {
+            throw new \RuntimeException('Khong the luu file PSD. Vui long thu lai.');
+        }
+
+        try {
+            return $this->createActive($userId, $productId, $functionKey, $name, $file->getClientOriginalName(), $path);
+        } catch (\Throwable $exception) {
+            Storage::disk('public')->delete($path);
+            throw $exception;
+        }
+    }
+
     /**
      * @return Collection<int, PsdMockupTemplate>
      */
@@ -40,14 +65,19 @@ class PsdMockupTemplateRepository
         string $originalFilename,
         string $storagePath,
     ): PsdMockupTemplate {
-        return DB::transaction(function () use ($userId, $productId, $functionKey, $name, $originalFilename, $storagePath): PsdMockupTemplate {
+        $removedPaths = [];
+
+        $template = DB::transaction(function () use ($userId, $productId, $functionKey, $name, $originalFilename, $storagePath, &$removedPaths): PsdMockupTemplate {
+            // Serialize simultaneous uploads for the same owner across products.
+            DB::table('users')->where('id', $userId)->lockForUpdate()->first();
+
             PsdMockupTemplate::query()
                 ->where('user_id', $userId)
                 ->where('product_id', $productId)
                 ->where('function_key', $functionKey)
                 ->update(['is_active' => false]);
 
-            return PsdMockupTemplate::create([
+            $template = PsdMockupTemplate::create([
                 'user_id' => $userId,
                 'product_id' => $productId,
                 'function_key' => $functionKey,
@@ -56,7 +86,41 @@ class PsdMockupTemplateRepository
                 'storage_path' => $storagePath,
                 'is_active' => true,
             ]);
+
+            $obsolete = PsdMockupTemplate::query()
+                ->where('user_id', $userId)
+                ->where('product_id', $productId)
+                ->where('function_key', $functionKey)
+                ->orderByDesc('created_at')
+                ->orderByDesc('id')
+                ->get()
+                ->slice(2);
+
+            foreach ($obsolete as $old) {
+                $removedPaths[] = $old->storage_path;
+                $old->delete();
+            }
+
+            return $template;
         });
+
+        // Only delete bytes once the new row is committed. Never delete a
+        // path still referenced elsewhere (e.g. imported legacy rows).
+        foreach (array_unique($removedPaths) as $path) {
+            if (PsdMockupTemplate::query()->where('storage_path', $path)->exists()) {
+                continue;
+            }
+
+            try {
+                if ($path && Storage::disk('public')->exists($path) && ! Storage::disk('public')->delete($path)) {
+                    Log::warning('Could not remove obsolete PSD file', ['path' => $path]);
+                }
+            } catch (\Throwable $exception) {
+                Log::warning('Could not remove obsolete PSD file', ['path' => $path, 'error' => $exception->getMessage()]);
+            }
+        }
+
+        return $template;
     }
 
     public function activate(PsdMockupTemplate $template): PsdMockupTemplate

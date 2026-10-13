@@ -28,20 +28,20 @@ class ListDecal extends Component
     #[On('decal-product-design-updated')]
     public function productDesignCreated(): void
     {
-        //
+        Cache::forget('decal:status-counts:'.auth()->id().':'.sha1(trim($this->search)));
     }
 
     #[On('decal-product-design-approval-updated')]
     #[On('decal-counts-updated')]
     public function productDesignApprovalUpdated(): void
     {
-        //
+        Cache::forget('decal:status-counts:'.auth()->id().':'.sha1(trim($this->search)));
     }
 
     #[On('decal-product-design-workflow-updated')]
     public function productDesignWorkflowUpdated(): void
     {
-        //
+        Cache::forget('decal:status-counts:'.auth()->id().':'.sha1(trim($this->search)));
     }
 
     #[On('psd-mockup-template-updated')]

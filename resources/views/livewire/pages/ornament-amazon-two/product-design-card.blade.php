@@ -831,6 +831,8 @@
                     'number' => $slot['number'],
                     'label' => $slot['label'],
                     'preview' => $mockupB5DisplayUrl($asset->getAttribute($slot['preview'])),
+                    'card' => $mockupB5DisplayUrl($asset->getAttribute("mockup{$slot['number']}_card_url")),
+                    'card_original' => $mockupB5DisplayUrl($asset->getAttribute($slot['column'])),
                     'original' => $mockupB5DisplayUrl($asset->getAttribute($slot['column'])),
                 ]])
                 ->all();
@@ -933,6 +935,10 @@
                 },
                 doneImageCount() {
                     return this.slots.filter((slot) => this.originalUrl(slot)).length;
+                },
+                cardUrl(slot) {
+                    return this.images?.[slot]?.card_original === this.images?.[slot]?.original && this.images?.[slot]?.card
+                        ? this.images[slot].card : this.imageUrl(slot);
                 },
                 imageUrl(slot) {
                     return this.previewUrl(this.images?.[slot]?.preview || this.images?.[slot]?.original || null);
@@ -1236,7 +1242,7 @@
                                             class="relative h-full w-full overflow-hidden transition-all duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
                                         >
                                             <img
-                                                x-bind:src="imageUrl(@js($slotKey)) || ''"
+                                                x-bind:src="cardUrl(@js($slotKey)) || ''" x-on:error="if ($el.src !== imageUrl(@js($slotKey))) $el.src = imageUrl(@js($slotKey))"
                                                 alt="MOCKUP {{ $slot['number'] }} {{ $slot['label'] }}"
                                                 loading="lazy"
                                                 decoding="async"

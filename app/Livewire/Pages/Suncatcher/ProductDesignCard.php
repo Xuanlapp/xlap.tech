@@ -781,6 +781,7 @@ class ProductDesignCard extends Component
 
         for ($slot = 1; $slot <= 11; $slot++) {
             $asset->setAttribute("mockup{$slot}_preview_url", $imagePreview->previewUrl($asset->{"mockup{$slot}"}));
+            $asset->setAttribute("mockup{$slot}_card_url", app(\App\Services\Image\MockupCardImageService::class)->url($asset, $slot, $asset->getAttribute("mockup{$slot}_preview_url"), 'suncatcher'));
         }
     }
 

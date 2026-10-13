@@ -30,19 +30,19 @@ class ListOrnamentEtsy extends Component
     #[On('ornament-etsy-product-design-created')]
     public function productDesignCreated(): void
     {
-        //
+        Cache::forget('ornament-etsy:status-counts:'.auth()->id());
     }
 
     #[On('ornament-etsy-product-design-approval-updated')]
     public function productDesignApprovalUpdated(): void
     {
-        //
+        Cache::forget('ornament-etsy:status-counts:'.auth()->id());
     }
 
     #[On('ornament-etsy-product-design-workflow-updated')]
     public function productDesignWorkflowUpdated(): void
     {
-        //
+        Cache::forget('ornament-etsy:status-counts:'.auth()->id());
     }
 
     #[On('ornament-etsy-psd-mockup-template-updated')]

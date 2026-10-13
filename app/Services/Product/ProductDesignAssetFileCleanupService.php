@@ -78,6 +78,7 @@ class ProductDesignAssetFileCleanupService
             ->each(fn (string $path): bool => Storage::disk('public')->delete($path));
 
         Storage::disk('public')->deleteDirectory("generated/{$productSlug}/mockups/{$asset->id}");
+        Storage::disk('public')->deleteDirectory("thumbnails/generated/{$productSlug}/mockups/{$asset->id}");
 
         $updates = [];
         for ($slot = 1; $slot <= 11; $slot++) {
@@ -92,6 +93,7 @@ class ProductDesignAssetFileCleanupService
     {
         $directories = [
             "generated/{$productSlug}/mockups/{$asset->id}",
+            "thumbnails/generated/{$productSlug}/mockups/{$asset->id}",
         ];
 
         $deleted = 0;

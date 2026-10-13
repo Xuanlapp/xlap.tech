@@ -28,20 +28,20 @@ class ListGlass extends Component
     #[On('glass-product-design-updated')]
     public function productDesignCreated(): void
     {
-        //
+        Cache::forget('glass:status-counts:'.auth()->id().':'.sha1(trim($this->search)));
     }
 
     #[On('glass-product-design-approval-updated')]
     #[On('glass-counts-updated')]
     public function productDesignApprovalUpdated(): void
     {
-        //
+        Cache::forget('glass:status-counts:'.auth()->id().':'.sha1(trim($this->search)));
     }
 
     #[On('glass-product-design-workflow-updated')]
     public function productDesignWorkflowUpdated(): void
     {
-        //
+        Cache::forget('glass:status-counts:'.auth()->id().':'.sha1(trim($this->search)));
     }
 
     #[On('psd-mockup-template-updated')]

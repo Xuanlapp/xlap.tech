@@ -47,16 +47,13 @@ class PsdMockupTemplateService
         $this->ensurePsdFile($file);
 
         $product = $this->ceramicProduct();
-        $filename = Str::uuid().'.psd';
-        $path = $file->storeAs("psd-mockups/{$user->id}/ceramic", $filename, 'public');
-
-        return $this->templates->createActive(
+        return $this->templates->uploadActive(
             $user->id,
             $product->id,
             self::CERAMIC_CUSTOM_MOCKUP,
             $this->normalizeName($name ?: pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)),
-            $file->getClientOriginalName(),
-            $path,
+            $file,
+            "psd-mockups/{$user->id}/ceramic",
         );
     }
 

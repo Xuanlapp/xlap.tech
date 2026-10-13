@@ -28,20 +28,20 @@ class ListCeramic extends Component
     #[On('ceramic-product-design-updated')]
     public function productDesignCreated(): void
     {
-        //
+        Cache::forget('ceramic:status-counts:'.auth()->id().':'.sha1(trim($this->search)));
     }
 
     #[On('ceramic-product-design-approval-updated')]
     #[On('ceramic-counts-updated')]
     public function productDesignApprovalUpdated(): void
     {
-        //
+        Cache::forget('ceramic:status-counts:'.auth()->id().':'.sha1(trim($this->search)));
     }
 
     #[On('ceramic-product-design-workflow-updated')]
     public function productDesignWorkflowUpdated(): void
     {
-        //
+        Cache::forget('ceramic:status-counts:'.auth()->id().':'.sha1(trim($this->search)));
     }
 
     #[On('psd-mockup-template-updated')]

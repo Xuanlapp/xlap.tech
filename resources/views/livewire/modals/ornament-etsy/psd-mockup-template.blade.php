@@ -15,7 +15,7 @@
                     <div class="flex items-center justify-between rounded-t border-b border-gray-200 p-4 md:p-5">
                         <div>
                             <h3 class="text-xl font-semibold text-gray-900">PSD Mockup Tu Chon</h3>
-                            <p class="mt-1 text-sm text-gray-500">Moi chuc nang chi co 1 PSD dang duoc chon. Upload PSD moi se tu chon PSD do.</p>
+                            <p class="mt-1 text-sm text-gray-500">Moi chuc nang giu toi da 2 PSD. Upload file thu 3 se tu dong xoa file cu nhat.</p>
                         </div>
 
                         <button
@@ -63,6 +63,7 @@
                                     <div class="min-w-0">
                                         <p class="truncate text-sm font-semibold text-slate-900">{{ $template->name }}</p>
                                         <p class="truncate text-xs text-slate-500">{{ $template->original_filename }}</p>
+                                        <p class="mt-1 text-[11px] text-slate-400">Upload: {{ $template->created_at?->format('d/m/Y H:i:s') }}</p>
                                     </div>
 
                                     @if ($template->is_active)

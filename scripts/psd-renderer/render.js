@@ -1064,6 +1064,7 @@ async function main() {
             const canvas = renderPsdToCanvas(psd, psd.children || []);
 
             fs.writeFileSync(outputPath, canvas.toBuffer('image/png'));
+            await saveMockupThumbnail(canvas, outputDirectory, outputName);
             outputs.push(outputPath);
         } catch (error) {
             throw new Error(`Render group "${normalizeName(group.name) || 'UNKNOWN'}" failed: ${error?.message || 'unknown error'}`);
@@ -1075,6 +1076,22 @@ async function main() {
     process.stdout.write(JSON.stringify({ outputs }));
 }
 
+async function saveMockupThumbnail(canvas, outputDirectory, outputName) {
+    try {
+        const scale = Math.min(1, 320 / Math.max(canvas.width, canvas.height));
+        const thumbnail = createCanvas(Math.max(1, Math.round(canvas.width * scale)), Math.max(1, Math.round(canvas.height * scale)));
+        thumbnail.getContext('2d').drawImage(canvas, 0, 0, thumbnail.width, thumbnail.height);
+        const relativePath = path.relative(path.resolve(outputDirectory, '..', '..', '..', '..'), outputDirectory);
+        const thumbnailDirectory = path.resolve(outputDirectory, '..', '..', '..', '..', 'thumbnails', relativePath);
+        fs.mkdirSync(thumbnailDirectory, { recursive: true });
+        const thumbnailPath = path.join(thumbnailDirectory, `${path.parse(outputName).name}.webp`);
+        const temporaryPath = `${thumbnailPath}.tmp`;
+        fs.writeFileSync(temporaryPath, await thumbnail.encode('webp'));
+        fs.renameSync(temporaryPath, thumbnailPath);
+    } catch (error) {
+        console.error(`Thumbnail for ${outputName}: ${error?.message || error}`);
+    }
+}
 function requiredPath(value, name) {
     if (!value || !fs.existsSync(value)) {
         throw new Error(`Invalid ${name}: ${value || '(empty)'}`);

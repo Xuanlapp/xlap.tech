@@ -53,19 +53,19 @@ class ListSuncatcher extends Component
     #[On('product-design-created')]
     public function productDesignCreated(): void
     {
-        //
+        Cache::forget('suncatcher:status-counts:'.auth()->id());
     }
 
     #[On('suncatcher-product-design-approval-updated')]
     public function productDesignApprovalUpdated(): void
     {
-        //
+        Cache::forget('suncatcher:status-counts:'.auth()->id());
     }
 
     #[On('suncatcher-product-design-workflow-updated')]
     public function productDesignWorkflowUpdated(): void
     {
-        //
+        Cache::forget('suncatcher:status-counts:'.auth()->id());
     }
 
     #[On('v98store-key-updated')]
