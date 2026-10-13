@@ -108,7 +108,7 @@ class MarketplaceExports extends Component
     #[Session(key: 'marketplace-export.per-page')]
     public int $perPage = 20;
 
-    private const PER_PAGE_OPTIONS = [5, 10, 20, 30, 50, 100];
+    private const PER_PAGE_OPTIONS = [5, 10, 20, 30, 50, 100, 500, 1000];
 
     /** @var array<int, int|string> */
     public array $selectedUnexported = [];

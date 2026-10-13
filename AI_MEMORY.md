@@ -13035,3 +13035,8 @@ esources/views/livewire/modals/image/review-image.blade.php; deferred metadata s
 - Root cause: MarketplaceExports searched each SKU token with contains LIKE, so FCAMZ190 also matched FCAMZ1905 and expanded the export list.
 - Changed: app/Livewire/Pages/Marketplace/MarketplaceExports.php uses exact whereIn matching for trimmed comma/newline-separated SKU tokens. Existing owner, status, marketplace and export behavior remain unchanged.
 - Deploy/queue impact: search and exports use exact listed SKUs only; no migration or queue changes. Validation: PHP syntax and diff check passed; authenticated browser check pending. Graphiti unavailable.
+
+### 2026-10-13 - Marketplace export page sizes 500 and 1000
+- Root cause: export page-size allowlist stopped at 100, limiting visible page selection for larger batches.
+- Changed: app/Livewire/Pages/Marketplace/MarketplaceExports.php adds 500 and 1000; .design/marketplace-export-page-size/DESIGN_BRIEF.md records scope. Existing export, filters and selection behavior preserved.
+- Deploy/queue impact: PHP-only page-size choice, potentially larger render/Livewire payloads; no migration or worker changes. Validation: PHP lint, Blade view:cache, npm build passed. Authenticated render unverified; Better Design quota and Graphiti unavailable.
