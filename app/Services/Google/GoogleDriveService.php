@@ -122,6 +122,40 @@ class GoogleDriveService
         return ['id' => $id, 'link' => 'https://drive.google.com/drive/folders/'.$id];
     }
 
+    public function listFolderImages(string $folderId): array
+    {
+        $files = [];
+        $pageToken = null;
+
+        do {
+            $response = Http::withToken($this->accessToken())
+                ->withOptions($this->googleHttpOptions())
+                ->timeout(30)
+                ->get($this->filesEndpoint(), array_filter([
+                    'q' => "'".$this->escapeDriveQueryValue($folderId)."' in parents and trashed = false",
+                    'fields' => 'nextPageToken,files(id,name,mimeType)',
+                    'pageSize' => 1000,
+                    'pageToken' => $pageToken,
+                    'supportsAllDrives' => 'true',
+                    'includeItemsFromAllDrives' => 'true',
+                ]));
+
+            if ($response->failed()) {
+                throw new RuntimeException('Khong doc duoc danh sach file trong folder Drive cu.');
+            }
+
+            foreach ($response->json('files', []) as $file) {
+                if (str_starts_with((string) ($file['mimeType'] ?? ''), 'image/')) {
+                    $files[] = $file;
+                }
+            }
+
+            $pageToken = $response->json('nextPageToken');
+        } while (is_string($pageToken) && $pageToken !== '');
+
+        return $files;
+    }
+
     public function copyFileToFolder(string $fileId, string $filename, string $folderId): string
     {
         $response = Http::withToken($this->accessToken())

@@ -12987,3 +12987,27 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 - Changed: app/Services/Google/GoogleDriveService.php creates a unique item-ID-suffixed folder and copies existing Drive files using the authenticated copy API; app/Services/Product/ApprovedAssetDriveExportService.php stages local uploads and Drive copies there, then swaps asset links and upload record only after all calls succeed. app/Livewire/Pages/Drive/DriveUploads.php now permits retry for failed items with existing Drive file records even without local images. Brief updated.
 - Impact: new Drive folder per attempt, no DB migration; failed attempts leave unreferenced staging folders for manual cleanup and preserve old DB links. Source read and target write permissions required. Cannot prove remote completeness or ownership without authenticated Drive verification.
 - Validation: PHP lint, Blade cache, Vite build and scoped diff check pass. No live Drive API integration test; deploy cautiously and try one item first. Graphiti unavailable.
+
+### 2026-10-13 — Fix bulk Drive retry skipping existing Drive links
+- Root cause: bulk query selected only id and asset id, omitting drive_files; the retry precheck interpreted each old Drive-backed row as having no source.
+- Changed: app/Livewire/Pages/Drive/DriveUploads.php loads drive_files for bulk rows and checks actual asset Drive file URLs, while retaining approved-only, failed-only conditional requeue.
+- Queue/deploy impact: eligible failed uploads can return to waiting and be processed by Drive daemon, up to configured concurrency. No migration; does not run retries automatically.
+- Validation: PHP lint and scoped diff check passed. Production Drive link/copy permissions not verified; test one item before retry all. Graphiti unavailable.
+
+### 2026-10-13 — Count retried listing items as waiting
+- Root cause: waiting filter required a null title, while retry sets marketplace_listing_status=waiting without erasing a pre-existing partial title. Queued items with partial metadata were invisible in WAITING.
+- Changed: app/Livewire/Pages/Marketplace/ListingMetadataStatus.php uses one shared waiting filter for rows and count: explicit waiting status always counts; legacy null status counts only when title is null.
+- Deploy/queue impact: presentation counts only; worker claim behavior unchanged. Ten workers may claim items between polls, so waiting can still correctly read zero. No migration.
+- Validation: PHP lint, Blade view:cache, scoped diff check pass. Production screenshot and aggregate reconciliation pending. Graphiti unavailable.
+
+### 2026-10-13 — Recover 0/0 Drive uploads from existing folders
+- Root cause: failed upload rows sometimes retain drive_folder_id but no drive_files and no readable local source; bulk retry rejected them without examining the folder.
+- Changed: app/Livewire/Pages/Drive/DriveUploads.php permits failed folder-backed rows to enter waiting; app/Services/Google/GoogleDriveService.php lists images in the old folder through Drive API; app/Services/Product/ApprovedAssetDriveExportService.php maps unique assetId_itemN file names and copies available source files to a new folder while retaining old DB links on failure. Updated .design/drive-upload-retry/DESIGN_BRIEF.md.
+- Deploy/queue impact: worker may process more previously skipped rows, requiring read rights to old folder and write rights to new; no migration. Unmapped/missing files remain failed, not silently marked complete. Live Drive verification required before bulk retry.
+- Validation: PHP lint, Blade cache and scoped diff check passed. No authenticated Drive integration test. Graphiti unavailable.
+
+### 2026-10-13 — Keep Drive asset URLs and upload status consistent
+- Root cause: asset Drive links were committed before ProductDriveUpload status/file list, so a post-commit activity log or local cleanup failure could leave Drive URLs on the asset while upload log showed failed 0/0.
+- Changed: app/Services/Product/ApprovedAssetDriveExportService.php now atomically writes asset URLs and upload completion after locking/validating the claimed row; cleanup/activity log exceptions are reported after commit and do not change completed status; catch only marks a still-processing row failed.
+- Deploy/queue impact: future uploads have consistent DB status; existing mismatched failed records require separate reconciliation against real Drive files. No migration; 10-worker claim behavior unchanged.
+- Validation: PHP lint, Blade view:cache, scoped diff check passed. No production Drive integration verification. Graphiti unavailable.

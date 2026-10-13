@@ -162,13 +162,7 @@ class ListingMetadataStatus extends Component
     private function applyStatusFilter(Builder $query, string $status): Builder
     {
         return match ($status) {
-            'waiting' => $query
-                ->whereNull('title')
-                ->where(function (Builder $query): void {
-                    $query
-                        ->whereNull('marketplace_listing_status')
-                        ->orWhere('marketplace_listing_status', 'waiting');
-                }),
+            'waiting' => $this->applyWaitingMetadataFilter($query),
             'processing' => $query->where('marketplace_listing_status', 'processing'),
             'completed' => $this->applyCompletedMetadataFilter($query),
             'failed' => $this->applyFailedMetadataFilter($query),
@@ -187,18 +181,21 @@ class ListingMetadataStatus extends Component
 
         return [
             'all' => (clone $query)->count(),
-            'waiting' => (clone $query)
-                ->whereNull('title')
-                ->where(function (Builder $query): void {
-                    $query
-                        ->whereNull('marketplace_listing_status')
-                        ->orWhere('marketplace_listing_status', 'waiting');
-                })
-                ->count(),
+            'waiting' => $this->applyWaitingMetadataFilter(clone $query)->count(),
             'processing' => (clone $query)->where('marketplace_listing_status', 'processing')->count(),
             'completed' => $this->applyCompletedMetadataFilter(clone $query)->count(),
             'failed' => $this->applyFailedMetadataFilter(clone $query)->count(),
         ];
+    }
+
+    private function applyWaitingMetadataFilter(Builder $query): Builder
+    {
+        return $query->where(function (Builder $query): void {
+            $query->where('marketplace_listing_status', 'waiting')
+                ->orWhere(function (Builder $query): void {
+                    $query->whereNull('marketplace_listing_status')->whereNull('title');
+                });
+        });
     }
 
     private function applyCompletedMetadataFilter(Builder $query): Builder

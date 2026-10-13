@@ -128,7 +128,7 @@ class ApprovedAssetDriveExportService
         try {
             $images = $this->exportAsset($asset, $actor, $trigger, alreadyClaimed: true);
         } catch (\Throwable $exception) {
-            $upload->update([
+            ProductDriveUpload::query()->whereKey($upload->id)->where('status', 'processing')->update([
                 'status' => 'failed',
                 'error' => mb_substr($exception->getMessage(), 0, 2000),
                 'completed_at' => now(),
@@ -175,6 +175,20 @@ class ApprovedAssetDriveExportService
 
         $driveFolder = $this->drive->createUploadFolder($this->folderNameForUser($asset), (string) $asset->id);
         $previousFiles = collect($upload->drive_files ?: [])->keyBy('field');
+        $folderFiles = $upload->drive_folder_id
+            ? $this->drive->listFolderImages($upload->drive_folder_id)
+            : [];
+        $folderByItem = [];
+        foreach ($folderFiles as $file) {
+            if (! preg_match('/^'.preg_quote((string) $asset->id, '/').'_item(\d+)_/i', (string) $file['name'], $matches)) {
+                continue;
+            }
+            $index = (int) $matches[1];
+            if (isset($folderByItem[$index])) {
+                throw new \RuntimeException("Folder Drive cu co nhieu file item{$index}; can kiem tra thu cong.");
+            }
+            $folderByItem[$index] = $file;
+        }
 
         foreach (ProductDriveUploadQueueService::IMAGE_FIELDS as $field) {
             $url = $asset->getAttribute($field);
@@ -183,18 +197,24 @@ class ApprovedAssetDriveExportService
                 continue;
             }
 
-            if (! str_starts_with($url, '/storage/')) {
+            $folderFile = $folderByItem[$imageNumber] ?? null;
+
+            if (! is_string($url) || ! str_starts_with($url, '/storage/')) {
                 $oldFile = $previousFiles->get($field);
                 $oldUrl = is_array($oldFile) && ! empty($oldFile['drive_url'])
                     ? (string) $oldFile['drive_url']
-                    : $url;
-                if (! preg_match('#/file/d/([^/]+)#', $oldUrl, $matches)) {
+                    : (string) $url;
+                $sourceId = $folderFile['id'] ?? null;
+                if (! $sourceId && preg_match('#/file/d/([^/]+)#', $oldUrl, $matches)) {
+                    $sourceId = $matches[1];
+                }
+                if (! $sourceId) {
                     throw new \RuntimeException("Khong xac dinh duoc Drive file ID cho {$field}.");
                 }
 
-                $filename = is_array($oldFile) ? (string) ($oldFile['filename'] ?? "{$asset->id}_{$field}.png") : "{$asset->id}_{$field}.png";
+                $filename = (string) ($folderFile['name'] ?? (is_array($oldFile) ? ($oldFile['filename'] ?? "{$asset->id}_{$field}.png") : "{$asset->id}_{$field}.png"));
                 $upload->update(['started_at' => now()]);
-                $driveUrl = $this->drive->copyFileToFolder($matches[1], $filename, $driveFolder['id']);
+                $driveUrl = $this->drive->copyFileToFolder($sourceId, $filename, $driveFolder['id']);
                 $updates[$field] = $driveUrl;
                 $fileInfo[] = ['item' => 'item'.$imageNumber, 'field' => $field, 'filename' => $filename];
                 $uploaded[] = [
@@ -211,7 +231,23 @@ class ApprovedAssetDriveExportService
             $absolutePath = $this->absoluteStoragePath($url);
 
             if (! $absolutePath || ! File::exists($absolutePath)) {
-                throw new \RuntimeException("Khong tim thay file local cho {$field}.");
+                if (! $folderFile) {
+                    throw new \RuntimeException("Khong tim thay file local cho {$field}.");
+                }
+                $filename = (string) $folderFile['name'];
+                $upload->update(['started_at' => now()]);
+                $driveUrl = $this->drive->copyFileToFolder($folderFile['id'], $filename, $driveFolder['id']);
+                $updates[$field] = $driveUrl;
+                $fileInfo[] = ['item' => 'item'.$imageNumber, 'field' => $field, 'filename' => $filename];
+                $uploaded[] = [
+                    'item' => 'item'.$imageNumber,
+                    'field' => $field,
+                    'drive_url' => $driveUrl,
+                    'preview_url' => $this->drivePreviewUrl($driveUrl),
+                    'filename' => $filename,
+                ];
+                $imageNumber++;
+                continue;
             }
 
             $filename = $this->driveFilename($asset, $imageNumber, $absolutePath);
@@ -265,39 +301,51 @@ class ApprovedAssetDriveExportService
 
         $updates['drive_uploaded_at'] = now();
 
-        DB::transaction(function () use ($asset, $updates): void {
+        DB::transaction(function () use ($asset, $upload, $updates, $fileInfo, $uploaded, $driveFolder): void {
+            $lockedUpload = ProductDriveUpload::query()->lockForUpdate()->findOrFail($upload->id);
+            if ($lockedUpload->status !== 'processing') {
+                throw new \RuntimeException('Luot upload da het han hoac duoc worker khac nhan; khong ghi de link Drive.');
+            }
+
             $asset->update($updates);
+            $lockedUpload->update([
+                'status' => 'completed',
+                'file_info' => $fileInfo,
+                'drive_files' => $uploaded,
+                'drive_folder_id' => $driveFolder['id'],
+                'drive_folder_link' => $driveFolder['link'],
+                'error' => null,
+                'completed_at' => now(),
+            ]);
         });
 
         foreach (array_unique([...$deletePaths, ...$candidateCleanup['delete_paths']]) as $path) {
-            File::delete($path);
+            try {
+                File::delete($path);
+            } catch (\Throwable $exception) {
+                report($exception);
+            }
         }
 
         foreach ($uploaded as $image) {
-            $this->activityLogs->record(
-                event: 'drive_export.image_uploaded',
-                description: "Uploaded approved {$image['field']} image to Google Drive.",
-                subject: $asset,
-                properties: [
-                    'trigger' => $trigger,
-                    'product' => $asset->product?->slug,
-                    'item_number' => $asset->item_number,
-                    ...$image,
-                ],
-                actor: $actor,
-                actorType: $trigger === 'manual' ? 'admin' : 'system',
-            );
+            try {
+                $this->activityLogs->record(
+                    event: 'drive_export.image_uploaded',
+                    description: "Uploaded approved {$image['field']} image to Google Drive.",
+                    subject: $asset,
+                    properties: [
+                        'trigger' => $trigger,
+                        'product' => $asset->product?->slug,
+                        'item_number' => $asset->item_number,
+                        ...$image,
+                    ],
+                    actor: $actor,
+                    actorType: $trigger === 'manual' ? 'admin' : 'system',
+                );
+            } catch (\Throwable $exception) {
+                report($exception);
+            }
         }
-
-        $upload->update([
-            'status' => 'completed',
-            'file_info' => $fileInfo,
-            'drive_files' => $uploaded,
-            'drive_folder_id' => $driveFolder['id'],
-            'drive_folder_link' => $driveFolder['link'],
-            'error' => null,
-            'completed_at' => now(),
-        ]);
 
         return count($uploaded);
     }

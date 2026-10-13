@@ -69,7 +69,7 @@ class DriveUploads extends Component
                 $itemNumber = $upload->asset?->item_number ?? $upload->product_design_asset_id;
                 $this->retryMessage = "Da dua item {$itemNumber} ve hang doi upload.";
             } else {
-                $this->retryError = 'Item khong con anh local de upload. Kiem tra Drive truoc khi thu lai.';
+                $this->retryError = 'Item khong con anh local hoac link Drive hop le de thu lai.';
             }
         } catch (Throwable $exception) {
             $this->retryError = $exception->getMessage();
@@ -87,7 +87,7 @@ class DriveUploads extends Component
 
         ProductDriveUpload::query()
             ->where('status', 'failed')
-            ->select('id', 'product_design_asset_id')
+            ->select('id', 'product_design_asset_id', 'drive_files', 'drive_folder_id')
             ->chunkById(100, function ($uploads) use (&$queued, &$skipped): void {
                 foreach ($uploads as $upload) {
                     try {
@@ -101,14 +101,16 @@ class DriveUploads extends Component
 
         $this->retryMessage = "Da dua {$queued} item ve hang doi upload.";
         if ($skipped > 0) {
-            $this->retryError = "Bo qua {$skipped} item khong con anh local hoac gap loi; kiem tra Drive truoc khi thu lai.";
+            $this->retryError = "Bo qua {$skipped} item khong co nguon anh hop le hoac gap loi; kiem tra truoc khi thu lai.";
         }
     }
 
     private function queueFailedUpload(ProductDriveUpload $upload): bool
     {
         $asset = ProductDesignAsset::query()->find($upload->product_design_asset_id);
-        if (! $asset?->is_approved || (! app(ProductDriveUploadQueueService::class)->hasLocalExportableImages($asset) && empty($upload->drive_files))) {
+        $hasDriveSource = collect(ProductDriveUploadQueueService::IMAGE_FIELDS)
+            ->contains(fn (string $field): bool => preg_match('#/file/d/[^/]+#', (string) $asset?->getAttribute($field)) === 1);
+        if (! $asset?->is_approved || (! app(ProductDriveUploadQueueService::class)->hasLocalExportableImages($asset) && ! $hasDriveSource && ! $upload->drive_folder_id)) {
             return false;
         }
 

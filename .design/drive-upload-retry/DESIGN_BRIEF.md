@@ -9,3 +9,4 @@
 - Acceptance: no provider call in UI requests; no completed or running item requeued; stale processing not mutated by page render.
 - Before: user screenshot desktop. After desktop/mobile unavailable; visual review unverified.
 - Each claimed upload creates a fresh item-ID-suffixed Drive folder beneath the existing user folder; copies previous Drive files via API, uploads remaining local files, and swaps DB URLs/folder only after all calls complete. Failed attempts keep previous URLs.
+- Recovery for 0/0 rows: inspect the previous Drive folder by folder ID and match uniquely numbered `assetId_itemN_*.png` files to source fields; ambiguous numbering fails without replacing DB links.
