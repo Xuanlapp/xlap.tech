@@ -455,6 +455,12 @@ PROMPT;
 
                 $asset = null;
                 foreach ($candidates as $candidate) {
+                    if (trim((string) $candidate->sku) === '') {
+                        $this->assets->markListingFailed($candidate, 'Item khong co SKU. Hay bo sung SKU roi bam Retry.');
+
+                        continue;
+                    }
+
                     if ($this->isProviderPausedForAsset($candidate)) {
                         $providerKey = $this->listingProviderKey($candidate);
                         $pause = Cache::get('provider-pause:'.$providerKey.':user:'.$candidate->user_id);
@@ -486,6 +492,7 @@ PROMPT;
         return ProductDesignAsset::query()
             ->with(['user', 'product'])
             ->where('is_approved', true)
+
             ->where(function (Builder $query): void {
                 $query
                     ->whereNull('marketplace_listing_status')

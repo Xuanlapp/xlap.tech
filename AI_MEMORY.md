@@ -13018,3 +13018,9 @@ esources/views/livewire/modals/image/review-image.blade.php; deferred metadata s
 - Changed: app/Services/Marketplace/MarketplaceListingMetadataService.php marks paused candidates failed with reason and Retry guidance; AI_MEMORY.md records this.
 - Deploy/queue impact: restart listing daemon; paused waiting items transition to Failed without provider calls, healthy items continue. No migration.
 - Validation: PHP lint passed. Production worker/provider unverified; Graphiti unavailable.
+
+### 2026-10-13 - Reject missing asset SKU before listing provider call
+- Root cause: worker eligibility checked approval/provider but not ProductDesignAsset.sku; dashboard displayed the asset SKU as '-' while workers still claimed it.
+- Changed: app/Services/Marketplace/MarketplaceListingMetadataService.php marks claimed missing-SKU assets failed with Retry guidance before provider calls. AI_MEMORY.md records the change.
+- Deploy/queue impact: restart listing daemons; waiting missing-SKU items fail as workers claim them, existing active processing must finish or become stale first. No migration; other assets continue.
+- Validation: PHP syntax and diff check passed; VPS runtime unverified. Graphiti unavailable.
