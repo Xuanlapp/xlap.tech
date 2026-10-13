@@ -43,7 +43,7 @@
                 wire:model.live.debounce.400ms="search"
                 type="text"
                 class="mt-1 w-full rounded-md border-slate-300 bg-white text-slate-950"
-                placeholder="Keyword, title{{ (auth()->user()->is_admin || auth()->user()->isManager()) ? ', user email' : '' }}..."
+                placeholder="ID, SKU, title{{ (auth()->user()->is_admin || auth()->user()->isManager()) ? ', user email' : '' }}..."
             >
         </div>
 
@@ -97,7 +97,7 @@
                             @endphp
                             <tr wire:key="listing-metadata-row-{{ $asset->id }}">
                                 <td class="px-4 py-4 align-top">
-                                    <p class="font-semibold text-slate-950">{{ $asset->item_number }} - {{ $asset->keyword }}</p>
+                                    <p class="font-semibold text-slate-950">{{ $asset->item_number }} - SKU: {{ $asset->sku ?: '-' }}</p>
                                     <p class="mt-1 text-xs text-slate-400">{{ $asset->product?->name }} | approved {{ optional($asset->approved_at)->format('Y-m-d H:i') }}</p>
                                 </td>
                                 @if ((auth()->user()->is_admin || auth()->user()->isManager()))

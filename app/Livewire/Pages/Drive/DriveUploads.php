@@ -96,7 +96,7 @@ class DriveUploads extends Component
     private function visibleQuery(): Builder
     {
         return ProductDriveUpload::query()
-            ->with(['asset:id,item_number,keyword,approved_at,drive_uploaded_at', 'user:id,name,email', 'product:id,name,slug'])
+            ->with(['asset:id,item_number,sku,approved_at,drive_uploaded_at', 'user:id,name,email', 'product:id,name,slug'])
             ->when(! auth()->user()->is_admin && ! auth()->user()->isManager(), fn (Builder $query) => $query->where('user_id', auth()->id()))
             ->when($this->status !== 'all', fn (Builder $query) => $query->where('status', $this->status))
             ->when($this->normalizedSearch() !== null, function (Builder $query): void {
@@ -108,7 +108,7 @@ class DriveUploads extends Component
                         ->orWhereHas('asset', function (Builder $query) use ($search): void {
                             $query
                                 ->when(ctype_digit($search), fn (Builder $query) => $query->where('item_number', (int) $search))
-                                ->orWhere('keyword', 'like', '%'.$this->escapeLike($search).'%');
+                                ->orWhere('sku', 'like', '%'.$this->escapeLike($search).'%');
                         });
 
                     if (auth()->user()->is_admin || auth()->user()->isManager()) {

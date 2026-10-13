@@ -43,7 +43,7 @@
                 wire:model.live.debounce.400ms="search"
                 type="text"
                 class="mt-1 w-full rounded-md border-slate-300 bg-white text-slate-950"
-                placeholder="STT, keyword{{ (auth()->user()->is_admin || auth()->user()->isManager()) ? ', user email' : '' }}..."
+                placeholder="ID, SKU{{ (auth()->user()->is_admin || auth()->user()->isManager()) ? ', user email' : '' }}..."
             >
         </div>
 
@@ -88,7 +88,7 @@
                             @endphp
                             <tr wire:key="drive-upload-row-{{ $upload->id }}">
                                 <td class="px-4 py-4 align-top">
-                                    <p class="font-semibold text-slate-950">{{ $upload->asset?->item_number ?? $upload->product_design_asset_id }} - {{ $upload->asset?->keyword ?: '-' }}</p>
+                                    <p class="font-semibold text-slate-950">{{ $upload->asset?->item_number ?? $upload->product_design_asset_id }} - SKU: {{ $upload->asset?->sku ?: '-' }}</p>
                                     <p class="mt-1 text-xs text-slate-400">{{ $upload->product?->name }}</p>
                                 </td>
                                 @if ((auth()->user()->is_admin || auth()->user()->isManager()))

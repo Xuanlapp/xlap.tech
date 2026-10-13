@@ -12945,3 +12945,21 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 - Changed: app/Console/Commands/GenerateMarketplaceListingMetadata.php bypasses the long-lived lock in daemon mode; app/Services/Marketplace/MarketplaceListingMetadataService.php serializes only DB asset claims using a cache lock; docs/xlap-vps-workers-supervisor.conf defines five numbered metadata processes.
 - Modules/queue impact: marketplace metadata polling can run up to five assets concurrently, while existing per-user processing exclusion remains; provider quota and actual throughput require VPS observation. No migration.
 - Validation: PHP lint and scoped diff check passed. No focused automated tests found. Local changes only; deploy code, diagnose the existing FATAL daemon from logs, then update live Supervisor config and verify status. Shared cache backend required across workers. Graphiti memory tool unavailable.
+
+### 2026-10-13 — Ten parallel marketplace metadata calls
+- Root cause: automatic claims excluded every user with a processing item, preventing concurrent metadata calls for one user despite multiple Supervisor processes.
+- Changed: app/Services/Marketplace/MarketplaceListingMetadataService.php removes per-user exclusion during automatic claims and permits manual retry alongside other items while rejecting an already-processing item; docs/xlap-vps-workers-supervisor.conf sets metadata daemon numprocs=10.
+- Modules/queue impact: up to ten independent asset metadata calls when enough eligible items exist; cache claim lock and row transaction still serialize claiming. Provider capacity, DB load and stale-processing timeout should be observed; no database migration.
+- Validation: PHP lint and scoped diff check passed; no focused concurrency test run. Deploy both code and VPS Supervisor config, reread/update and verify ten RUNNING processes plus item progress. Graphiti memory integration unavailable.
+
+### 2026-10-13 — Show ID and SKU in upload and listing logs
+- Root cause observed: Drive log marks processing uploads failed after 15 minutes with `Upload bi treo qua lau`; the supplied screenshot does not identify the underlying Drive/network failure. Existing claim/retry logic remains unchanged pending VPS logs.
+- Changed: app/Livewire/Pages/Drive/DriveUploads.php and resources/views/livewire/pages/drive/drive-uploads.blade.php now load/search/display ID and SKU instead of keyword; app/Livewire/Pages/Marketplace/ListingMetadataStatus.php and its Blade view do the same while retaining title search and metadata output. Added .design/upload-and-listing-log-identity/DESIGN_BRIEF.md.
+- Validation: PHP lint, Blade view:cache, Vite build, and scoped diff check passed. No database schema or queue impact. Visual/authenticated review remains unverified; Better Design quota unavailable.
+- Follow-up: inspect the Drive worker log and per-upload error before changing the 15-minute stale threshold; deploy these files and verify SKU search/display. Graphiti memory integration unavailable.
+
+### 2026-10-13 — Match ten Drive upload daemons in Supervisor template
+- Root cause: repository Supervisor template still specified one Drive process while the user configured ten on VPS.
+- Changed: docs/xlap-vps-workers-supervisor.conf now uses numbered process_name, numprocs=10 and stopwaitsecs=3600 for xlap-drive-upload-daemon. No application behavior changed.
+- Queue/deploy impact: up to ten Drive upload items can be processed concurrently when the live Supervisor config matches. Database claim is transactional, but the 15-minute stale timeout can mark a still-running upload failed and permit another attempt; monitor duplicate Drive files and request duration. No migration.
+- Validation: PHP lint on Drive command/service and scoped diff check passed. VPS state and Drive API behavior not verified. Graphiti memory integration unavailable.

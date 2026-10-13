@@ -87,7 +87,8 @@ class ListingMetadataStatus extends Component
 
                 $query->where(function (Builder $query) use ($search): void {
                     $query
-                        ->where('keyword', 'like', '%'.$this->escapeLike($search).'%')
+                        ->where('sku', 'like', '%'.$this->escapeLike($search).'%')
+                        ->orWhere('item_number', ctype_digit($search) ? (int) $search : -1)
                         ->orWhere('title', 'like', '%'.$this->escapeLike($search).'%');
 
                     if (auth()->user()->is_admin || auth()->user()->isManager()) {
