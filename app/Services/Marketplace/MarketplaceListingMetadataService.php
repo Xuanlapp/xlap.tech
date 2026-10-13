@@ -318,6 +318,12 @@ PROMPT;
             return null;
         }
 
+        if (trim((string) $asset->sku) === '') {
+            $this->assets->markListingFailed($asset, 'Item khong co SKU. Hay bo sung SKU roi bam Retry.');
+
+            return null;
+        }
+
         if (in_array($asset->product?->slug, ['ornament-amazon-2', 'sticker', 'decal'], true)) {
             return $this->assets->markListingCompleted($this->generateAmazonMetadata($asset), 'amazon');
         }
@@ -393,6 +399,7 @@ PROMPT;
     public function generatePendingApprovedAssets(int $limit = 0, int $delaySeconds = 0): int
     {
         $this->recoverStaleProcessingAssets();
+        $this->failMissingSkuAssets();
 
         $processed = 0;
         $claimed = 0;
@@ -427,6 +434,20 @@ PROMPT;
         return $processed;
     }
 
+    public function failMissingSkuAssets(): int
+    {
+        return ProductDesignAsset::query()
+            ->where('is_approved', true)
+            ->whereIn('marketplace_listing_status', ['waiting', 'processing'])
+            ->where(function (Builder $query): void {
+                $query->whereNull('sku')->orWhereRaw("TRIM(sku) = ''");
+            })
+            ->update([
+                'marketplace_listing_status' => 'failed',
+                'marketplace_listing_completed_at' => now(),
+                'marketplace_listing_error' => 'Item khong co SKU. Hay bo sung SKU roi bam Retry.',
+            ]);
+    }
     public function recoverStaleProcessingAssets(): int
     {
         return ProductDesignAsset::query()

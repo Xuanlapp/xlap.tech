@@ -13024,3 +13024,9 @@ esources/views/livewire/modals/image/review-image.blade.php; deferred metadata s
 - Changed: app/Services/Marketplace/MarketplaceListingMetadataService.php marks claimed missing-SKU assets failed with Retry guidance before provider calls. AI_MEMORY.md records the change.
 - Deploy/queue impact: restart listing daemons; waiting missing-SKU items fail as workers claim them, existing active processing must finish or become stale first. No migration; other assets continue.
 - Validation: PHP syntax and diff check passed; VPS runtime unverified. Graphiti unavailable.
+
+### 2026-10-13 - Fail waiting and processing listing items without asset SKU
+- Root cause: the prior claim guard did not affect items already processing; dashboard shows ProductDesignAsset.sku, not product.sku.
+- Changed: app/Services/Marketplace/MarketplaceListingMetadataService.php fails missing-SKU waiting/processing rows on daemon poll and rejects missing SKU before any provider call, including direct retry. AI_MEMORY.md records the work.
+- Deploy/queue impact: deploy then restart listing daemons to terminate old in-flight attempts before the new poll; missing-SKU rows move to Failed, others continue. No migration. Avoid concurrent old workers overwriting statuses.
+- Validation: PHP lint and diff check passed. VPS provider/worker runtime unverified; Graphiti unavailable.
