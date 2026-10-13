@@ -423,11 +423,7 @@ class MarketplaceExports extends Component
                     ->unique()
                     ->values();
 
-                $query->where(function (Builder $query) use ($skus): void {
-                    foreach ($skus as $sku) {
-                        $query->orWhere('sku', 'like', '%'.$this->escapeLike($sku).'%');
-                    }
-                });
+                $query->whereIn('sku', $skus->all());
             });
     }
 

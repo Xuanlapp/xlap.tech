@@ -13030,3 +13030,8 @@ esources/views/livewire/modals/image/review-image.blade.php; deferred metadata s
 - Changed: app/Services/Marketplace/MarketplaceListingMetadataService.php fails missing-SKU waiting/processing rows on daemon poll and rejects missing SKU before any provider call, including direct retry. AI_MEMORY.md records the work.
 - Deploy/queue impact: deploy then restart listing daemons to terminate old in-flight attempts before the new poll; missing-SKU rows move to Failed, others continue. No migration. Avoid concurrent old workers overwriting statuses.
 - Validation: PHP lint and diff check passed. VPS provider/worker runtime unverified; Graphiti unavailable.
+
+### 2026-10-13 - Exact comma-separated SKU search in marketplace exports
+- Root cause: MarketplaceExports searched each SKU token with contains LIKE, so FCAMZ190 also matched FCAMZ1905 and expanded the export list.
+- Changed: app/Livewire/Pages/Marketplace/MarketplaceExports.php uses exact whereIn matching for trimmed comma/newline-separated SKU tokens. Existing owner, status, marketplace and export behavior remain unchanged.
+- Deploy/queue impact: search and exports use exact listed SKUs only; no migration or queue changes. Validation: PHP syntax and diff check passed; authenticated browser check pending. Graphiti unavailable.
