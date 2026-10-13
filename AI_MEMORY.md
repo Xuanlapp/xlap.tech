@@ -12904,3 +12904,9 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 - Root cause: Previous/Next buttons on the shared image modal called Livewire for each image and re-rendered the entire modal.
 - Changed: `resources/views/livewire/modals/image/review-image.blade.php` uses Alpine navigation for view-only galleries (including Glass PSD mockups), synchronizing image, title, count, source URL, copy and download. Editing/generation modes retain server navigation to preserve action state.
 - Validation: Blade cache passed; browser screenshot/timing not available. Full Drive image transfer may remain slow. No migration or queue impact.
+
+### 2026-10-13 — Immediate image preview shell
+- Root cause: review-image event waited on a Livewire request before displaying any modal.
+- Changed: resources/views/layouts/app.blade.php adds a pre-mounted Alpine loading preview; resources/views/livewire/modals/image/review-image.blade.php signals when the full modal is ready; updated .design/modal-preview-performance/DESIGN_BRIEF.md.
+- Validation: Blade view:cache and Vite build passed; authenticated desktop/mobile visual testing remains pending. Deploy Blade/views and assets; no database or queue impact. Graphiti unavailable.
+

@@ -449,6 +449,7 @@
                     }
                 },            }"
             x-show="modalVisible"
+            x-init="window.dispatchEvent(new Event('review-image-ready'))"
             x-transition.opacity.duration.150ms
             x-on:keydown.escape.window="modalVisible = false; $wire.close()"
             x-on:keydown.window="handleBoundsKeydown($event)"
