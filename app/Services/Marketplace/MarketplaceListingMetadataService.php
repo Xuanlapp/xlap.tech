@@ -427,25 +427,27 @@ PROMPT;
 
     private function claimNextPendingApprovedAsset(): ?ProductDesignAsset
     {
-        return DB::transaction(function (): ?ProductDesignAsset {
-            $runningUserIds = ProductDesignAsset::query()
-                ->where('marketplace_listing_status', 'processing')
-                ->pluck('user_id')
-                ->filter()
-                ->all();
+        return Cache::lock('marketplace-listing-metadata:claim', 30)->block(10, function (): ?ProductDesignAsset {
+            return DB::transaction(function (): ?ProductDesignAsset {
+                $runningUserIds = ProductDesignAsset::query()
+                    ->where('marketplace_listing_status', 'processing')
+                    ->pluck('user_id')
+                    ->filter()
+                    ->all();
 
-            $asset = $this->eligiblePendingApprovedAssetsQuery()
-                ->when($runningUserIds !== [], fn (Builder $query): Builder => $query->whereNotIn('user_id', $runningUserIds))
-                ->limit(500)
-                ->lockForUpdate()
-                ->get()
-                ->first(fn (ProductDesignAsset $asset): bool => ! $this->isProviderPausedForAsset($asset));
+                $asset = $this->eligiblePendingApprovedAssetsQuery()
+                    ->when($runningUserIds !== [], fn (Builder $query): Builder => $query->whereNotIn('user_id', $runningUserIds))
+                    ->limit(500)
+                    ->lockForUpdate()
+                    ->get()
+                    ->first(fn (ProductDesignAsset $asset): bool => ! $this->isProviderPausedForAsset($asset));
 
-            if (! $asset) {
-                return null;
-            }
+                if (! $asset) {
+                    return null;
+                }
 
-            return $this->assets->markListingProcessing($asset, $this->marketplaceForAsset($asset));
+                return $this->assets->markListingProcessing($asset, $this->marketplaceForAsset($asset));
+            });
         });
     }
 

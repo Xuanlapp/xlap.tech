@@ -18,6 +18,10 @@ class GenerateMarketplaceListingMetadata extends Command
 
     public function handle(MarketplaceListingMetadataService $metadata): int
     {
+        if ($this->option('daemon')) {
+            return $this->runDaemon($metadata);
+        }
+
         $lock = Cache::lock(
             'marketplace-listing-metadata:generate',
             (int) config('services.marketplace_listing.lock_seconds', 21600),
@@ -30,10 +34,6 @@ class GenerateMarketplaceListingMetadata extends Command
         }
 
         try {
-            if ($this->option('daemon')) {
-                return $this->runDaemon($metadata);
-            }
-
             $processed = $metadata->generatePendingApprovedAssets(
                 $this->configuredLimit(),
                 $this->configuredDelay(),

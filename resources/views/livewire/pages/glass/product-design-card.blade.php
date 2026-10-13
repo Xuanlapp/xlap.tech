@@ -2,7 +2,11 @@
     x-data="{
         showMasterBounds: localStorage.getItem('glass-show-master-bounds') === '1',
         masterBoundsOpacity: Number(localStorage.getItem('glass-master-bounds-opacity') || '0.72'),
+        keywordValue: @js($asset->keyword ?: 'Glass item'),
         init() {
+            window.addEventListener('glass-keyword-updated', (event) => {
+                if (Number(event.detail?.assetId) === {{ $asset->id }}) this.keywordValue = event.detail.keyword || 'Glass item';
+            });
             window.addEventListener('glass-master-bounds-changed', (event) => {
                 this.showMasterBounds = Boolean(event.detail?.visible);
                 if (event.detail?.opacity !== undefined) this.masterBoundsOpacity = Number(event.detail.opacity);
@@ -25,21 +29,24 @@
                 SKU: {{ $asset->sku ?: '-' }}
             </span>
 
-            <h2 class="min-w-0 flex-1 truncate text-base font-bold text-slate-950 sm:text-lg">
-                {{ $asset->keyword ?: 'Glass item' }}
-            </h2>
+            <div class="flex min-w-0 flex-1 items-center justify-start gap-2">
+                <h2 class="min-w-0 truncate text-base font-bold text-slate-950 dark:text-slate-100 sm:text-lg">
+                    <span x-text="keywordValue"></span>
+                </h2>
 
-            @if (! $asset->is_approved)
-                <x-button
+                @if (! $asset->is_approved)
+                    <x-button
                     color="slate"
                     variant="ghost"
                     size="xs"
                     type="button"
-                    wire:click="$dispatch('openModal', { component: 'modals.product.edit-keyword', arguments: { assetId: {{ $asset->id }}, productSlug: 'glass' } })"
+                    x-on:click="Livewire.dispatchTo('modals.product.edit-keyword', 'openModal', { component: 'modals.product.edit-keyword', arguments: { assetId: {{ $asset->id }}, productSlug: 'glass' } })"
                 >
                     Edit
-                </x-button>
-            @endif
+                    </x-button>
+                @endif
+
+            </div>
 
             @if ($asset->is_approved)
                 <x-badge color="green">

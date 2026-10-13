@@ -72,7 +72,11 @@ class EditKeyword extends Component
             properties: ['product_slug' => $this->productSlug, 'keyword' => $asset->keyword],
         );
 
-        $this->dispatchProductRefresh();
+        if ($this->productSlug === 'glass') {
+            $this->dispatch('glass-keyword-updated', assetId: $asset->id, keyword: (string) $asset->keyword);
+        } else {
+            $this->dispatchProductRefresh();
+        }
         $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da cap nhat keyword.');
         $this->close();
     }

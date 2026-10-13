@@ -12927,3 +12927,21 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 - Changed: removed the detailsLoading overlay from esources/views/livewire/modals/image/review-image.blade.php; deferred metadata still loads in the background.
 - Validation: Blade cache passed. No database or queue impact; browser visual verification remains pending.
 
+
+### 2026-10-13 — Move Glass Edit beside keyword
+- Root cause: the flexible keyword heading consumed the header row, placing Edit beside the approval control.
+- Changed: grouped the Glass keyword and Edit control together in resources/views/livewire/pages/glass/product-design-card.blade.php; added .design/glass-keyword-edit/DESIGN_BRIEF.md.
+- Validation: Blade cache passed. No database or queue impact; authenticated visual screenshot remains pending.
+
+
+### 2026-10-13 — Speed up Glass keyword edit save
+- Root cause: saving dispatched a full Glass status-panel refresh, re-rendering cards and image URLs after a small keyword update.
+- Changed: Glass cards update their keyword locally from a targeted browser event; the shared EditKeyword modal skips the full refresh for Glass while preserving refresh behavior for other product types.
+- Validation: PHP lint and Blade cache passed. No database schema or queue impact; authenticated timing remains pending.
+
+
+### 2026-10-13 — Parallel marketplace listing metadata daemon
+- Root cause: one Supervisor process plus a global lock held through the daemon loop serialized all listing metadata generation.
+- Changed: app/Console/Commands/GenerateMarketplaceListingMetadata.php bypasses the long-lived lock in daemon mode; app/Services/Marketplace/MarketplaceListingMetadataService.php serializes only DB asset claims using a cache lock; docs/xlap-vps-workers-supervisor.conf defines five numbered metadata processes.
+- Modules/queue impact: marketplace metadata polling can run up to five assets concurrently, while existing per-user processing exclusion remains; provider quota and actual throughput require VPS observation. No migration.
+- Validation: PHP lint and scoped diff check passed. No focused automated tests found. Local changes only; deploy code, diagnose the existing FATAL daemon from logs, then update live Supervisor config and verify status. Shared cache backend required across workers. Graphiti memory tool unavailable.
