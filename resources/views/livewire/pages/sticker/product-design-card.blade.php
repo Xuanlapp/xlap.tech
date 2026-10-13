@@ -71,7 +71,7 @@
                 @if ($asset->image_link)
                     <button
                         type="button"
-                        wire:click="$dispatch('review-image', { src: @js($asset->image_preview_url), original: @js($asset->image_link), title: 'Source image', productSlug: 'sticker', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
+                        x-on:click="$dispatch('review-image', { src: @js($asset->image_preview_url), original: @js($asset->image_link), title: 'Source image', productSlug: 'sticker', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
                         class="text-xs font-semibold text-blue-600 hover:text-blue-700"
                     >
                         Xem anh nguon
@@ -115,7 +115,7 @@
                     @if ($asset->redesign)
                         <button
                             type="button"
-                            wire:click="$dispatch('review-image', { src: @js($asset->redesign_preview_url), original: @js($asset->redesign), title: 'Create Master', gallery: @js($redesignGallery), currentIndex: @js($selectedRedesignIndex), action: @js($asset->hasCustomMockupOutput() ? null : 'sticker-redesign'), productSlug: 'sticker', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
+                            x-on:click="$dispatch('review-image', { src: @js($asset->redesign_preview_url), original: @js($asset->redesign), title: 'Create Master', gallery: @js($redesignGallery), currentIndex: @js($selectedRedesignIndex), action: @js($asset->hasCustomMockupOutput() ? null : 'sticker-redesign'), productSlug: 'sticker', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
                             class="block h-full w-full"
                         >
                             <img src="{{ $asset->redesign_preview_url }}" alt="Redesign image" loading="lazy" decoding="async" fetchpriority="low" class="h-full w-full object-contain">
@@ -135,7 +135,7 @@
                         @foreach ($redesignGallery as $index => $image)
                             <button
                                 type="button"
-                                wire:click="$dispatch('review-image', { src: @js($image['src']), original: @js($image['original']), title: @js($image['title']), gallery: @js($redesignGallery), currentIndex: {{ $index }}, action: @js($asset->hasCustomMockupOutput() ? null : 'sticker-redesign'), productSlug: 'sticker', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
+                                x-on:click="$dispatch('review-image', { src: @js($image['src']), original: @js($image['original']), title: @js($image['title']), gallery: @js($redesignGallery), currentIndex: {{ $index }}, action: @js($asset->hasCustomMockupOutput() ? null : 'sticker-redesign'), productSlug: 'sticker', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
                                 class="h-16 w-16 shrink-0 overflow-hidden rounded-md border {{ ($image['original'] ?? null) === $asset->redesign ? 'border-blue-500 ring-2 ring-blue-100' : 'border-slate-200' }} bg-slate-50"
                             >
                                 <img src="{{ $image['src'] }}" alt="{{ $image['title'] }}" loading="lazy" decoding="async" fetchpriority="low" class="h-full w-full object-cover">
@@ -223,7 +223,7 @@
                                 @foreach ($psdMockups as $mockup)
                                     <button
                                         type="button"
-                                        wire:click="$dispatch('review-image', { src: @js($mockup['src']), original: @js($mockup['original']), title: @js('MOCKUP '.$mockup['slot']), gallery: @js($psdMockupGallery), currentIndex: {{ $loop->index }}, productSlug: 'sticker', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
+                                        x-on:click="$dispatch('review-image', { src: @js($mockup['src']), original: @js($mockup['original']), title: @js('MOCKUP '.$mockup['slot']), gallery: @js($psdMockupGallery), currentIndex: {{ $loop->index }}, productSlug: 'sticker', assetId: {{ $asset->id }}, keyword: @js($asset->keyword) })"
                                         class="aspect-[4/3] overflow-hidden rounded-lg border border-slate-100 bg-slate-50 shadow-sm transition hover:border-indigo-300 hover:ring-2 hover:ring-indigo-100"
                                     >
                                         <img wire:key="sticker-mockup-{{ $asset->id }}-{{ $mockup['slot'] }}-{{ md5($mockup['src']) }}" src="{{ $mockup['card_src'] ?: $mockup['src'] }}" alt="MOCKUP {{ $mockup['slot'] }}" loading="lazy" decoding="async" fetchpriority="low" data-original="{{ $mockup['original'] }}" x-on:error="if ($el.dataset.original && $el.src !== $el.dataset.original) $el.src = $el.dataset.original" class="h-full w-full object-cover">

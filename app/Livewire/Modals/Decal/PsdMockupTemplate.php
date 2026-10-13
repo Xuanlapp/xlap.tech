@@ -80,7 +80,7 @@ class PsdMockupTemplate extends Component
     public function render(): View
     {
         return view('livewire.modals.decal.psd-mockup-template', [
-            'templates' => app(PsdMockupTemplateService::class)->decalTemplatesForUser(auth()->user()),
+            'templates' => $this->isOpen ? app(PsdMockupTemplateService::class)->decalTemplatesForUser(auth()->user()) : collect(),
         ]);
     }
 }

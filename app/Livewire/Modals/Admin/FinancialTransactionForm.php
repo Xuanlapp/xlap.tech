@@ -128,6 +128,10 @@ class FinancialTransactionForm extends Component
 
     public function render(): View
     {
+        if (! $this->isOpen) {
+            return view('livewire.modals.admin.financial-transaction-form', ['accounts' => collect(), 'categories' => []]);
+        }
+
         return view('livewire.modals.admin.financial-transaction-form', [
             'accounts' => FinancialAccount::query()->where('status', 'active')->orderBy('name')->get(['id', 'name', 'platform', 'currency']),
             'categories' => [

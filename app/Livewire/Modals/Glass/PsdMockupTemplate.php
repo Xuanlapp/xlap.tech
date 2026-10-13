@@ -80,7 +80,7 @@ class PsdMockupTemplate extends Component
     public function render(): View
     {
         return view('livewire.modals.glass.psd-mockup-template', [
-            'templates' => app(PsdMockupTemplateService::class)->glassTemplatesForUser(auth()->user()),
+            'templates' => $this->isOpen ? app(PsdMockupTemplateService::class)->glassTemplatesForUser(auth()->user()) : collect(),
         ]);
     }
 }

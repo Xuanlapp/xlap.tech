@@ -9,11 +9,7 @@
             $appUrl = rtrim((string) config('app.url'), '/');
 
             if ($appUrl === '' || str_contains($appUrl, 'localhost') || str_contains($appUrl, '127.0.0.1')) {
-                $appUrl = 'https://xlap.tech';
-            }
-
-            if (is_string($displayOriginalUrl) && str_starts_with($displayOriginalUrl, '/')) {
-                $displayOriginalUrl = $appUrl.$displayOriginalUrl;
+                $appUrl = request()->getSchemeAndHttpHost();
             }
 
             // Production serves the app over HTTPS; normalize legacy HTTP asset URLs before canvas loads them.
@@ -24,7 +20,7 @@
 
                 $url = trim($url);
                 if (str_starts_with($url, '/')) {
-                    $url = $appUrl.$url;
+                    return $url;
                 }
 
                 $requestScheme = request()->getScheme();
@@ -36,12 +32,7 @@
             };
 
             $displayOriginalUrl = $normalizeAssetUrl($displayOriginalUrl);
-            $boundsGuideDataUrl = null;
-            $boundsGuideDisk = \Illuminate\Support\Facades\Storage::disk('public');
-            $boundsGuidePath = app(\App\Services\Glass\GlassBoundsGuideStorage::class)->paths(auth()->user())['image'];
-            if ($boundsGuideDisk->exists($boundsGuidePath)) {
-                $boundsGuideDataUrl = 'data:image/png;base64,'.base64_encode($boundsGuideDisk->get($boundsGuidePath));
-            }
+            $boundsGuideUrl = $glassBoundsGuideUrl;
             // Bounds must use the same renderable/preview URL as the visible image;
             // the raw source URL may be private or blocked while the preview works.
             // Use the original asset first. The visible preview may be a temporary
@@ -68,6 +59,21 @@
                 modalVisible: true,
                 zoomed: false,
                 copied: false,
+                clientGallery: @js($gallery),
+                clientIndex: @js($currentIndex),
+                clientSrc: @js($src),
+                clientOriginal: @js($original),
+                clientTitle: @js($title),
+                switchClientImage(direction) {
+                    if (this.clientGallery.length < 2) return;
+                    this.clientIndex = (this.clientIndex + (direction === 'next' ? 1 : -1) + this.clientGallery.length) % this.clientGallery.length;
+                    const image = this.clientGallery[this.clientIndex] || {};
+                    this.clientSrc = image.src || image.original || null;
+                    this.clientOriginal = image.original || this.clientSrc;
+                    this.clientTitle = image.title || 'Review image';
+                    this.zoomed = false;
+                    this.dimensions = 'Loading...';
+                },
                 dimensions: 'Loading...',
                 boundsEditing: false,
                 boundsScale: 1,
@@ -79,7 +85,7 @@
                 boundsCropSize: 0,
                 boundsImage: null,
                 boundsGuideImage: null,
-                boundsGuideAvailable: @js((bool) $boundsGuideDataUrl),
+                boundsGuideAvailable: @js((bool) $boundsGuideUrl),
                 boundsSaving: false,
                 boundsLoading: false,
                 boundsCanvasWidth: @js((int) data_get($glassBoundsConfig, 'canvas.width', 1203)),
@@ -140,7 +146,7 @@
                     return copied;
                 },
                 copyImageUrl() {
-                    const imageUrl = @js($displayOriginalUrl);
+                    const imageUrl = @js($action || $editTarget) ? @js($displayOriginalUrl) : this.clientOriginal;
 
                     if (! imageUrl) {
                         return;
@@ -163,7 +169,7 @@
                         return;
                     }
 
-                    window.open(@js($displayOriginalUrl ?: $src), '_blank', 'noreferrer');
+                    window.open(@js($action || $editTarget) ? @js($displayOriginalUrl ?: $src) : (this.clientOriginal || this.clientSrc), '_blank', 'noreferrer');
                 },
                 async startBoundsEditor() {
                     this.boundsEditing = true;
@@ -241,7 +247,7 @@
                     image.src = sources[0];
                 },
                 async loadBoundsGuideImage() {
-                    const guideUrl = @js($boundsGuideDataUrl);
+                    const guideUrl = @js($boundsGuideUrl);
                     if (! guideUrl) return null;
                     const guide = new Image();
                     guide.crossOrigin = 'anonymous';
@@ -470,7 +476,7 @@
                             <div class="relative flex h-[min(76vh,820px)] min-h-[460px] items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
                                 @if (count($gallery) > 1)
                                     <div class="absolute left-5 top-5 z-10 rounded-xl border border-slate-200 bg-white/90 px-4 py-2 text-sm font-bold text-slate-900 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-900/90 dark:text-slate-100">
-                                        {{ $currentIndex + 1 }} / {{ count($gallery) }}
+                                        @if (!$action && !$editTarget)<span x-text="`${clientIndex + 1} / ${clientGallery.length}`"></span>@else{{ $currentIndex + 1 }} / {{ count($gallery) }}@endif
                                     </div>
                                 @endif
 
@@ -511,7 +517,11 @@
                                 @if (count($gallery) > 1)
                                     <button
                                         type="button"
-                                        wire:click="previous"
+                                        @if (!$action && !$editTarget)
+                                            x-on:click="switchClientImage('previous')"
+                                        @else
+                                            wire:click="previous"
+                                        @endif
                                         class="absolute left-5 top-1/2 z-10 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white/95 text-slate-900 shadow-lg transition hover:-translate-y-[52%] hover:bg-white hover:text-blue-700 dark:border-white/10 dark:bg-slate-900/90 dark:text-slate-100 dark:hover:bg-slate-800 dark:hover:text-blue-300"
                                         aria-label="Previous image"
                                     >
@@ -521,7 +531,11 @@
                                     </button>
                                     <button
                                         type="button"
-                                        wire:click="next"
+                                        @if (!$action && !$editTarget)
+                                            x-on:click="switchClientImage('next')"
+                                        @else
+                                            wire:click="next"
+                                        @endif
                                         class="absolute right-5 top-1/2 z-10 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white/95 text-slate-900 shadow-lg transition hover:-translate-y-[52%] hover:bg-white hover:text-blue-700 dark:border-white/10 dark:bg-slate-900/90 dark:text-slate-100 dark:hover:bg-slate-800 dark:hover:text-blue-300"
                                         aria-label="Next image"
                                     >
@@ -547,9 +561,9 @@
                                                 x-on:pointercancel="endBoundsDrag()"
                                                 x-on:wheel="zoomBoundsWithWheel($event)"
                                             ></canvas>
-                                            @if ($boundsGuideDataUrl)
+                                            @if ($boundsGuideUrl)
                                                 <img
-                                                    src="{{ $boundsGuideDataUrl }}"
+                                                    src="{{ $boundsGuideUrl }}"
                                                     alt=""
                                                     aria-hidden="true"
                                                     class="pointer-events-none absolute inset-0 h-full w-full object-contain"
@@ -569,9 +583,15 @@
                                         x-bind:class="zoomed ? 'scale-110 cursor-zoom-out' : 'scale-100 cursor-zoom-in hover:scale-[1.035]'"
                                         x-on:click="zoomed = ! zoomed"
                                         x-on:load="dimensions = `${$event.target.naturalWidth} x ${$event.target.naturalHeight} px`"
-                                        x-on:error="if (@js($original) && $event.target.src !== @js($original)) { $event.target.src = @js($original); }"
-                                        src="{{ $src }}"
-                                        alt="{{ $title }}"
+                                        @if (!$action && !$editTarget)
+                                            x-on:error="if (clientOriginal && $event.target.src !== clientOriginal) { $event.target.src = clientOriginal; }"
+                                            x-bind:src="clientSrc"
+                                            x-bind:alt="clientTitle"
+                                        @else
+                                            x-on:error="if (@js($original) && $event.target.src !== @js($original)) { $event.target.src = @js($original); }"
+                                            src="{{ $src }}"
+                                            alt="{{ $title }}"
+                                        @endif
                                         loading="eager"
                                         decoding="async"
                                         fetchpriority="high"
@@ -616,7 +636,7 @@
                                         </div> -->
                                         <div class="flex flex-wrap gap-2">
                                             @if ($displayOriginalUrl)
-                                                <a href="{{ $displayOriginalUrl }}" download class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700">
+                                                <a href="{{ $displayOriginalUrl }}" @if (!$action && !$editTarget) x-bind:href="clientOriginal || clientSrc" @endif download class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700">
                                                     <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                                         <path d="M12 3v12M7 10l5 5 5-5M5 21h14" />
                                                     </svg>
@@ -650,14 +670,14 @@
                                 <div class="space-y-4">
                                     <div>
                                         <div class="text-xs font-medium text-slate-500">Master Name</div>
-                                        <div class="mt-1 text-base font-bold text-slate-950">{{ $title ?: 'Create Master 1' }}</div>
+                                        <div class="mt-1 text-base font-bold text-slate-950">@if (!$action && !$editTarget)<span x-text="clientTitle || 'Create Master 1'"></span>@else{{ $title ?: 'Create Master 1' }}@endif</div>
                                     </div>
 
                                     @if ($original)
                                         <div>
                                             <div class="text-xs font-medium text-slate-500">Source Image</div>
                                             <div class="mt-2 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
-                                                <div class="min-w-0 flex-1 truncate text-sm text-slate-600">{{ $displayOriginalUrl }}</div>
+                                                <div class="min-w-0 flex-1 truncate text-sm text-slate-600">@if (!$action && !$editTarget)<span x-text="clientOriginal || ''"></span>@else{{ $displayOriginalUrl }}@endif</div>
                                                 <button type="button" x-on:click="copyImageUrl()" class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-900" aria-label="Copy image URL">
                                                     <svg x-show="! copied" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                                         <rect x="9" y="9" width="13" height="13" rx="2" />

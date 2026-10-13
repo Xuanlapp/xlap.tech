@@ -80,7 +80,7 @@ class PsdMockupTemplate extends Component
     public function render(): View
     {
         return view('livewire.modals.ornament-etsy.psd-mockup-template', [
-            'templates' => app(PsdMockupTemplateService::class)->ornamentTemplatesForUser(auth()->user()),
+            'templates' => $this->isOpen ? app(PsdMockupTemplateService::class)->ornamentTemplatesForUser(auth()->user()) : collect(),
         ]);
     }
 }

@@ -309,6 +309,10 @@ class EditUser extends Component
 
     public function render(): View
     {
+        if (! $this->isOpen) {
+            return view('livewire.modals.admin.edit-user', ['products' => collect(), 'aiProviderOptions' => [], 'vertexCredentialUsers' => collect(), 'v98StoreCredentialUsers' => collect()]);
+        }
+
         $service = app(UserAccessService::class);
 
         return view('livewire.modals.admin.edit-user', [

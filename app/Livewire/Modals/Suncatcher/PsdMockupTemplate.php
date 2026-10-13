@@ -80,7 +80,7 @@ class PsdMockupTemplate extends Component
     public function render(): View
     {
         return view('livewire.modals.suncatcher.psd-mockup-template', [
-            'templates' => app(PsdMockupTemplateService::class)->suncatcherTemplatesForUser(auth()->user()),
+            'templates' => $this->isOpen ? app(PsdMockupTemplateService::class)->suncatcherTemplatesForUser(auth()->user()) : collect(),
         ]);
     }
 }

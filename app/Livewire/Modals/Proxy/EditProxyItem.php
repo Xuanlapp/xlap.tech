@@ -163,6 +163,10 @@ class EditProxyItem extends Component
 
     public function render(): View
     {
+        if (! $this->isOpen) {
+            return view('livewire.modals.proxy.edit-proxy-item', ['users' => collect(), 'managers' => collect()]);
+        }
+
         return view('livewire.modals.proxy.edit-proxy-item', [
             'users' => User::query()->where('is_admin', false)->where('role', 'user')->orderBy('name')->get(['id', 'name']),
             'managers' => User::query()->where('is_admin', false)->where('role', 'manager')->orderBy('name')->get(['id', 'name']),

@@ -80,7 +80,7 @@ class PsdMockupTemplate extends Component
     public function render(): View
     {
         return view('livewire.modals.ceramic.psd-mockup-template', [
-            'templates' => app(PsdMockupTemplateService::class)->ceramicTemplatesForUser(auth()->user()),
+            'templates' => $this->isOpen ? app(PsdMockupTemplateService::class)->ceramicTemplatesForUser(auth()->user()) : collect(),
         ]);
     }
 }

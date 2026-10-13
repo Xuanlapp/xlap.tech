@@ -217,6 +217,10 @@ class AddUser extends Component
 
     public function render(): View
     {
+        if (! $this->isOpen) {
+            return view('livewire.modals.admin.add-user', ['products' => collect(), 'aiProviderOptions' => [], 'vertexCredentialUsers' => collect(), 'v98StoreCredentialUsers' => collect()]);
+        }
+
         $service = app(UserAccessService::class);
 
         return view('livewire.modals.admin.add-user', [

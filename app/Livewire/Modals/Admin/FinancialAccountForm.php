@@ -142,6 +142,10 @@ class FinancialAccountForm extends Component
 
     public function render(): View
     {
+        if (! $this->isOpen) {
+            return view('livewire.modals.admin.financial-account-form', ['users' => collect()]);
+        }
+
         return view('livewire.modals.admin.financial-account-form', [
             'users' => User::query()->where('is_admin', false)->where('role', '!=', 'admin')->orderBy('name')->get(['id', 'name', 'email']),
         ]);

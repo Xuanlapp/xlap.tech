@@ -24,7 +24,7 @@
             <button
                 type="button"
                 x-show="! failed"
-                wire:click="$dispatch('{{ $productSlug === 'suncatcher' ? 'review-image-suncatcher' : 'review-image' }}', { src: currentSrc, original: @js($original ?: $src), title: @js($alt), assetId: @js($assetId), productSlug: @js($productSlug), keyword: @js($keyword), action: @js($action), editTarget: @js($editTarget), providerKey: @js($providerKey), imageModel: @js($imageModel) })"
+                x-on:click="$dispatch('{{ $productSlug === 'suncatcher' ? 'review-image-suncatcher' : 'review-image' }}', { src: currentSrc, original: @js($original ?: $src), title: @js($alt), assetId: @js($assetId), productSlug: @js($productSlug), keyword: @js($keyword), action: @js($action), editTarget: @js($editTarget), providerKey: @js($providerKey), imageModel: @js($imageModel) })"
                 class="flex h-full w-full cursor-zoom-in items-center justify-center"
             >
                 <img

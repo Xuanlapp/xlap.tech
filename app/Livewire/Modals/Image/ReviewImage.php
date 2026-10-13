@@ -887,15 +887,23 @@ class ReviewImage extends Component
     }
 
     public function render(): View
-    {        $guide = $this->productSlug === 'ceramic' ? app(CeramicBoundsGuideStorage::class) : app(GlassBoundsGuideStorage::class);
-        $this->glassBoundsGuideUrl = $guide->url(auth()->user());
-        try {
-            $config = $guide->config(auth()->user());
-        } catch (InvalidArgumentException $exception) {
-            Log::warning('Bounds guide analysis failed.', ['message' => $exception->getMessage()]);
-            $config = null;
+    {
+        $this->glassBoundsGuideUrl = null;
+        $this->glassBoundsConfig = [];
+
+        if ($this->isOpen && in_array($this->action, ['glass-redesign', 'ceramic-redesign'], true)) {
+            $guide = $this->productSlug === 'ceramic'
+                ? app(CeramicBoundsGuideStorage::class)
+                : app(GlassBoundsGuideStorage::class);
+            $this->glassBoundsGuideUrl = $guide->url(auth()->user());
+            try {
+                $config = $guide->config(auth()->user());
+            } catch (InvalidArgumentException $exception) {
+                Log::warning('Bounds guide analysis failed.', ['message' => $exception->getMessage()]);
+                $config = null;
+            }
+            $this->glassBoundsConfig = is_array($config) ? $config : [];
         }
-        $this->glassBoundsConfig = is_array($config) ? $config : [];
 
         return view('livewire.modals.image.review-image');
     }

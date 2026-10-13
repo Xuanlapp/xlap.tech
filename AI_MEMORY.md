@@ -12878,3 +12878,29 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 - Deploy impact: deploy repository and modal views; no migration, queue, or API change. Existing rows are not automatically expanded/deleted; new uploads retain the newest four.
 - Validation: PHP lint passed for repository and seven modal views; real upload/storage cleanup test remains pending.
 - Follow-up validation: added and passed `test_sticker_psd_upload_keeps_four_newest_templates` (1 test, 4 assertions), confirming upload 5 removes the oldest row/file and the newest remains active.
+
+### 2026-10-13 — Speed up Review Image modal opening
+
+- Root cause: the shared review modal embedded the complete bounds-guide PNG as a base64 data URL on every render and loaded/analyzed guide configuration even for non-bounds previews.
+- Changed: `app/Livewire/Modals/Image/ReviewImage.php` only loads bounds URL/config for Glass/Ceramic redesign actions; `resources/views/livewire/modals/image/review-image.blade.php` now uses the existing guide URL instead of inlining image bytes. Added `.design/modal-preview-performance/DESIGN_BRIEF.md`.
+- Validation: PHP lint and Blade cache pass. Authenticated timing/screenshots remain pending. No migration or queue impact.
+
+### 2026-10-13 — Reduce queries from closed modals
+
+- Root cause: Livewire modal components are mounted in page layouts; several rendered database lists even when `isOpen` was false, including seven PSD lists and admin/proxy user/account lists.
+- Changed: `app/Livewire/Modals/*/PsdMockupTemplate.php` now queries templates only while open; `Admin/AddUser.php`, `Admin/EditUser.php`, `Admin/FinancialAccountForm.php`, `Admin/FinancialTransactionForm.php`, and `Proxy/EditProxyItem.php` return empty collections/options while closed. Added `.design/modal-preview-performance` notes.
+- Validation: PHP lint, Blade cache, Vite build pass. Local Livewire check showed closed Glass PSD modal 0 DB queries and open state 2 queries. Full authenticated modal timing remains pending.
+- Deploy/queue impact: deploy PHP and no migration; no queue change. Better Design/Graphiti unavailable.
+
+### 2026-10-13 — Instant image preview modal dispatch
+
+- Root cause: image cards used `wire:click` to dispatch review events, forcing a Livewire roundtrip before the modal could appear; local storage URLs were also rewritten to a remote fallback host in the preview modal.
+- Changed: `resources/views/components/image-preview.blade.php` and product card views for Ceramic, Decal, Glass, Ornament Etsy, and Sticker now dispatch review events client-side with Alpine. `resources/views/livewire/modals/image/review-image.blade.php` preserves same-origin local storage URLs. Added notes to `.design/modal-preview-performance/DESIGN_BRIEF.md`.
+- Validation: Blade cache, Vite build, and diff checks pass. Authenticated timing and screenshot comparison remain pending; Better Design/Graphiti unavailable.
+- Deploy/queue impact: deploy Blade files/assets; no migration or queue change.
+
+### 2026-10-13 — Remove Livewire roundtrip from view-only gallery arrows
+
+- Root cause: Previous/Next buttons on the shared image modal called Livewire for each image and re-rendered the entire modal.
+- Changed: `resources/views/livewire/modals/image/review-image.blade.php` uses Alpine navigation for view-only galleries (including Glass PSD mockups), synchronizing image, title, count, source URL, copy and download. Editing/generation modes retain server navigation to preserve action state.
+- Validation: Blade cache passed; browser screenshot/timing not available. Full Drive image transfer may remain slow. No migration or queue impact.
