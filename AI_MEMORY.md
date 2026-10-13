@@ -12924,7 +12924,8 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 
 ### 2026-10-13 — Remove modal metadata loading overlay
 - Root cause: the Review Image modal displayed a blocking spinner over the information panel while deferred details loaded.
-- Changed: removed the detailsLoading overlay from esources/views/livewire/modals/image/review-image.blade.php; deferred metadata still loads in the background.
+- Changed: removed the detailsLoading overlay from 
+esources/views/livewire/modals/image/review-image.blade.php; deferred metadata still loads in the background.
 - Validation: Blade cache passed. No database or queue impact; browser visual verification remains pending.
 
 
@@ -13011,3 +13012,9 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 - Changed: app/Services/Product/ApprovedAssetDriveExportService.php now atomically writes asset URLs and upload completion after locking/validating the claimed row; cleanup/activity log exceptions are reported after commit and do not change completed status; catch only marks a still-processing row failed.
 - Deploy/queue impact: future uploads have consistent DB status; existing mismatched failed records require separate reconciliation against real Drive files. No migration; 10-worker claim behavior unchanged.
 - Validation: PHP lint, Blade view:cache, scoped diff check passed. No production Drive integration verification. Graphiti unavailable.
+
+### 2026-10-13 - Fail paused listing metadata instead of indefinite waiting
+- Root cause: claim skipped paused-provider assets, leaving them waiting for up to six hours.
+- Changed: app/Services/Marketplace/MarketplaceListingMetadataService.php marks paused candidates failed with reason and Retry guidance; AI_MEMORY.md records this.
+- Deploy/queue impact: restart listing daemon; paused waiting items transition to Failed without provider calls, healthy items continue. No migration.
+- Validation: PHP lint passed. Production worker/provider unverified; Graphiti unavailable.

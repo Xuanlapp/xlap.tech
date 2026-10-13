@@ -448,11 +448,29 @@ PROMPT;
     {
         return Cache::lock('marketplace-listing-metadata:claim', 30)->block(10, function (): ?ProductDesignAsset {
             return DB::transaction(function (): ?ProductDesignAsset {
-                $asset = $this->eligiblePendingApprovedAssetsQuery()
+                $candidates = $this->eligiblePendingApprovedAssetsQuery()
                     ->limit(500)
                     ->lockForUpdate()
-                    ->get()
-                    ->first(fn (ProductDesignAsset $asset): bool => ! $this->isProviderPausedForAsset($asset));
+                    ->get();
+
+                $asset = null;
+                foreach ($candidates as $candidate) {
+                    if ($this->isProviderPausedForAsset($candidate)) {
+                        $providerKey = $this->listingProviderKey($candidate);
+                        $pause = Cache::get('provider-pause:'.$providerKey.':user:'.$candidate->user_id);
+                        $reason = is_array($pause) ? (string) ($pause['reason'] ?? '') : '';
+                        $this->assets->markListingFailed(
+                            $candidate,
+                            $this->providerLabel($providerKey).' dang tam dung do het tien/het quota.'
+                                .($reason !== '' ? ' '.$reason : '').' Hay kiem tra provider roi bam Retry.',
+                        );
+
+                        continue;
+                    }
+
+                    $asset = $candidate;
+                    break;
+                }
 
                 if (! $asset) {
                     return null;
