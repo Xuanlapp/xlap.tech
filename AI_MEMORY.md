@@ -12864,3 +12864,17 @@ User chose to remove thumbnail display to preserve reliable transparency semanti
 
 - Validation: Livewire component test on local asset 7880/user 24 selected template 19 without validation errors, rendered the selected option, and emitted the success toast. A second call with an empty value restored primary fallback. The whole test ran inside a transaction and rolled back; database remains unchanged. Migration is Ran and the column exists.
 - Deploy/queue impact: none. Browser-level click still depends on local authenticated UI, but component behavior is verified.
+
+### 2026-10-13 — Rotate bounds image in Glass and Ceramic
+
+- Root cause: shared bounds editor supported zoom and translation but not angular alignment.
+- Changed: `resources/views/livewire/modals/image/review-image.blade.php` adds a 1-degree rotation slider/buttons and applies the same centered rotation to preview and canvas export; `app/Services/Glass/GlassService.php` and `app/Services/Ceramic/CeramicService.php` apply the angle to server fallback output. Documented in `.design/bounds-rotation/DESIGN_BRIEF.md`.
+- Validation: PHP lint, Blade cache, and Vite build passed. Authenticated desktop/mobile screenshots and actual image comparison remain unverified.
+- Deploy impact: deploy Blade and both services; no database migration or queue behavior change. Graphiti and Better Design review unavailable.
+
+### 2026-10-13 — Increase PSD retention from 2 to 4
+
+- Changed `app/Repositories/Product/PsdMockupTemplateRepository.php` retention from 2 to 4 per user/product/function. Updated all seven PSD modal messages (Glass, Ceramic, Decal, Sticker, Suncatcher, Ornament Amazon 2, Ornament Etsy) to say upload 5 removes the oldest. Added `.design/psd-retention-4/DESIGN_BRIEF.md`.
+- Deploy impact: deploy repository and modal views; no migration, queue, or API change. Existing rows are not automatically expanded/deleted; new uploads retain the newest four.
+- Validation: PHP lint passed for repository and seven modal views; real upload/storage cleanup test remains pending.
+- Follow-up validation: added and passed `test_sticker_psd_upload_keeps_four_newest_templates` (1 test, 4 assertions), confirming upload 5 removes the oldest row/file and the newest remains active.

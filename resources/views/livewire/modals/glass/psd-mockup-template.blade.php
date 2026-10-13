@@ -15,7 +15,7 @@
                     <div class="flex items-center justify-between rounded-t border-b border-gray-200 p-4 md:p-5">
                         <div>
                             <h3 class="text-xl font-semibold text-gray-900">PSD Mockup Tu Chon</h3>
-                            <p class="mt-1 text-sm text-gray-500">Moi chuc nang giu toi da 2 PSD. Upload file thu 3 se tu dong xoa file cu nhat.</p>
+                            <p class="mt-1 text-sm text-gray-500">Moi chuc nang giu toi da 4 PSD. Upload file thu 5 se tu dong xoa file cu nhat.</p>
                         </div>
 
                         <button

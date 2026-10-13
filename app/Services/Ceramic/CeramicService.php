@@ -102,6 +102,7 @@ class CeramicService
         $scale = max(0.01, (float) ($transform['scale'] ?? 1));
         $offsetX = (float) ($transform['offsetX'] ?? 0);
         $offsetY = (float) ($transform['offsetY'] ?? 0);
+        $rotation = max(-180, min(180, (int) ($transform['rotation'] ?? 0)));
 
         $output = imagecreatetruecolor($canvasWidth, $canvasHeight);
         imagealphablending($output, false);
@@ -109,7 +110,22 @@ class CeramicService
         $transparent = imagecolorallocatealpha($output, 0, 0, 0, 127);
         imagefill($output, 0, 0, $transparent);
         imagealphablending($output, true);
-        imagecopyresampled($output, $source, (int) round($offsetX), (int) round($offsetY), 0, 0, (int) round(imagesx($source) * $scale), (int) round(imagesy($source) * $scale), imagesx($source), imagesy($source));
+        if ($rotation === 0) {
+            imagecopyresampled($output, $source, (int) round($offsetX), (int) round($offsetY), 0, 0, (int) round(imagesx($source) * $scale), (int) round(imagesy($source) * $scale), imagesx($source), imagesy($source));
+        } else {
+            $width = max(1, (int) round(imagesx($source) * $scale));
+            $height = max(1, (int) round(imagesy($source) * $scale));
+            $scaled = imagecreatetruecolor($width, $height);
+            imagealphablending($scaled, false);
+            imagesavealpha($scaled, true);
+            $clear = imagecolorallocatealpha($scaled, 0, 0, 0, 127);
+            imagefill($scaled, 0, 0, $clear);
+            imagecopyresampled($scaled, $source, 0, 0, 0, 0, $width, $height, imagesx($source), imagesy($source));
+            $rotated = imagerotate($scaled, -$rotation, $clear);
+            imagedestroy($scaled);
+            imagecopy($output, $rotated, (int) round($offsetX + ($width - imagesx($rotated)) / 2), (int) round($offsetY + ($height - imagesy($rotated)) / 2), 0, 0, imagesx($rotated), imagesy($rotated));
+            imagedestroy($rotated);
+        }
         imagedestroy($source);
 
         $centerX = $targetX + $targetWidth / 2;

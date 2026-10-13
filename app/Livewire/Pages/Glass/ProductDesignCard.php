@@ -11,6 +11,8 @@ use App\Services\Glass\GlassService;
 use App\Services\Glass\GlassBoundsGuideStorage;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Reactive;
@@ -112,16 +114,32 @@ class ProductDesignCard extends Component
         try {
             $user = auth()->user();
             $asset = app(GlassService::class)->assetForUser($user, $this->assetId);
-            $selectedId = $templateId === '' ? null : (int) $templateId;
-            if ($selectedId !== null) {
-                app(PsdMockupTemplateService::class)->glassTemplateForUser($user, $selectedId);
+            if (! Schema::hasColumn('product_design_assets', 'glass_item_psd_template_id')) {
+                throw new RuntimeException('Database chua co cot PSD rieng. Hay chay php artisan migrate tren moi truong dang dung.');
             }
-            $asset->glass_item_psd_template_id = $selectedId;
-            $asset->save();
+            if ($templateId !== '' && (! ctype_digit($templateId) || (int) $templateId < 1)) {
+                throw new RuntimeException('PSD da chon khong hop le. Hay tai lai trang.');
+            }
+            $selectedId = $templateId === '' ? null : (int) $templateId;
+            if ($selectedId !== null && ! app(PsdMockupTemplateService::class)->availableGlassTemplateForUser($user, $selectedId)) {
+                throw new RuntimeException('PSD nay khong con trong danh sach cua ban. Hay tai lai trang va chon lai.');
+            }
+            DB::table('product_design_assets')->where('id', $asset->id)->update([
+                'glass_item_psd_template_id' => $selectedId,
+                'updated_at' => now(),
+            ]);
             $this->dispatch('toast', type: 'success', title: 'Da luu PSD', message: $selectedId ? 'PSD rieng chi ap dung cho item nay.' : 'Item nay su dung PSD chinh.');
         } catch (Throwable $exception) {
-            $this->reportUserActionError($exception, 'glass.select_item_psd', ['asset_id' => $this->assetId]);
-            $this->dispatch('toast', type: 'error', title: 'Khong the chon PSD', message: 'Vui long thu lai.');
+            $this->reportUserActionError($exception, 'glass.select_item_psd', [
+                'asset_id' => $this->assetId,
+                'template_id' => $templateId,
+            ]);
+            Log::error('Glass item PSD selection failed.', [
+                'asset_id' => $this->assetId,
+                'template_id' => $templateId,
+                'error' => $exception->getMessage(),
+            ]);
+            $this->dispatch('toast', type: 'error', title: 'Khong the chon PSD', message: $exception instanceof RuntimeException ? $exception->getMessage() : 'Khong luu duoc PSD. Hay xem log server va thu lai.');
         }
     }
 

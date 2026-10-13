@@ -94,7 +94,7 @@ class PsdMockupTemplateRepository
                 ->orderByDesc('created_at')
                 ->orderByDesc('id')
                 ->get()
-                ->slice(2);
+                ->slice(4);
 
             foreach ($obsolete as $old) {
                 $removedPaths[] = $old->storage_path;

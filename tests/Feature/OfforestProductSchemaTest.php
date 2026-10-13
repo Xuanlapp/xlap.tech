@@ -971,6 +971,33 @@ class OfforestProductSchemaTest extends TestCase
         $this->assertTrue($service->activeStickerTemplateForUser($user)->is($second));
     }
 
+    public function test_sticker_psd_upload_keeps_four_newest_templates(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create();
+        $product = Product::where('slug', 'sticker')->firstOrFail();
+        $user->products()->attach($product);
+        $service = app(PsdMockupTemplateService::class);
+        $templates = [];
+
+        foreach (range(1, 5) as $number) {
+            $templates[] = $service->uploadStickerTemplate(
+                $user,
+                UploadedFile::fake()->create("template-{$number}.psd", 10, 'application/octet-stream'),
+                "Template {$number}",
+            );
+        }
+
+        $this->assertSame(
+            array_map(fn ($template) => $template->id, array_slice($templates, 1)),
+            $service->stickerTemplatesForUser($user)->pluck('id')->sort()->values()->all(),
+        );
+        $this->assertDatabaseMissing('psd_mockup_templates', ['id' => $templates[0]->id]);
+        Storage::disk('public')->assertMissing($templates[0]->storage_path);
+        $this->assertTrue($service->activeStickerTemplateForUser($user)->is($templates[4]));
+    }
+
     public function test_sticker_service_renders_psd_mockups_from_active_template(): void
     {
         Storage::fake('public');

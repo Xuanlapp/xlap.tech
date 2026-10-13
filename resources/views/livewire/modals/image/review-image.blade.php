@@ -72,6 +72,7 @@
                 boundsEditing: false,
                 boundsScale: 1,
                 boundsBaseScale: 1,
+                boundsRotation: 0,
                 boundsOffsetX: 0,
                 boundsOffsetY: 0,
                 boundsGuideOpacity: Number(localStorage.getItem('glass-master-bounds-opacity') || '0.72'),
@@ -168,6 +169,7 @@
                     this.boundsEditing = true;
                     this.boundsLoading = true;
                     this.boundsImage = null;
+                    this.boundsRotation = 0;
                     await this.$wire.{{ $productSlug === 'ceramic' ? 'prepareCeramicBoundsEditor' : 'prepareGlassBoundsEditor' }}();
                     this.$nextTick(() => this.initBoundsEditor());
                 },
@@ -290,7 +292,9 @@
                         context.beginPath();
                         context.arc(center.x, center.y, radius, 0, Math.PI * 2);
                         context.clip();
-                        context.drawImage(this.boundsImage, this.boundsOffsetX, this.boundsOffsetY, imageWidth, imageHeight);
+                        context.translate(this.boundsOffsetX + imageWidth / 2, this.boundsOffsetY + imageHeight / 2);
+                        context.rotate(this.boundsRotation * Math.PI / 180);
+                        context.drawImage(this.boundsImage, -imageWidth / 2, -imageHeight / 2, imageWidth, imageHeight);
                         context.restore();
                     }
 
@@ -315,13 +319,15 @@
                         context.save();
                         context.strokeStyle = '#38bdf8';
                         context.setLineDash([10, 7]);
-                        context.strokeRect(this.boundsOffsetX, this.boundsOffsetY, imageWidth, imageHeight);
+                        context.translate(this.boundsOffsetX + imageWidth / 2, this.boundsOffsetY + imageHeight / 2);
+                        context.rotate(this.boundsRotation * Math.PI / 180);
+                        context.strokeRect(-imageWidth / 2, -imageHeight / 2, imageWidth, imageHeight);
                         context.setLineDash([]);
                         context.beginPath();
-                        context.moveTo(this.boundsOffsetX, this.boundsOffsetY);
-                        context.lineTo(this.boundsOffsetX + imageWidth, this.boundsOffsetY + imageHeight);
-                        context.moveTo(this.boundsOffsetX + imageWidth, this.boundsOffsetY);
-                        context.lineTo(this.boundsOffsetX, this.boundsOffsetY + imageHeight);
+                        context.moveTo(-imageWidth / 2, -imageHeight / 2);
+                        context.lineTo(imageWidth / 2, imageHeight / 2);
+                        context.moveTo(imageWidth / 2, -imageHeight / 2);
+                        context.lineTo(-imageWidth / 2, imageHeight / 2);
                         context.stroke();
                         context.restore();
                     }
@@ -333,6 +339,10 @@
                     this.boundsOffsetX = center.x + (this.boundsOffsetX - center.x) * ratio;
                     this.boundsOffsetY = center.y + (this.boundsOffsetY - center.y) * ratio;
                     this._boundsPreviousScale = this.boundsScale;
+                    this.drawBoundsCanvas();
+                },
+                rotateBounds(step) {
+                    this.boundsRotation = Math.max(-180, Math.min(180, this.boundsRotation + step));
                     this.drawBoundsCanvas();
                 },
                 moveBounds(direction) {
@@ -399,13 +409,11 @@
                     context.beginPath();
                     context.arc(center.x, center.y, radius, 0, Math.PI * 2);
                     context.clip();
-                    context.drawImage(
-                        this.boundsImage,
-                        this.boundsOffsetX,
-                        this.boundsOffsetY,
-                        this.boundsImage.naturalWidth * this.boundsScale,
-                        this.boundsImage.naturalHeight * this.boundsScale,
-                    );
+                    const imageWidth = this.boundsImage.naturalWidth * this.boundsScale;
+                    const imageHeight = this.boundsImage.naturalHeight * this.boundsScale;
+                    context.translate(this.boundsOffsetX + imageWidth / 2, this.boundsOffsetY + imageHeight / 2);
+                    context.rotate(this.boundsRotation * Math.PI / 180);
+                    context.drawImage(this.boundsImage, -imageWidth / 2, -imageHeight / 2, imageWidth, imageHeight);
                     context.restore();
 
                     const dataUrl = canvas.toDataURL('image/png');
@@ -417,13 +425,14 @@
                     } catch (error) {
                         console.error('Glass bounds save failed', error);
                         if (error?.name === 'SecurityError') {
-                            await this.$wire.saveGlassBoundsFromTransform({
+                            await this.$wire.{{ $productSlug === 'ceramic' ? 'saveCeramicBoundsFromTransform' : 'saveGlassBoundsFromTransform' }}({
                                 canvasWidth: this.boundsCanvasWidth,
                                 canvasHeight: this.boundsCanvasHeight,
                                 target: this.boundsTarget,
                                 scale: this.boundsScale,
                                 offsetX: this.boundsOffsetX,
                                 offsetY: this.boundsOffsetY,
+                                rotation: this.boundsRotation,
                             });
                             this.boundsEditing = false;
                             return;
@@ -673,6 +682,14 @@
                                                 <div class="mb-1 flex items-center justify-between text-xs font-semibold text-slate-600"><span>Zoom</span><span x-text="`${Math.round((boundsScale / boundsBaseScale) * 100)}%`"></span></div>
                                                 <input type="range" :min="boundsBaseScale * 0.3" :max="boundsBaseScale * 1.8" :step="boundsBaseScale * 0.001" x-model.number="boundsScale" x-on:input="updateBoundsScale()" class="w-full">
                                             </label>
+                                            <div>
+                                                <div class="mb-1 flex items-center justify-between text-xs font-semibold text-slate-600"><label for="bounds-rotation">Xoay ảnh</label><span x-text="`${boundsRotation}°`"></span></div>
+                                                <div class="flex items-center gap-2">
+                                                    <button type="button" x-on:click="rotateBounds(-1)" aria-label="Xoay trái 1 độ" class="rounded-lg border border-slate-300 bg-white px-3 py-1 text-sm font-semibold text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600">-1°</button>
+                                                    <input id="bounds-rotation" type="range" min="-180" max="180" step="1" x-model.number="boundsRotation" x-on:input="drawBoundsCanvas()" class="min-w-0 flex-1" aria-label="Góc xoay ảnh">
+                                                    <button type="button" x-on:click="rotateBounds(1)" aria-label="Xoay phải 1 độ" class="rounded-lg border border-slate-300 bg-white px-3 py-1 text-sm font-semibold text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600">+1°</button>
+                                                </div>
+                                            </div>
                                             <label class="block">
                                                 <div class="mb-1 flex items-center justify-between text-xs font-semibold text-slate-600"><span>Guide opacity</span><span x-text="`${Math.round(boundsGuideOpacity * 100)}%`"></span></div>
                                                 <input type="range" min="0" max="1" step="0.01" x-model.number="boundsGuideOpacity" x-on:input="drawBoundsCanvas()" class="w-full">
