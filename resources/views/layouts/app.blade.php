@@ -73,6 +73,19 @@
                 </button>
             </div>
 
+            <div
+                x-data="{ previewOpening: false, openingTimer: null, startOpening() { this.previewOpening = true; clearTimeout(this.openingTimer); this.openingTimer = setTimeout(() => this.previewOpening = false, 15000) }, stopOpening() { this.previewOpening = false; clearTimeout(this.openingTimer) } }"
+                x-on:review-image.window="startOpening()"
+                x-on:review-image-suncatcher.window="startOpening()"
+                x-on:review-image-modal-ready.window="stopOpening()"
+                x-show="previewOpening"
+                x-cloak
+                class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/35"
+                role="status"
+                aria-live="polite"
+            >
+                <div class="rounded-lg bg-slate-900/90 px-4 py-3 text-sm font-semibold text-white shadow-xl">Dang mo anh...</div>
+            </div>
             <livewire:modals.image.review-image />
             <livewire:modals.suncatcher.review-image />
             <livewire:modals.account-manager.data-form />

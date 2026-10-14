@@ -58,6 +58,7 @@
 
         <div
             wire:init="loadPreviewDetails"
+            x-init="$dispatch('review-image-modal-ready')"
             x-data="{
                 modalVisible: true,
                 zoomed: false,

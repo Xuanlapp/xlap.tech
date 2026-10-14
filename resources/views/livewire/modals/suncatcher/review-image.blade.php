@@ -14,6 +14,7 @@
         @endphp
 
         <div
+            x-init="$dispatch('review-image-modal-ready')"
             x-data="{
                 zoomed: false,
                 copied: false,
