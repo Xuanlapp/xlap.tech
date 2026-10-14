@@ -141,6 +141,7 @@ class CeramicStatusPanel extends Component
 
     public function render(): View
     {
+        $this->statusCounts = app(CeramicService::class)->statusCountsForUser(auth()->user(), $this->search);
 
         return view('livewire.pages.ceramic.ceramic-status-panel', [
             'assets' => app(CeramicService::class)->paginatedAssetsForUser(

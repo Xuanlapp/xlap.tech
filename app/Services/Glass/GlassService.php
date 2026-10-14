@@ -165,11 +165,14 @@ class GlassService
         if ($isSourceImage) {
             $asset->update(['image_link' => $cachedPath]);
         } else {
-            $candidates = collect($asset->redesign_candidates ?: [])->map(
-                fn ($candidate) => ($candidate['original'] ?? $candidate) === $source
-                    ? (is_array($candidate) ? array_merge($candidate, ['original' => $cachedPath, 'src' => $cachedPath]) : $cachedPath)
-                    : $candidate
-            )->push($cachedPath)->filter()->unique()->values()->all();
+            $candidates = collect($asset->redesign_candidates ?: [])
+                ->push($asset->redesign)
+                ->push($source)
+                ->push($cachedPath)
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
             $asset->update(['redesign' => $cachedPath, 'redesign_candidates' => $candidates]);
         }
         return $asset->refresh();
@@ -508,7 +511,7 @@ class GlassService
         Storage::disk('public')->put($path, $normalizedPng);
         $imageLink = '/storage/'.$path;
         if ($asRedesign) {
-            $candidates = collect($asset->redesign_candidates ?: [])->push($imageLink)->filter()->unique()->values()->all();
+            $candidates = collect($asset->redesign_candidates ?: [])->push($asset->redesign)->push($imageLink)->filter()->unique()->values()->all();
             $asset->update(['redesign' => $imageLink, 'redesign_candidates' => $candidates]);
         } else {
             $asset->update(['image_link' => $imageLink]);

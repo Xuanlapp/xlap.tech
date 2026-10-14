@@ -13065,3 +13065,58 @@ esources/views/livewire/modals/image/review-image.blade.php; deferred metadata s
 - Root cause: shared image-preview observer fetched images 320px before entering the viewport, adding requests on media-heavy item lists even when users did not scroll.
 - Changed: resources/views/components/image-preview.blade.php narrows rootMargin to 80px; .design/image-list-loading/DESIGN_BRIEF.md defines repair scope. Originals, modal, and Drive links unchanged.
 - Deploy/queue impact: fewer initial offscreen image requests, potentially slight placeholder while scrolling; no migration or queue changes. Validation: Blade view:cache, Vite build and diff check passed. Browser network before/after unavailable; Better Design quota and Graphiti unavailable. Large in-viewport images still need thumbnail generation as a separate change.
+
+### 2026-10-14 - Ceramic falls back to admin Glass bounds
+
+**Root cause:** `CeramicBoundsGuideStorage` only looked for the Ceramic admin guide; when `admin/ceramic/bounds-guide.png` was missing, Ceramic had no default bounds even though the admin Glass guide existed.
+
+**Changed files:**
+- `app/Services/Ceramic/CeramicBoundsGuideStorage.php`
+- `tests/Unit/CeramicBoundsGuideStorageTest.php`
+- `.design/ceramic-bounds-fallback/DESIGN_BRIEF.md`
+
+**Logic:** priority is user Ceramic guide, then admin Ceramic guide, then admin Glass guide. The Glass analyzer is used when the Glass fallback is selected so its cached config matches the image.
+
+**Deploy/queue impact:** deploy the PHP code only; no migration, queue, or worker changes. Existing user Ceramic guides remain unchanged.
+
+**Validation:** Ceramic bounds storage test passed (1 test, 8 assertions), Blade cache, Vite build, and diff check passed. Authenticated visual evidence and Graphiti memory were unavailable.
+
+### 2026-10-14 - Refresh Glass and Ceramic status counts immediately
+
+**Root cause:** Glass and Ceramic status panels kept `statusCounts` from the parent mount; after import/add/delete events, the panel rerendered its items but did not recalculate the tab counters, leaving stale values until a full page reload.
+
+**Changed files:**
+- `app/Livewire/Pages/Glass/GlassStatusPanel.php`
+- `app/Livewire/Pages/Ceramic/CeramicStatusPanel.php`
+
+**Change:** each status panel refreshes counts from its service during render, so existing Livewire events update All, Unapproved, Approved, and No Mockup immediately.
+
+**Deploy/queue impact:** PHP/Livewire view behavior only; no migration or queue changes. Each panel render adds one status-count query, matching the other product pages.
+
+**Validation:** PHP lint, Blade cache, and Vite build passed. Authenticated browser evidence unavailable.
+
+### 2026-10-14 - Enable Ceramic bounds editor like Glass
+
+**Root cause:** the shared image review modal rendered the bounds button/editor only when `action === glass-redesign`, even though Ceramic already had prepare/save bounds methods and its page controls.
+
+**Changed files:**
+- `resources/views/livewire/modals/image/review-image.blade.php`
+- `AI_MEMORY.md`
+
+**Change:** the bounds toolbar and editor now accept both `glass-redesign` and `ceramic-redesign`; the editor label is product-neutral. Ceramic keeps its own prepare/save methods and bounds guide fallback.
+
+**Deploy/queue impact:** Blade/Livewire UI behavior only; no database, migration, or queue changes.
+
+**Validation:** Blade cache and Vite build passed. Authenticated visual evidence unavailable.
+
+### 2026-10-14 - Preserve first Glass master after editing bounds
+
+**Root cause:** Glass `useCachedOriginalForBounds` replaced the selected gallery candidate with its cached URL, and `saveBoundedImage` did not preserve the previous active redesign if missing from candidates. The original first master disappeared from the gallery after bounds edits, unlike the intended Ceramic experience.
+
+**Changed files:** `app/Services/Glass/GlassService.php`, `AI_MEMORY.md`.
+
+**Change:** retain the previous redesign and selected source as gallery candidates when preparing bounds; preserve the active redesign before appending the newly cropped image on save. Ceramic remains unchanged.
+
+**Deploy/queue impact:** PHP service behavior only; no migration, no queue changes. Previously removed candidate links cannot be reconstructed automatically.
+
+**Validation:** PHP lint and diff check passed; authenticated workflow and live image links unverified.

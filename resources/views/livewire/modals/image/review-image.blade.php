@@ -510,7 +510,7 @@
                                             <path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M16 21h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
                                         </svg>
                                     </button>
-                                    @if (!$assetApproved && in_array($productSlug, ['glass', 'ceramic'], true) && $assetId && $src && $action === 'glass-redesign')
+                                    @if (!$assetApproved && in_array($productSlug, ['glass', 'ceramic'], true) && $assetId && $src && in_array($action, ['glass-redesign', 'ceramic-redesign'], true))
                                         <button
                                             type="button"
                                             x-on:click="startBoundsEditor()"
@@ -552,7 +552,7 @@
                                     </button>
                                 @endif
 
-                                @if (!$assetApproved && in_array($productSlug, ['glass', 'ceramic'], true) && $assetId && $src && $action === 'glass-redesign')
+                                @if (!$assetApproved && in_array($productSlug, ['glass', 'ceramic'], true) && $assetId && $src && in_array($action, ['glass-redesign', 'ceramic-redesign'], true))
                                     <div x-show="boundsEditing" x-cloak class="absolute inset-0 z-20 flex items-center justify-center bg-white p-5">
                                         <div class="relative flex h-full w-full max-w-4xl items-center justify-center overflow-hidden rounded-xl bg-white" x-ref="boundsStage">
                                             <canvas
@@ -561,7 +561,7 @@
                                                 x-bind:height="boundsCanvasHeight"
                                                 class="relative z-[1] block max-h-full max-w-full cursor-move select-none bg-transparent"
                                                 x-bind:style="`aspect-ratio:${boundsCanvasWidth}/${boundsCanvasHeight};touch-action:none`"
-                                                aria-label="Glass bounds editor canvas"
+                                                aria-label="Bounds editor canvas"
                                                 x-on:pointerdown="startBoundsDrag($event)"
                                                 x-on:pointermove="moveBoundsDrag($event)"
                                                 x-on:pointerup="endBoundsDrag()"

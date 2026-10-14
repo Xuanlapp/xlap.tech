@@ -141,6 +141,7 @@ class GlassStatusPanel extends Component
 
     public function render(): View
     {
+        $this->statusCounts = app(GlassService::class)->statusCountsForUser(auth()->user(), $this->search);
 
         return view('livewire.pages.glass.glass-status-panel', [
             'assets' => app(GlassService::class)->paginatedAssetsForUser(

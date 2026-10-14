@@ -3,6 +3,7 @@
 namespace App\Services\Ceramic;
 
 use App\Models\User;
+use App\Services\Glass\GlassBoundsGuideAnalyzer;
 use Illuminate\Support\Facades\Storage;
 
 class CeramicBoundsGuideStorage
@@ -13,7 +14,9 @@ class CeramicBoundsGuideStorage
     {
         $disk = Storage::disk('public');
         $personal = 'users/'.$user->id.'/ceramic/bounds-guide.png';
-        $image = $disk->exists($personal) ? $personal : 'admin/ceramic/bounds-guide.png';
+        $ceramic = 'admin/ceramic/bounds-guide.png';
+        $image = $disk->exists($personal) ? $personal
+            : ($disk->exists($ceramic) ? $ceramic : 'admin/glass/bounds-guide.png');
 
         return [
             'image' => $image,
@@ -37,7 +40,8 @@ class CeramicBoundsGuideStorage
     public function sharedUrl(): ?string
     {
         $disk = Storage::disk('public');
-        $path = 'admin/ceramic/bounds-guide.png';
+        $path = $disk->exists('admin/ceramic/bounds-guide.png')
+            ? 'admin/ceramic/bounds-guide.png' : 'admin/glass/bounds-guide.png';
 
         return $disk->exists($path) ? route('image-preview.show', [
             'path' => '/storage/'.$path,
@@ -72,7 +76,11 @@ class CeramicBoundsGuideStorage
     {
         $paths = $this->paths($user);
 
-        return app(CeramicBoundsGuideAnalyzer::class)->loadOrCreate(
+        $analyzer = $paths['image'] === 'admin/glass/bounds-guide.png'
+            ? app(GlassBoundsGuideAnalyzer::class)
+            : app(CeramicBoundsGuideAnalyzer::class);
+
+        return $analyzer->loadOrCreate(
             Storage::disk('public'), $paths['image'], $paths['config'],
         );
     }
