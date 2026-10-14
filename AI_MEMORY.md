@@ -13060,3 +13060,8 @@ esources/views/livewire/modals/image/review-image.blade.php; deferred metadata s
 - Changed: app/Http/Controllers/ImagePreviewController.php caches Drive image bytes locally for one day after the first successful fetch and serves cached bytes before any external request; added feature coverage in tests/Feature/ImagePreviewControllerTest.php. Storage images remain unchanged.
 - Deploy/queue impact: no database or queue changes; first view of a unique Drive image still fetches once, repeat views avoid Google API and reduce FPM blocking. Local cache uses storage/app/image-preview/drive and may consume disk; monitor disk usage.
 - Validation: PHP lint, ImagePreviewControllerTest (2 tests, 10 assertions), diff check passed. VPS latency unverified; Graphiti unavailable.
+
+### 2026-10-14 - Reduce eager list image prefetch
+- Root cause: shared image-preview observer fetched images 320px before entering the viewport, adding requests on media-heavy item lists even when users did not scroll.
+- Changed: resources/views/components/image-preview.blade.php narrows rootMargin to 80px; .design/image-list-loading/DESIGN_BRIEF.md defines repair scope. Originals, modal, and Drive links unchanged.
+- Deploy/queue impact: fewer initial offscreen image requests, potentially slight placeholder while scrolling; no migration or queue changes. Validation: Blade view:cache, Vite build and diff check passed. Browser network before/after unavailable; Better Design quota and Graphiti unavailable. Large in-viewport images still need thumbnail generation as a separate change.

@@ -15,7 +15,7 @@
 
 <div
     x-data="{ failed: false, currentSrc: @js($src), visible: false }"
-    x-init="new IntersectionObserver(function (entries) { if (entries[0].isIntersecting) { visible = true } }, { rootMargin: '320px 0px' }).observe($el)"
+    x-init="new IntersectionObserver(function (entries) { if (entries[0].isIntersecting) { visible = true } }, { rootMargin: '80px 0px' }).observe($el)"
     x-effect="if (currentSrc !== @js($src)) { currentSrc = @js($src); failed = false; }"
     {{ $attributes->merge(['class' => 'flex items-center justify-center overflow-hidden rounded-md bg-slate-50']) }}
 >
