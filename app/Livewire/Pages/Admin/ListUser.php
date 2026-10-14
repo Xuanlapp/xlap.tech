@@ -3,10 +3,10 @@
 namespace App\Livewire\Pages\Admin;
 
 use App\Models\User;
+use App\Jobs\QueueApprovedImagesForDrive;
 use App\Models\VertexApiCredential;
 use App\Services\Google\GoogleDriveOAuthService;
 use App\Services\Logging\ActivityLogService;
-use App\Services\Product\ApprovedAssetDriveExportService;
 use App\Services\User\UserAccessService;
 use App\Support\Traits\BuildsVertexCredentialPayload;
 use Illuminate\Support\Facades\Artisan;
@@ -102,10 +102,8 @@ class ListUser extends Component
         $this->driveUploadError = null;
 
         try {
-            $result = app(ApprovedAssetDriveExportService::class)->exportApprovedImages(auth()->user(), 'manual');
-            $message = $result['images'] > 0
-                ? "Da upload {$result['images']} anh tu {$result['assets']} item da duyet len Drive."
-                : 'Khong co anh local da duyet nao can upload len Drive.';
+            QueueApprovedImagesForDrive::dispatch(auth()->id())->onConnection('database');
+            $message = 'Da dua yeu cau tim anh can upload vao hang doi. Worker Drive se xu ly; xem ket qua tai Drive Uploads.';
 
             $this->driveUploadStatus = $message;
 

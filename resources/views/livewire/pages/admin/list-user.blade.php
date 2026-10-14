@@ -36,7 +36,7 @@
                         class="inline-flex h-9 items-center justify-center rounded-md bg-emerald-500 px-3 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                         <span wire:loading.remove wire:target="uploadApprovedImagesToDrive">Upload images to Drive</span>
-                        <span wire:loading wire:target="uploadApprovedImagesToDrive">Uploading...</span>
+                        <span wire:loading wire:target="uploadApprovedImagesToDrive">Queuing...</span>
                     </button>
 
                     <button

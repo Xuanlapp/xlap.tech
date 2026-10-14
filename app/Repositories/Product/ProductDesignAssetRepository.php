@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
+use Throwable;
 
 class ProductDesignAssetRepository
 {
@@ -571,23 +572,27 @@ class ProductDesignAssetRepository
 
     public function markListingCompleted(ProductDesignAsset $asset, string $marketplace): ProductDesignAsset
     {
-        $asset->update([
-            'marketplace_listing_status' => 'completed',
-            'marketplace_listing_marketplace' => $marketplace,
-            'marketplace_listing_completed_at' => now(),
-            'marketplace_listing_error' => null,
-        ]);
+        retry(3, function () use ($asset, $marketplace): void {
+            $asset->update([
+                'marketplace_listing_status' => 'completed',
+                'marketplace_listing_marketplace' => $marketplace,
+                'marketplace_listing_completed_at' => now(),
+                'marketplace_listing_error' => null,
+            ]);
+        }, 150, fn (Throwable $exception): bool => in_array((string) $exception->getCode(), ['1213', '40001'], true));
 
         return $asset->refresh();
     }
 
     public function markListingFailed(ProductDesignAsset $asset, string $message): ProductDesignAsset
     {
-        $asset->update([
-            'marketplace_listing_status' => 'failed',
-            'marketplace_listing_completed_at' => now(),
-            'marketplace_listing_error' => mb_substr($message, 0, 2000),
-        ]);
+        retry(3, function () use ($asset, $message): void {
+            $asset->update([
+                'marketplace_listing_status' => 'failed',
+                'marketplace_listing_completed_at' => now(),
+                'marketplace_listing_error' => mb_substr($message, 0, 2000),
+            ]);
+        }, 150, fn (Throwable $exception): bool => in_array((string) $exception->getCode(), ['1213', '40001'], true));
 
         return $asset->refresh();
     }

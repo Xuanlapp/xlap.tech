@@ -13120,3 +13120,40 @@ esources/views/livewire/modals/image/review-image.blade.php; deferred metadata s
 **Deploy/queue impact:** PHP service behavior only; no migration, no queue changes. Previously removed candidate links cannot be reconstructed automatically.
 
 **Validation:** PHP lint and diff check passed; authenticated workflow and live image links unverified.
+
+### 2026-10-14 - Recover completed marketplace metadata after deadlock
+
+**Root cause:** metadata fields could be saved successfully, then the final status update to `completed` could hit MySQL deadlock 1213. The outer catch then marked the same asset `failed`, and retry logic treated complete metadata as already handled without repairing the status.
+
+**Changed files:**
+- `app/Repositories/Product/ProductDesignAssetRepository.php`
+- `app/Services/Marketplace/MarketplaceListingMetadataService.php`
+- `AI_MEMORY.md`
+
+**Change:** status writes now retry deadlock/serialization failures three times with a short backoff. Retry and worker paths re-read the asset; if all required marketplace fields already exist, they mark it completed without calling the AI provider again.
+
+**Deploy/queue impact:** deploy PHP code and restart/reload the marketplace workers so they run the new logic. No migration. Existing item 11881 can be repaired by retrying after deploy; it should not regenerate metadata if all required fields are present.
+
+**Validation:** PHP lint and diff check passed; production worker test remains pending.
+
+### 2026-10-14 - Show repair action for failed listings with existing output
+
+**Root cause:** the listing status Blade view only rendered `Retry metadata` inside the `No output yet` branch. Item 11881 had complete output but failed status, so it had no action button.
+
+**Changed files:**
+- `resources/views/livewire/pages/marketplace/listing-metadata-status.blade.php`
+- `app/Livewire/Pages/Marketplace/ListingMetadataStatus.php`
+- `AI_MEMORY.md`
+
+**Change:** failed/waiting rows now show an action even when metadata exists. The label is `Fix status` for complete output and `Retry metadata` when fields are incomplete; the backend repairs complete metadata without calling AI again.
+
+**Validation:** PHP lint, Blade cache, and diff check passed. Deploy the updated Blade and Livewire PHP files before testing item 11881.
+
+### 2026-10-14 — Listing metadata filter and Drive upload responsiveness
+
+- Root cause: ListingMetadataStatus rendered a stale-processing UPDATE plus five full-table status counts for every Livewire interaction; admin manual Drive upload performed network/file exports in its Livewire request.
+- Changed `app/Livewire/Pages/Marketplace/ListingMetadataStatus.php` and its Blade view: render no longer performs recovery writes (existing listing daemon still does), status counts cached ten seconds per staff/user, explicit Refresh/Retry invalidates counts, and filter/Refresh provide loading states. Preserved unrelated pre-existing metadata retry edits.
+- Changed `app/Livewire/Pages/Admin/ListUser.php`, its Blade view, and added `app/Jobs/QueueApprovedImagesForDrive.php`: manual button queues a database job that scans eligible approved local images in chunks and enqueues existing `product_drive_uploads`; existing Drive daemon/scheduler performs Google upload. Added `tests/Feature/ManualDriveUploadQueueTest.php` and `.design/listing-metadata-speed/DESIGN_BRIEF.md`; documented INF-20261014-01 in ERROR_LOG.md.
+- Deploy impact: deploy changed PHP/Blade and new job; restart queue workers. Queue impact: database default worker must consume the new job, and the existing Drive daemon or scheduled command must run for actual upload. Database impact: no migration/schema changes; jobs/upload records are written on request. API and export transformation unchanged.
+- Validation: PHP lint, `php artisan view:cache`, `npm run build`, and focused manual queue test passed (1 test, 3 assertions). Authenticated visual capture and VPS timings not available. Better Design quota returned HTTP 402; Graphiti tools unavailable.
+- Follow-up: verify default queue worker and Drive daemon on VPS, inspect Drive Uploads after manual click, measure DevTools network/backend timings for filters before/after deployment, and capture 390/768/1280 authenticated screenshots.

@@ -7,6 +7,7 @@ use App\Models\ProductDesignAsset;
 use App\Services\Marketplace\MarketplaceListingMetadataService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Cache;
 use Throwable;
 use Livewire\Attributes\Session;
 use Livewire\Component;
@@ -38,6 +39,11 @@ class ListingMetadataStatus extends Component
         $this->resetPage();
     }
 
+    public function refreshLogs(): void
+    {
+        Cache::forget($this->statusCountsCacheKey());
+    }
+
     public function updatedSearch(string $search): void
     {
         $this->search = trim($search);
@@ -50,10 +56,13 @@ class ListingMetadataStatus extends Component
         $this->retryError = null;
 
         try {
-            app(MarketplaceListingMetadataService::class)->queueRetryApprovedAsset(
+            $result = app(MarketplaceListingMetadataService::class)->queueRetryApprovedAsset(
                 $this->baseQuery()->whereKey($assetId)->firstOrFail()->id,
             );
-            $this->retryMessage = "Da dua item #{$assetId} ve hang doi. Worker se tu xu ly.";
+            $this->retryMessage = $result->marketplace_listing_status === 'completed'
+                ? "Item #{$assetId} da du metadata; da sua trang thai Completed, khong goi lai AI."
+                : "Da dua item #{$assetId} ve hang doi. Worker se tu xu ly.";
+            $this->refreshLogs();
         } catch (Throwable $exception) {
             $this->reportUserActionError($exception, 'marketplace.queue_retry_listing', ['asset_id' => $assetId]);
             $this->retryError = $exception->getMessage();
@@ -81,6 +90,7 @@ class ListingMetadataStatus extends Component
         }
 
         $this->selectedAssets = [];
+        $this->refreshLogs();
         $this->retryMessage = $queued > 0
             ? "Da dua {$queued} item ve hang doi. Worker se tu xu ly."
             : 'Khong co item nao duoc dua ve hang doi.';
@@ -112,6 +122,7 @@ class ListingMetadataStatus extends Component
             });
 
         $this->selectedAssets = [];
+        $this->refreshLogs();
         $this->retryMessage = "Da dua {$queued} item loi ve hang doi. Worker se tu xu ly.";
         if ($failed > 0) {
             $this->retryError = "Co {$failed} item khong the dua ve hang doi. Kiem tra log de biet chi tiet.";
@@ -120,8 +131,6 @@ class ListingMetadataStatus extends Component
 
     public function render(): View
     {
-        app(MarketplaceListingMetadataService::class)->recoverStaleProcessingAssets();
-
         return view('livewire.pages.marketplace.listing-metadata-status', [
             'assets' => $this->baseQuery()
                 ->latest('approved_at')
@@ -174,6 +183,16 @@ class ListingMetadataStatus extends Component
      * @return array{all: int, waiting: int, processing: int, completed: int, failed: int}
      */
     private function statusCounts(): array
+    {
+        return Cache::remember($this->statusCountsCacheKey(), now()->addSeconds(10), fn (): array => $this->queryStatusCounts());
+    }
+
+    private function statusCountsCacheKey(): string
+    {
+        return 'listing-metadata:counts:'.(auth()->user()->is_admin || auth()->user()->isManager() ? 'staff' : 'user:'.auth()->id());
+    }
+
+    private function queryStatusCounts(): array
     {
         $query = ProductDesignAsset::query()
             ->where('is_approved', true)

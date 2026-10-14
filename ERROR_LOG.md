@@ -110,7 +110,16 @@ _Chưa có mục._
 
 ## INF — Server & hiệu năng
 
-_Chưa có mục._
+### [INF-20261014-01] Listing logs filters and manual Drive upload stall
+- Ngày phát hiện: 2026-10-14
+- Hiện tượng: Bấm bộ lọc/Refresh của Listing metadata logs phản hồi chậm; Upload images to Drive giữ trang chờ lâu.
+- Phạm vi ảnh hưởng: Màn hình Listing metadata logs và nút upload Drive ở User access; các trang khác không thay đổi.
+- Nguyên nhân gốc: Mỗi lần Livewire render chạy UPDATE khôi phục metadata kẹt và 5 truy vấn đếm toàn bảng; upload Drive chạy HTTP/file/network hàng loạt ngay trong request Livewire.
+- Giải pháp đã áp dụng: Bỏ tác vụ khôi phục khỏi render (daemon listing hiện có đảm nhiệm), cache số đếm tối đa 10 giây và làm mới chủ động khi Refresh/Retry; thêm loading/disabled cho Refresh và filter. Nút Drive chỉ enqueue job quét ảnh local; daemon Drive hiện có xử lý upload và Drive Uploads hiển thị kết quả.
+- Kiểm tra đã chạy: PHP lint, `php artisan view:cache`, `npm run build`, test focused manual queue (1 test, 3 assertions) đạt. Chưa có ảnh authenticated và đo thời gian trên VPS.
+- Ảnh hưởng deploy/queue/database: Deploy Livewire/Blade + job mới; cần database queue worker đọc `default` và Drive daemon/scheduler đang chạy. Không migration, không đổi schema hay API; bảng `jobs` và `product_drive_uploads` nhận thêm bản ghi khi admin bấm.
+- Giải pháp tốt hơn trong tương lai: Đo slow query/EXPLAIN và thêm index phù hợp; gom số đếm bằng truy vấn aggregate; chạy quét ảnh theo batch có tiến độ và ưu tiên queue riêng sau khi quan sát tải VPS.
+- Trạng thái xử lý: Monitoring — chờ xác nhận worker `default`, đo Chrome DevTools trên route đã đăng nhập và so sánh trước/sau.
 
 ## OTH — Khác
 

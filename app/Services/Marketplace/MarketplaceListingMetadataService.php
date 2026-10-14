@@ -348,7 +348,9 @@ PROMPT;
         }
 
         if ($this->hasCompleteMetadata($asset, $this->marketplaceForAsset($asset))) {
-            return $asset;
+            return $asset->marketplace_listing_status === 'completed'
+                ? $asset
+                : $this->assets->markListingCompleted($asset, $this->marketplaceForAsset($asset));
         }
 
         if ($asset->marketplace_listing_status === 'processing') {
@@ -375,7 +377,9 @@ PROMPT;
         }
 
         if ($this->hasCompleteMetadata($asset, $this->marketplaceForAsset($asset))) {
-            return $asset;
+            return $asset->marketplace_listing_status === 'completed'
+                ? $asset
+                : $this->assets->markListingCompleted($asset, $this->marketplaceForAsset($asset));
         }
 
         if ($asset->marketplace_listing_status === 'processing') {
@@ -387,6 +391,9 @@ PROMPT;
         try {
             return $this->generateForApprovedAsset($processing->id);
         } catch (Throwable $exception) {
+            if ($recovered = $this->recoverCompletedMetadata($processing)) {
+                return $recovered;
+            }
             $this->assets->markListingFailed($processing, $exception->getMessage());
 
             throw $exception;
@@ -418,6 +425,10 @@ PROMPT;
                     $processed++;
                 }
             } catch (Throwable $exception) {
+                if ($this->recoverCompletedMetadata($asset)) {
+                    $processed++;
+                    continue;
+                }
                 $this->assets->markListingFailed($asset, $exception->getMessage());
                 Log::warning('Marketplace listing metadata generation failed.', [
                     'asset_id' => $asset->id,
@@ -1021,6 +1032,15 @@ PROMPT;
         }
     }
 
+    private function recoverCompletedMetadata(ProductDesignAsset $asset): ?ProductDesignAsset
+    {
+        $fresh = $asset->fresh(['user', 'product']);
+        if (! $fresh || ! $this->hasCompleteMetadata($fresh, $this->marketplaceForAsset($fresh))) {
+            return null;
+        }
+
+        return $this->assets->markListingCompleted($fresh, $this->marketplaceForAsset($fresh));
+    }
     private function hasCompleteMetadata(ProductDesignAsset $asset, string $marketplace): bool
     {
         $fields = $marketplace === 'etsy' ? self::ETSY_REQUIRED_FIELDS : self::AMAZON_REQUIRED_FIELDS;
