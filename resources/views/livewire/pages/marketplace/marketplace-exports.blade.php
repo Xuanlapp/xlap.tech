@@ -127,6 +127,10 @@
                             placeholder="Search SKU (cach nhau bang dau phay)..."
                         >
                     </label>
+                    <label class="flex h-11 shrink-0 items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+                        <input type="checkbox" wire:model.live="exactSku" class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+                        Khớp chính xác SKU
+                    </label>
                     @if ($currentUser->is_admin || $currentUser->isManager())
                         <label class="block w-full sm:w-72">
                             <select wire:model.live="selectedOwnerUserId" aria-label="Filter by user" class="h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-950">
@@ -148,6 +152,11 @@
             </div>
         </div>
 
+        @if ($missingSearchSkus !== [])
+            <p class="mt-3 text-sm text-amber-800 dark:text-amber-300" role="status">
+                Không thấy {{ count($missingSearchSkus) }} mã SKU trong kết quả lọc hiện tại: {{ implode(', ', $missingSearchSkus) }}.
+            </p>
+        @endif
         @if ($patternError || $patternSelectionError)
             <div class="rounded-lg border border-red-200 bg-red-50 px-5 py-3 text-sm font-medium text-red-700">
                 {{ $patternSelectionError ?? $patternError }}

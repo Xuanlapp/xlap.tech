@@ -13040,3 +13040,12 @@ esources/views/livewire/modals/image/review-image.blade.php; deferred metadata s
 - Root cause: export page-size allowlist stopped at 100, limiting visible page selection for larger batches.
 - Changed: app/Livewire/Pages/Marketplace/MarketplaceExports.php adds 500 and 1000; .design/marketplace-export-page-size/DESIGN_BRIEF.md records scope. Existing export, filters and selection behavior preserved.
 - Deploy/queue impact: PHP-only page-size choice, potentially larger render/Livewire payloads; no migration or worker changes. Validation: PHP lint, Blade view:cache, npm build passed. Authenticated render unverified; Better Design quota and Graphiti unavailable.
+
+### 2026-10-14 - Optional exact SKU matching for marketplace export
+- Root cause: exact-only SKU matching removed useful partial searches. Changed: app/Livewire/Pages/Marketplace/MarketplaceExports.php defaults to escaped substring LIKE per comma-separated token and uses exact whereIn only when exactSku is checked; resources/views/livewire/pages/marketplace/marketplace-exports.blade.php adds the labeled checkbox; .design/marketplace-export-sku-search/DESIGN_BRIEF.md records scope.
+- Deploy/queue impact: filter semantics and session preference only, no migration or worker changes. Selection/export use the same filtered query. Validation: PHP lint, Blade view:cache, npm build and diff check passed; authenticated desktop/mobile rendering unavailable. Better Design quota and Graphiti unavailable.
+
+### 2026-10-14 - Report unmatched SKU terms in marketplace export
+- Root cause: export search showed only matching rows and did not identify input SKU terms excluded by the current filters.
+- Changed: app/Livewire/Pages/Marketplace/MarketplaceExports.php checks each comma-separated term across all eligible filtered pages using the selected exact/partial mode; resources/views/livewire/pages/marketplace/marketplace-exports.blade.php lists count and codes, with scope clarified in .design/marketplace-export-sku-search/DESIGN_BRIEF.md.
+- Deploy/queue impact: extra read-only exists queries per distinct search token; no migration or worker changes. Validation: PHP lint, Blade cache, Vite build and diff check passed. Authenticated render unavailable; Better Design quota and Graphiti unavailable.

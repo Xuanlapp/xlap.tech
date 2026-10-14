@@ -99,6 +99,9 @@ class MarketplaceExports extends Component
     #[Session(key: 'marketplace-export.search')]
     public string $search = '';
 
+    #[Session(key: 'marketplace-export.exact-sku')]
+    public bool $exactSku = false;
+
     #[Session(key: 'marketplace-export.marketplace')]
     public string $marketplace = 'all';
 
@@ -129,6 +132,11 @@ class MarketplaceExports extends Component
     public function updatedSearch(string $search): void
     {
         $this->search = trim($search);
+        $this->resetPage();
+    }
+
+    public function updatedExactSku(): void
+    {
         $this->resetPage();
     }
 
@@ -312,6 +320,7 @@ class MarketplaceExports extends Component
 
         return view('livewire.pages.marketplace.marketplace-exports', [
             'assets' => $assets,
+            'missingSearchSkus' => $this->missingSearchSkus(),
             'statusCounts' => $this->statusCounts(),
             'statusOptions' => self::STATUS_OPTIONS,
             'marketplaceOptions' => self::MARKETPLACE_OPTIONS,
@@ -372,7 +381,7 @@ class MarketplaceExports extends Component
         return $this->readyQuery();
     }
 
-    private function readyQuery(): Builder
+    private function readyQuery(bool $applySearch = true): Builder
     {
         return ProductDesignAsset::query()
             ->with(['user:id,name,email', 'product:id,name,slug'])
@@ -416,17 +425,57 @@ class MarketplaceExports extends Component
             })
             ->when($this->selectedOwnerId() !== null, fn (Builder $query) => $query->where('user_id', $this->selectedOwnerId()))
             ->when($this->marketplace !== 'all', fn (Builder $query) => $this->applyMarketplaceFilter($query, $this->marketplace))
-            ->when($this->normalizedSearch() !== null, function (Builder $query): void {
+            ->when($applySearch && $this->normalizedSearch() !== null, function (Builder $query): void {
                 $skus = collect(preg_split('/[,，\\r\\n]+/u', $this->normalizedSearch() ?? '') ?: [])
                     ->map(fn (string $sku): string => trim($sku))
                     ->filter()
                     ->unique()
                     ->values();
 
-                $query->whereIn('sku', $skus->all());
+                if ($this->exactSku) {
+                    $query->whereIn('sku', $skus->all());
+                } else {
+                    $query->where(function (Builder $query) use ($skus): void {
+                        foreach ($skus as $sku) {
+                            $query->orWhere('sku', 'like', '%'.$this->escapeLike($sku).'%');
+                        }
+                    });
+                }
             });
     }
 
+    /** @return array<int, string> */
+    private function missingSearchSkus(): array
+    {
+        $search = $this->normalizedSearch();
+
+        if ($search === null) {
+            return [];
+        }
+
+        $skus = collect(preg_split('/[,，\r\n]+/u', $search) ?: [])
+            ->map(fn (string $sku): string => trim($sku))
+            ->filter()
+            ->unique()
+            ->values();
+
+        $query = $this->readyQuery(false)->when(
+            $this->status === 'exported',
+            fn (Builder $query) => $query->whereNotNull('marketplace_exported_at'),
+            fn (Builder $query) => $this->status === 'unexported'
+                ? $query->whereNull('marketplace_exported_at')
+                : $query,
+        );
+
+        return $skus->filter(function (string $sku) use ($query): bool {
+            $match = clone $query;
+
+            return ! ($this->exactSku
+                ? $match->where('sku', $sku)
+                : $match->where('sku', 'like', '%'.$this->escapeLike($sku).'%'))
+                ->exists();
+        })->all();
+    }
     /**
      * @return array{unexported: int, exported: int}
      */
