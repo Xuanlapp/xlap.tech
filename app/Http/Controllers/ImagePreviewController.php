@@ -7,6 +7,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response as HttpResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\Response;
@@ -54,18 +55,30 @@ class ImagePreviewController extends Controller
         }
 
         $driveFileId = $this->googleDriveFileId($url);
+        if ($driveFileId) {
+            $cached = $this->cachedDriveImage($driveFileId);
+            if ($cached !== null) {
+                return $this->imageResponse($cached['body'], $cached['content_type']);
+            }
+        }
+
         $response = $this->publicImageResponse($url, $driveFileId !== null);
 
         if ($response?->successful() && $this->isImageResponse($response)) {
             $body = $response->body();
             abort_if(strlen($body) > self::MAX_IMAGE_BYTES, 413);
+            $contentType = strtolower($response->header('Content-Type', ''));
+            if ($driveFileId) {
+                $this->storeDriveImage($driveFileId, $body, $contentType);
+            }
 
-            return $this->imageResponse($body, strtolower($response->header('Content-Type', '')));
+            return $this->imageResponse($body, $contentType);
         }
 
         if ($driveFileId) {
             try {
                 $image = app(GoogleDriveService::class)->downloadImageFile($driveFileId);
+                $this->storeDriveImage($driveFileId, $image['body'], $image['content_type']);
 
                 return $this->imageResponse($image['body'], $image['content_type']);
             } catch (RuntimeException) {
@@ -76,6 +89,33 @@ class ImagePreviewController extends Controller
         abort(404);
     }
 
+    /** @return array{body: string, content_type: string}|null */
+    private function cachedDriveImage(string $fileId): ?array
+    {
+        $key = 'image-preview/drive/'.hash('sha256', $fileId);
+        $disk = Storage::disk('local');
+        if (! $disk->exists($key) || $disk->lastModified($key) < now()->subDay()->timestamp) {
+            return null;
+        }
+
+        $contentType = Cache::get('image-preview-type:'.hash('sha256', $fileId));
+        if (! is_string($contentType) || ! str_starts_with($contentType, 'image/')) {
+            return null;
+        }
+
+        return ['body' => $disk->get($key), 'content_type' => $contentType];
+    }
+
+    private function storeDriveImage(string $fileId, string $body, string $contentType): void
+    {
+        if (strlen($body) > 8_388_608 || ! str_starts_with($contentType, 'image/')) {
+            return;
+        }
+
+        $hash = hash('sha256', $fileId);
+        Storage::disk('local')->put('image-preview/drive/'.$hash, $body);
+        Cache::put('image-preview-type:'.$hash, $contentType, now()->addDay());
+    }
     private function publicImageResponse(string $url, bool $isDriveImage = false): ?HttpResponse
     {
         try {

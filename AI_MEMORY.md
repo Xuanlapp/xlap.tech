@@ -13054,3 +13054,9 @@ esources/views/livewire/modals/image/review-image.blade.php; deferred metadata s
 - Root cause: ImagePreviewController tried the public Drive URL with a 12-second timeout and retry before authenticated Drive download, making private/slow Drive images feel frozen.
 - Changed: app/Http/Controllers/ImagePreviewController.php uses a 2-second connect and 3-second total timeout with one short retry for Drive URLs, then falls back to the authenticated API; non-Drive remote images keep the previous timeout path.
 - Deploy/queue impact: preview request behavior only; no database or queue changes. Validation: PHP lint, ImagePreviewControllerTest (1 test, 5 assertions), diff check passed. Production latency remains unverified; Graphiti unavailable.
+
+### 2026-10-14 - Cache Drive preview bytes to protect PHP-FPM
+- Root cause: every Drive image preview used a PHP-FPM request and could wait on Google Drive curl; slow log showed repeated GoogleDriveService.php downloads and many FPM processes in response handling.
+- Changed: app/Http/Controllers/ImagePreviewController.php caches Drive image bytes locally for one day after the first successful fetch and serves cached bytes before any external request; added feature coverage in tests/Feature/ImagePreviewControllerTest.php. Storage images remain unchanged.
+- Deploy/queue impact: no database or queue changes; first view of a unique Drive image still fetches once, repeat views avoid Google API and reduce FPM blocking. Local cache uses storage/app/image-preview/drive and may consume disk; monitor disk usage.
+- Validation: PHP lint, ImagePreviewControllerTest (2 tests, 10 assertions), diff check passed. VPS latency unverified; Graphiti unavailable.
