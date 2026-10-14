@@ -54,7 +54,7 @@ class ImagePreviewController extends Controller
         }
 
         $driveFileId = $this->googleDriveFileId($url);
-        $response = $this->publicImageResponse($url);
+        $response = $this->publicImageResponse($url, $driveFileId !== null);
 
         if ($response?->successful() && $this->isImageResponse($response)) {
             $body = $response->body();
@@ -76,15 +76,16 @@ class ImagePreviewController extends Controller
         abort(404);
     }
 
-    private function publicImageResponse(string $url): ?HttpResponse
+    private function publicImageResponse(string $url, bool $isDriveImage = false): ?HttpResponse
     {
         try {
             return Http::withHeaders([
                 'Accept' => 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
                 'User-Agent' => 'Mozilla/5.0 Offorest Image Preview',
             ])
-                ->timeout(12)
-                ->retry(1, 200)
+                ->connectTimeout($isDriveImage ? 2 : 10)
+                ->timeout($isDriveImage ? 3 : 12)
+                ->retry($isDriveImage ? 1 : 2, 200)
                 ->get($url);
         } catch (ConnectionException) {
             return null;

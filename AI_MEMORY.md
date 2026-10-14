@@ -13049,3 +13049,8 @@ esources/views/livewire/modals/image/review-image.blade.php; deferred metadata s
 - Root cause: export search showed only matching rows and did not identify input SKU terms excluded by the current filters.
 - Changed: app/Livewire/Pages/Marketplace/MarketplaceExports.php checks each comma-separated term across all eligible filtered pages using the selected exact/partial mode; resources/views/livewire/pages/marketplace/marketplace-exports.blade.php lists count and codes, with scope clarified in .design/marketplace-export-sku-search/DESIGN_BRIEF.md.
 - Deploy/queue impact: extra read-only exists queries per distinct search token; no migration or worker changes. Validation: PHP lint, Blade cache, Vite build and diff check passed. Authenticated render unavailable; Better Design quota and Graphiti unavailable.
+
+### 2026-10-14 - Reduce Drive image preview stalls
+- Root cause: ImagePreviewController tried the public Drive URL with a 12-second timeout and retry before authenticated Drive download, making private/slow Drive images feel frozen.
+- Changed: app/Http/Controllers/ImagePreviewController.php uses a 2-second connect and 3-second total timeout with one short retry for Drive URLs, then falls back to the authenticated API; non-Drive remote images keep the previous timeout path.
+- Deploy/queue impact: preview request behavior only; no database or queue changes. Validation: PHP lint, ImagePreviewControllerTest (1 test, 5 assertions), diff check passed. Production latency remains unverified; Graphiti unavailable.
