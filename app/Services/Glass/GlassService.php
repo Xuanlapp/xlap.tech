@@ -415,8 +415,8 @@ class GlassService
         $sourceImage = trim((string) $sourceImage);
         $masterImage = $this->normalizeImageLink($masterImage);
         $mockups = collect($mockups)
-            ->map(fn (string $mockup): string => $this->normalizeImageLink($mockup))
-            ->take(6)
+            ->map(fn (string $mockup): string => trim($mockup) === '' ? '' : $this->normalizeImageLink($mockup))
+            ->take(11)
             ->values()
             ->all();
 

@@ -199,14 +199,19 @@ class ExcelImportGlass extends Component
                     (string) $row['keyword'],
                     $row['source_image'] ?: (string) $row['create_master'],
                     (string) $row['create_master'],
-                    array_values(array_filter([
+                    [
                         $row['mockup1'] ?? '',
                         $row['mockup2'] ?? '',
                         $row['mockup3'] ?? '',
                         $row['mockup4'] ?? '',
                         $row['mockup5'] ?? '',
                         $row['mockup6'] ?? '',
-                    ])),
+                        $row['mockup7'] ?? '',
+                        $row['mockup8'] ?? '',
+                        $row['mockup9'] ?? '',
+                        $row['mockup10'] ?? '',
+                        $row['mockup11'] ?? '',
+                    ],
                 );
 
                 unset($this->rows[$nextIndex]);
@@ -294,7 +299,7 @@ class ExcelImportGlass extends Component
                 : '';
 
             $mockups = [];
-            foreach (range(1, 6) as $slot) {
+            foreach (range(1, 11) as $slot) {
                 $mockups[$slot] = isset($headerIndexes["mockup{$slot}"])
                     ? trim((string) ($row[$headerIndexes["mockup{$slot}"]] ?? ''))
                     : '';
@@ -355,6 +360,11 @@ class ExcelImportGlass extends Component
                 'mockup4' => $mockups[4],
                 'mockup5' => $mockups[5],
                 'mockup6' => $mockups[6],
+                'mockup7' => $mockups[7],
+                'mockup8' => $mockups[8],
+                'mockup9' => $mockups[9],
+                'mockup10' => $mockups[10],
+                'mockup11' => $mockups[11],
                 'status' => 'ready',
                 'attempts' => 0,
                 'result_message' => '',
@@ -591,7 +601,7 @@ class ExcelImportGlass extends Component
                 $indexes['keyword'] = $index;
             }
 
-            foreach (range(1, 6) as $slot) {
+            foreach (range(1, 11) as $slot) {
                 if (in_array($normalized, ["mockup {$slot}", "mockup{$slot}", "{$slot} mockup"], true)) {
                     $indexes["mockup{$slot}"] = $index;
                 }

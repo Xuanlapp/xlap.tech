@@ -244,10 +244,19 @@ class ExcelImportOrnament extends Component
             $asset->update(['redesign' => $row['main_image']]);
 
             if (! empty($row['mockups']) && is_array($row['mockups'])) {
-                $mockupCount = collect($row['mockups'])->filter(fn (mixed $url): bool => is_string($url) && trim($url) !== '')->count();
+                $workflowMockups = array_intersect_key($row['mockups'], array_flip(array_map(fn (int $slot): string => 'mockup'.$slot, range(1, 6))));
+                $mockupCount = collect($workflowMockups)->filter(fn (mixed $url): bool => is_string($url) && trim($url) !== '')->count();
 
                 if ($mockupCount >= 6) {
-                    $service->applyImportedMockups(auth()->user(), $asset->id, $row['mockups']);
+                    $service->applyImportedMockups(auth()->user(), $asset->id, $workflowMockups);
+                }
+
+                $extraMockups = array_filter(
+                    array_intersect_key($row['mockups'], array_flip(array_map(fn (int $slot): string => 'mockup'.$slot, range(7, 11)))),
+                    fn (mixed $url): bool => is_string($url) && trim($url) !== '',
+                );
+                if ($extraMockups !== []) {
+                    $asset->update($extraMockups);
                 }
             }
 
@@ -328,7 +337,7 @@ class ExcelImportOrnament extends Component
                 ? trim((string) ($row[$headerIndexes['keyword_phrase']] ?? ''))
                 : '';
             $mockups = [];
-            for ($mockupNumber = 1; $mockupNumber <= 6; $mockupNumber++) {
+            for ($mockupNumber = 1; $mockupNumber <= 11; $mockupNumber++) {
                 $columnKey = 'mockup'.$mockupNumber;
                 if (isset($headerIndexes[$columnKey])) {
                     $mockups[$columnKey] = trim((string) ($row[$headerIndexes[$columnKey]] ?? ''));
@@ -616,23 +625,8 @@ class ExcelImportOrnament extends Component
                 $indexes['keyword_phrase'] = $index;
             }
 
-            if (in_array($normalized, ['mockup 1', 'mockup1'], true)) {
-                $indexes['mockup1'] = $index;
-            }
-            if (in_array($normalized, ['mockup 2', 'mockup2'], true)) {
-                $indexes['mockup2'] = $index;
-            }
-            if (in_array($normalized, ['mockup 3', 'mockup3'], true)) {
-                $indexes['mockup3'] = $index;
-            }
-            if (in_array($normalized, ['mockup 4', 'mockup4'], true)) {
-                $indexes['mockup4'] = $index;
-            }
-            if (in_array($normalized, ['mockup 5', 'mockup5'], true)) {
-                $indexes['mockup5'] = $index;
-            }
-            if (in_array($normalized, ['mockup 6', 'mockup6'], true)) {
-                $indexes['mockup6'] = $index;
+            if (preg_match('/^mockup ?(1[01]|[1-9])$/', $normalized, $matches)) {
+                $indexes['mockup'.$matches[1]] = $index;
             }
         }
 

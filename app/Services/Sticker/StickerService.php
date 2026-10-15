@@ -269,8 +269,8 @@ class StickerService
         $sourceImage = trim((string) $sourceImage);
         $masterImage = trim((string) $masterImage);
         $mockups = collect($mockups)
-            ->map(fn (string $mockup): string => $this->normalizeImageLink($mockup))
-            ->take(6)
+            ->map(fn (string $mockup): string => trim($mockup) === '' ? '' : $this->normalizeImageLink($mockup))
+            ->take(11)
             ->values()
             ->all();
 

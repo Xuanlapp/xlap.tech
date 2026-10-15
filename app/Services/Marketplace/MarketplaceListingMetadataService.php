@@ -406,6 +406,8 @@ PROMPT;
     public function generatePendingApprovedAssets(int $limit = 0, int $delaySeconds = 0): int
     {
         $this->recoverStaleProcessingAssets();
+        $this->requeueIncompleteCompletedMetadata();
+        $this->requeueRecoverableMetadataFailures();
         $this->failMissingSkuAssets();
 
         $processed = 0;
@@ -429,7 +431,11 @@ PROMPT;
                     $processed++;
                     continue;
                 }
-                $this->assets->markListingFailed($asset, $exception->getMessage());
+                if ($this->shouldRetryMetadataFailure($exception) && (int) $asset->marketplace_listing_attempts < 3) {
+                    $this->assets->markListingWaiting($asset, $exception->getMessage());
+                } else {
+                    $this->assets->markListingFailed($asset, $exception->getMessage());
+                }
                 Log::warning('Marketplace listing metadata generation failed.', [
                     'asset_id' => $asset->id,
                     'user_id' => $asset->user_id,
@@ -445,6 +451,58 @@ PROMPT;
         return $processed;
     }
 
+    public function requeueIncompleteCompletedMetadata(): int
+    {
+        $requeued = 0;
+
+        ProductDesignAsset::query()
+            ->with(['user', 'product'])
+            ->where('is_approved', true)
+            ->where('marketplace_listing_status', 'completed')
+            ->where(function (Builder $query): void {
+                foreach (array_unique(array_merge(self::AMAZON_REQUIRED_FIELDS, self::ETSY_REQUIRED_FIELDS)) as $field) {
+                    $query->orWhereNull($field)->orWhereRaw("TRIM(`{$field}`) = ''");
+                }
+            })
+            ->chunkById(200, function ($assets) use (&$requeued): void {
+                foreach ($assets as $asset) {
+                    $marketplace = $this->marketplaceForAsset($asset);
+                    if ($this->hasCompleteMetadata($asset, $marketplace)) {
+                        continue;
+                    }
+
+                    $asset->update([
+                        'marketplace_listing_status' => 'waiting',
+                        'marketplace_listing_attempts' => 0,
+                        'marketplace_listing_started_at' => null,
+                        'marketplace_listing_completed_at' => now(),
+                        'marketplace_listing_error' => 'Tu dong retry do listing metadata thieu cot bat buoc.',
+                    ]);
+                    $requeued++;
+                }
+            });
+
+        return $requeued;
+    }
+    public function requeueRecoverableMetadataFailures(): int
+    {
+        return ProductDesignAsset::query()
+            ->where('is_approved', true)
+            ->where('marketplace_listing_status', 'failed')
+            ->where('marketplace_listing_attempts', '<', 3)
+            ->where(function (Builder $query): void {
+                $query->where('marketplace_listing_error', 'like', '%JSON schema%')
+                    ->orWhere('marketplace_listing_error', 'like', '%JSON listing%')
+                    ->orWhere('marketplace_listing_error', 'like', '%Missing:%')
+                    ->orWhere('marketplace_listing_error', 'like', '%Extra:%');
+            })
+            ->update([
+                'marketplace_listing_status' => 'waiting',
+                'marketplace_listing_started_at' => null,
+                'marketplace_listing_completed_at' => now(),
+                'marketplace_listing_error' => 'Tu dong retry do listing metadata thieu/sai cot bat buoc.',
+            ]);
+    }
     public function failMissingSkuAssets(): int
     {
         return ProductDesignAsset::query()
@@ -533,7 +591,13 @@ PROMPT;
             ->where(function (Builder $query): void {
                 $query
                     ->whereNull('marketplace_listing_status')
-                    ->orWhere('marketplace_listing_status', 'waiting')
+                    ->orWhere(function (Builder $query): void {
+                        $query->where('marketplace_listing_status', 'waiting')
+                            ->where(function (Builder $query): void {
+                                $query->whereNull('marketplace_listing_completed_at')
+                                    ->orWhere('marketplace_listing_completed_at', '<=', now()->subMinutes(2));
+                            });
+                    })
                     ->orWhere(function (Builder $query): void {
                         $query
                             ->where('marketplace_listing_status', 'processing')
@@ -1032,6 +1096,16 @@ PROMPT;
         }
     }
 
+    private function shouldRetryMetadataFailure(Throwable $exception): bool
+    {
+        $message = strtolower($exception->getMessage());
+
+        return str_contains($message, 'json schema')
+            || str_contains($message, 'json listing')
+            || str_contains($message, 'missing:')
+            || str_contains($message, 'extra:')
+            || str_contains($message, 'invalid:');
+    }
     private function recoverCompletedMetadata(ProductDesignAsset $asset): ?ProductDesignAsset
     {
         $fresh = $asset->fresh(['user', 'product']);

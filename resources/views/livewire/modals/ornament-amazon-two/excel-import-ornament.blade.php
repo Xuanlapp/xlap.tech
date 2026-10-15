@@ -127,7 +127,7 @@
 
                                                     @if ($mockups->isNotEmpty())
                                                         <div class="flex max-w-[280px] flex-wrap gap-1.5">
-                                                            @foreach (range(1, 6) as $mockupNumber)
+                                                            @foreach (range(1, 11) as $mockupNumber)
                                                                 @php $mockupUrl = trim((string) data_get($row, 'mockups.mockup'.$mockupNumber, '')); @endphp
                                                                 @if ($mockupUrl !== '')
                                                                     <a
@@ -145,7 +145,7 @@
                                                                 @endif
                                                             @endforeach
                                                         </div>
-                                                        <p class="mt-1 text-[11px] font-medium text-slate-500">{{ $mockups->count() }}/6 mockup</p>
+                                                        <p class="mt-1 text-[11px] font-medium text-slate-500">{{ $mockups->count() }}/11 mockup</p>
                                                     @else
                                                         <span class="text-xs text-slate-400">No mockup</span>
                                                     @endif

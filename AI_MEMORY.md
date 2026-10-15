@@ -13157,3 +13157,21 @@ esources/views/livewire/modals/image/review-image.blade.php; deferred metadata s
 - Deploy impact: deploy changed PHP/Blade and new job; restart queue workers. Queue impact: database default worker must consume the new job, and the existing Drive daemon or scheduled command must run for actual upload. Database impact: no migration/schema changes; jobs/upload records are written on request. API and export transformation unchanged.
 - Validation: PHP lint, `php artisan view:cache`, `npm run build`, and focused manual queue test passed (1 test, 3 assertions). Authenticated visual capture and VPS timings not available. Better Design quota returned HTTP 402; Graphiti tools unavailable.
 - Follow-up: verify default queue worker and Drive daemon on VPS, inspect Drive Uploads after manual click, measure DevTools network/backend timings for filters before/after deployment, and capture 390/768/1280 authenticated screenshots.
+### 2026-10-15 — Extend Excel mockup import to 11 slots
+- Root cause: Glass, Ceramic, Decal and Sticker Excel importers parsed six mockup columns and repository/service persistence truncated imported arrays at six; Ornament Amazon 2 preview/parser also stopped at six.
+- Changed: standard importers now parse, preview and persist mockup1 through mockup11; import services and repository accept eleven slots. Ornament Amazon 2 parses and validates mockup1 through mockup11, sends slots 1-6 through its existing workflow mapping and persists slots 7-11 directly. Export already supported all eleven.
+- Validation: PHP lint, Blade cache and Vite build passed. No migration or queue change. Suncatcher Excel import has no mockup-column import flow; its existing six-slot workflow approval rules were not changed.
+
+
+### 2026-10-15 — Auto-retry incomplete listing metadata
+- Root cause: provider responses with missing/extra/invalid listing keys were marked failed and required manual retry, allowing items to be missed before export.
+- Changed: schema/metadata-shape failures now return to waiting automatically; the worker retries them. Existing failed records with JSON/schema/missing/extra errors are requeued when the listing daemon runs. Non-retryable failures such as missing SKU, permissions, quota/provider pause remain failed. Automatic retry is limited to three total attempts and delayed two minutes between attempts to prevent a hot loop; exhausted items remain failed for manual review.
+- Validation: PHP lint and Blade cache passed. No migration; deploy MarketplaceListingMetadataService and ProductDesignAssetRepository, then restart/reload the listing daemon. Queue impact: listing daemon only.
+
+
+### 2026-10-15 — Requeue completed listings with missing export fields
+- Root cause: an asset could remain `completed` even after `title`, `item_highlight`, bullets, description, generic keywords, or Etsy fields were blank, so the listing worker excluded it and export could miss metadata.
+- Changed: `MarketplaceListingMetadataService::generatePendingApprovedAssets()` now audits completed approved assets in chunks before claiming work. Incomplete rows return to `waiting`, clear processing timestamps, wait two minutes, and are regenerated; the existing schema-failure retry remains active.
+- Deploy impact: deploy `app/Services/Marketplace/MarketplaceListingMetadataService.php` and restart `xlap-marketplace-listing-daemon`.
+- Queue impact: listing daemon only; no migration required. The worker now retries until required marketplace metadata is complete, while normal schema retries remain capped.
+- Validation: PHP lint passed; `git diff --check` only reports pre-existing trailing whitespace in `AI_MEMORY.md`.

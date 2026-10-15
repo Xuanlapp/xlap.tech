@@ -18,7 +18,7 @@
                 <div class="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-5 md:px-6">
                     <div>
                         <h2 class="text-lg font-semibold tracking-tight text-slate-900">Import Glass Excel</h2>
-                        <p class="mt-1 text-sm text-slate-500">Cot ho tro: Source Image (optional, empty = Create Master when importing), Create Master (required), Mockup 1 -> Mockup 6 (optional), Keyword (required).</p>
+                        <p class="mt-1 text-sm text-slate-500">Cot ho tro: Source Image (optional, empty = Create Master when importing), Create Master (required), Mockup 1 -> Mockup 11 (optional), Keyword (required).</p>
                         <p class="mt-2 text-sm text-slate-600">
                             Template:
                             <a href="{{ asset('templates/glass-import-template.xlsx') }}" download="glass-import-template.xlsx" class="font-semibold text-emerald-600 underline decoration-emerald-200 underline-offset-4 transition hover:text-emerald-700">
@@ -44,7 +44,7 @@
                             </div>
                             <p class="mt-3 text-base font-semibold text-slate-900">Choose or drag Excel file here</p>
                             <p class="mt-1 text-sm text-slate-500">Support: .xlsx, .xls, .csv - max 10MB</p>
-                            <p class="mt-2 text-xs text-slate-400">Header goi y: Keyword | Source Image | Create Master | Mockup 1 | Mockup 2 | Mockup 3 | Mockup 4 | Mockup 5 | Mockup 6</p>
+                            <p class="mt-2 text-xs text-slate-400">Header goi y: Keyword | Source Image | Create Master | Mockup 1 | Mockup 2 | Mockup 3 | Mockup 4 | Mockup 5 | Mockup 6 | Mockup 7 | Mockup 8 | Mockup 9 | Mockup 10 | Mockup 11</p>
                             <input id="glass-import-excel" type="file" wire:model.live="excelFile" accept=".xlsx,.xls,.csv,.txt" class="sr-only">
                         </label>
                     @endif
@@ -92,7 +92,7 @@
                                                 <td class="px-4 py-3 text-xs text-slate-700 break-all max-w-[260px]">{{ $row['source_image'] ?: '-' }}</td>
                                                 <td class="px-4 py-3 text-xs text-slate-700 break-all max-w-[260px]">{{ $row['create_master'] }}</td>
                                                 <td class="px-4 py-3 text-xs text-slate-700 max-w-[220px]">
-                                                    {{ collect([$row['mockup1'],$row['mockup2'],$row['mockup3'],$row['mockup4'],$row['mockup5'],$row['mockup6']])->filter()->count() }}/6
+                                                    {{ collect([$row['mockup1'],$row['mockup2'],$row['mockup3'],$row['mockup4'],$row['mockup5'],$row['mockup6'],$row['mockup7'],$row['mockup8'],$row['mockup9'],$row['mockup10'],$row['mockup11']])->filter()->count() }}/11
                                                 </td>
                                                 <td class="px-4 py-3">
                                                     <span class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold {{ $rowStatus === 'false' ? 'bg-rose-50 text-rose-700' : ($rowStatus === 'running' ? 'bg-amber-50 text-amber-700' : ($rowStatus === 'pending' ? 'bg-sky-50 text-sky-700' : 'bg-slate-100 text-slate-600')) }}">

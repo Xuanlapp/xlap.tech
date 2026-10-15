@@ -228,11 +228,13 @@ class ProductDesignAssetRepository
             foreach (array_values($mockups) as $index => $mockup) {
                 $slot = $index + 1;
 
-                if ($slot > 6) {
+                if ($slot > 11) {
                     break;
                 }
 
-                $attributes["mockup{$slot}"] = $mockup;
+                if ($mockup !== '') {
+                    $attributes["mockup{$slot}"] = $mockup;
+                }
             }
 
             return ProductDesignAsset::create($attributes);
@@ -241,7 +243,7 @@ class ProductDesignAssetRepository
 
     /**
      * Create one imported Glass asset with an optional source image,
-     * required Create Master image, and up to six imported mockups.
+     * required Create Master image, and up to eleven imported mockups.
      *
      * @param array<int, string> $mockups
      */
@@ -268,11 +270,13 @@ class ProductDesignAssetRepository
             foreach (array_values($mockups) as $index => $mockup) {
                 $slot = $index + 1;
 
-                if ($slot > 6) {
+                if ($slot > 11) {
                     break;
                 }
 
-                $attributes["mockup{$slot}"] = $mockup;
+                if ($mockup !== '') {
+                    $attributes["mockup{$slot}"] = $mockup;
+                }
             }
 
             return ProductDesignAsset::create($attributes);
@@ -584,6 +588,19 @@ class ProductDesignAssetRepository
         return $asset->refresh();
     }
 
+    public function markListingWaiting(ProductDesignAsset $asset, string $message): ProductDesignAsset
+    {
+        retry(3, function () use ($asset, $message): void {
+            $asset->update([
+                'marketplace_listing_status' => 'waiting',
+                'marketplace_listing_started_at' => null,
+                'marketplace_listing_completed_at' => now(),
+                'marketplace_listing_error' => mb_substr($message, 0, 2000),
+            ]);
+        }, 150, fn (Throwable $exception): bool => in_array((string) $exception->getCode(), ['1213', '40001'], true));
+
+        return $asset->refresh();
+    }
     public function markListingFailed(ProductDesignAsset $asset, string $message): ProductDesignAsset
     {
         retry(3, function () use ($asset, $message): void {
@@ -657,7 +674,7 @@ class ProductDesignAssetRepository
 
     /**
      * Create one imported Ceramic asset with an optional source image,
-     * required Create Master image, and up to six imported mockups.
+     * required Create Master image, and up to eleven imported mockups.
      *
      * @param array<int, string> $mockups
      */
@@ -683,10 +700,12 @@ class ProductDesignAssetRepository
 
             foreach (array_values($mockups) as $index => $mockup) {
                 $slot = $index + 1;
-                if ($slot > 6) {
+                if ($slot > 11) {
                     break;
                 }
-                $attributes["mockup{$slot}"] = $mockup;
+                if ($mockup !== '') {
+                    $attributes["mockup{$slot}"] = $mockup;
+                }
             }
 
             return ProductDesignAsset::create($attributes);
