@@ -13199,3 +13199,9 @@ esources/views/livewire/modals/image/review-image.blade.php; deferred metadata s
 - Root cause: upload processing skipped an empty asset field before checking the previous upload record or existing Drive folder file, so one missing DB URL could block a slot even when another persisted source existed.
 - Changed: each image slot now checks current asset URL, previous `drive_files` URL, and matching Drive folder file before failing. Relative and absolute `/storage/` URLs are supported.
 - Validation: PHP lint and diff check passed. Deploy and retry the affected upload records on VPS.
+
+### 2026-10-16 — Prevent Listing worker deadlocks during maintenance
+- Root cause: every one of the 10 listing daemons ran stale recovery, incomplete-completed requeue, failed requeue, and missing-SKU scans on every polling cycle. Concurrent bulk updates caused MySQL serialization failures/deadlocks and high CPU.
+- Changed: listing queue maintenance is guarded by a shared cache lock; only one worker performs maintenance while the others proceed to claim work.
+- Deploy impact: deploy `MarketplaceListingMetadataService.php`, clear Laravel cache, restart listing daemon group. Queue impact: all 10 workers remain available, but maintenance runs once per lock window.
+- Validation: PHP lint and diff check passed.

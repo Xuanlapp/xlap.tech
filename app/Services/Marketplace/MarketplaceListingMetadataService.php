@@ -405,10 +405,7 @@ PROMPT;
      */
     public function generatePendingApprovedAssets(int $limit = 0, int $delaySeconds = 0): int
     {
-        $this->recoverStaleProcessingAssets();
-        $this->requeueIncompleteCompletedMetadata();
-        $this->requeueRecoverableMetadataFailures();
-        $this->failMissingSkuAssets();
+        $this->runQueueMaintenance();
 
         $processed = 0;
         $claimed = 0;
@@ -449,6 +446,23 @@ PROMPT;
         }
 
         return $processed;
+    }
+
+    private function runQueueMaintenance(): void
+    {
+        $lock = Cache::lock('marketplace-listing-metadata:maintenance', 30);
+        if (! $lock->get()) {
+            return;
+        }
+
+        try {
+            $this->recoverStaleProcessingAssets();
+            $this->requeueIncompleteCompletedMetadata();
+            $this->requeueRecoverableMetadataFailures();
+            $this->failMissingSkuAssets();
+        } finally {
+            $lock->release();
+        }
     }
 
     public function requeueIncompleteCompletedMetadata(): int
