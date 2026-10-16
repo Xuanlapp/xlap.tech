@@ -116,7 +116,7 @@ class DriveUploads extends Component
 
         return ProductDriveUpload::query()
             ->whereKey($upload->id)
-            ->where('status', 'failed')
+            ->whereIn('status', ['failed', 'waiting'])
             ->update(['status' => 'waiting', 'error' => null, 'started_at' => null, 'completed_at' => null]) === 1;
     }
 

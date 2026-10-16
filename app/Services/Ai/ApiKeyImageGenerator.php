@@ -220,9 +220,7 @@ class ApiKeyImageGenerator
             ->where('provider_key', $providerKey)
             ->where('is_active', true);
 
-        if (is_string($functionKey) && trim($functionKey) !== '') {
-            $credentialQuery->where('function_key', trim($functionKey));
-        }
+        $requestedFunctionKey = is_string($functionKey) ? trim($functionKey) : '';
 
         $credential = $credentialQuery
             ->where(function ($query) use ($user): void {
@@ -230,6 +228,7 @@ class ApiKeyImageGenerator
                     ->orWhereNull('user_id');
             })
             ->orderByRaw('CASE WHEN user_id = ? THEN 0 ELSE 1 END', [$user->id])
+            ->orderByDesc('id')
             ->first();
 
         if (! $credential) {

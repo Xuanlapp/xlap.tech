@@ -71,17 +71,27 @@ class ProductDriveUploadQueueService
         foreach (self::IMAGE_FIELDS as $field) {
             $url = $asset->getAttribute($field);
 
-            if (is_string($url) && str_starts_with($url, '/storage/')) {
+            if ($this->isLocalStorageUrl($url)) {
                 return true;
             }
         }
 
         foreach (($asset->redesign_candidates ?: []) as $url) {
-            if (is_string($url) && str_starts_with($url, '/storage/')) {
+            if ($this->isLocalStorageUrl($url)) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    private function isLocalStorageUrl(mixed $url): bool
+    {
+        if (! is_string($url) || trim($url) === '') {
+            return false;
+        }
+
+        $path = parse_url($url, PHP_URL_PATH);
+        return is_string($path) && str_starts_with($path, '/storage/');
     }
 }

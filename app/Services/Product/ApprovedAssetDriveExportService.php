@@ -34,7 +34,7 @@ class ApprovedAssetDriveExportService
             ->where('is_approved', true)
             ->where(function ($query): void {
                 foreach (ProductDriveUploadQueueService::IMAGE_FIELDS as $field) {
-                    $query->orWhere($field, 'like', '/storage/%');
+                    $query->orWhere($field, 'like', '%/storage/%');
                 }
 
                 $query->orWhereNotNull('redesign_candidates');
@@ -85,6 +85,7 @@ class ApprovedAssetDriveExportService
     public function exportNextWaitingUpload(?User $actor = null, string $trigger = 'scheduled'): array
     {
         $this->markStaleProcessingUploadsAsFailed();
+        $this->markWaitingUploadsWithoutSourceAsFailed();
 
         $upload = DB::transaction(function (): ?ProductDriveUpload {
             $upload = ProductDriveUpload::query()
@@ -193,17 +194,24 @@ class ApprovedAssetDriveExportService
         foreach (ProductDriveUploadQueueService::IMAGE_FIELDS as $field) {
             $url = $asset->getAttribute($field);
 
-            if (! is_string($url) || $url === '') {
+            $folderFile = $folderByItem[$imageNumber] ?? null;
+            $oldFile = $previousFiles->get($field);
+            $oldDriveUrl = is_array($oldFile) && ! empty($oldFile['drive_url'])
+                ? (string) $oldFile['drive_url']
+                : '';
+
+            // Try every persisted source for this slot before declaring it missing:
+            // current asset URL, previous upload record, then the Drive folder file.
+            if (! is_string($url) || trim($url) === '') {
+                $url = $oldDriveUrl;
+            }
+
+            if (trim((string) $url) === '' && ! $folderFile) {
                 continue;
             }
 
-            $folderFile = $folderByItem[$imageNumber] ?? null;
-
-            if (! is_string($url) || ! str_starts_with($url, '/storage/')) {
-                $oldFile = $previousFiles->get($field);
-                $oldUrl = is_array($oldFile) && ! empty($oldFile['drive_url'])
-                    ? (string) $oldFile['drive_url']
-                    : (string) $url;
+            if (! $this->isLocalStorageUrl($url)) {
+                $oldUrl = $oldDriveUrl !== '' ? $oldDriveUrl : (string) $url;
                 $sourceId = $folderFile['id'] ?? null;
                 if (! $sourceId && preg_match('#/file/d/([^/]+)#', $oldUrl, $matches)) {
                     $sourceId = $matches[1];
@@ -398,6 +406,16 @@ class ApprovedAssetDriveExportService
         ];
     }
 
+    private function isLocalStorageUrl(mixed $url): bool
+    {
+        if (! is_string($url) || trim($url) === '') {
+            return false;
+        }
+
+        $path = parse_url($url, PHP_URL_PATH);
+        return is_string($path) && str_starts_with($path, '/storage/');
+    }
+
     private function absoluteStoragePath(string $url): ?string
     {
         $path = parse_url($url, PHP_URL_PATH);
@@ -457,6 +475,38 @@ class ApprovedAssetDriveExportService
                 'completed_at' => now(),
                 'updated_at' => now(),
             ]);
+    }
+
+    private function markWaitingUploadsWithoutSourceAsFailed(): int
+    {
+        $count = 0;
+
+        ProductDriveUpload::query()
+            ->where('status', 'waiting')
+            ->with('asset')
+            ->chunkById(100, function ($uploads) use (&$count): void {
+                foreach ($uploads as $upload) {
+                    $asset = $upload->asset;
+                    if (! $asset || ! $asset->is_approved) {
+                        continue;
+                    }
+
+                    $hasLocal = app(ProductDriveUploadQueueService::class)->hasLocalExportableImages($asset);
+                    $hasDrive = $this->assetHasDriveImages($asset) || filled($upload->drive_folder_id);
+                    if ($hasLocal || $hasDrive) {
+                        continue;
+                    }
+
+                    $upload->update([
+                        'status' => 'failed',
+                        'error' => 'Khong con anh local va chua co link Drive hop le. Hay tao lai/giu lai anh local roi Reupload.',
+                        'completed_at' => now(),
+                    ]);
+                    $count++;
+                }
+            });
+
+        return $count;
     }
 
     private function assetHasDriveImages(ProductDesignAsset $asset): bool

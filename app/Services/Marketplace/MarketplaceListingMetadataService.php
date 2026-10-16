@@ -756,7 +756,6 @@ PROMPT;
         $hasCredential = UserApiCredential::query()
             ->where('user_id', $user->id)
             ->where('provider_key', $providerKey)
-            ->where('function_key', $functionKey)
             ->where('is_active', true)
             ->exists();
 

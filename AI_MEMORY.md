@@ -13175,3 +13175,27 @@ esources/views/livewire/modals/image/review-image.blade.php; deferred metadata s
 - Deploy impact: deploy `app/Services/Marketplace/MarketplaceListingMetadataService.php` and restart `xlap-marketplace-listing-daemon`.
 - Queue impact: listing daemon only; no migration required. The worker now retries until required marketplace metadata is complete, while normal schema retries remain capped.
 - Validation: PHP lint passed; `git diff --check` only reports pre-existing trailing whitespace in `AI_MEMORY.md`.
+
+### 2026-10-15 — Share user API key across product pages
+- Root cause: API credentials were selected by both `user_id` and page-specific `function_key`; Suncatcher could keep using an older CheapKeyAI token even after the user updated the key on a newer page such as Glass.
+- Changed: `ApiKeyImageGenerator` now selects the active credential owned by the user (or shared credential), regardless of product page. Listing metadata ownership validation also checks the active provider credential at user level.
+- Deploy impact: deploy `app/Services/Ai/ApiKeyImageGenerator.php` and `app/Services/Marketplace/MarketplaceListingMetadataService.php`; restart relevant workers.
+- Queue impact: listing/image workers will use the same active user credential across pages. Existing failed items remain failed until Retry is triggered.
+- Follow-up: after deployment, update/save the current CheapKeyAI key once, retry Suncatcher item 88, and verify the log no longer reports the old 401 token.
+
+### 2026-10-16 — Diagnose empty Drive upload waiting records
+- Root cause: approved uploads can remain waiting despite having neither local image URLs nor Drive source, and the Reupload action only changes failed records even when shown on waiting records.
+- Changed: `app/Services/Product/ApprovedAssetDriveExportService.php` reconciles empty waiting uploads to failed with a diagnostic message; `app/Livewire/Pages/Drive/DriveUploads.php` accepts a valid waiting requeue as well.
+- Deploy impact: deploy both PHP files and restart the Drive upload daemon. Queue impact: only Drive upload waiting records are scanned in batches; no migration. Missing images cannot be recovered by code and must be recreated/resynced before retry.
+- Validation: PHP lint passed; production filesystem/DB not accessible here.
+
+### 2026-10-16 — Fix Drive detection for absolute storage URLs
+- Root cause: Drive queue detection and upload execution only recognized `/storage/...`; the UI showed valid `https://xlap.tech/storage/...` image URLs, so approved assets were incorrectly reported as having no local source.
+- Changed: Drive source detection now parses URL paths and accepts both relative `/storage/...` and absolute website storage URLs. Batch export query and upload execution use the same rule.
+- Deploy impact: deploy `ProductDriveUploadQueueService.php` and `ApprovedAssetDriveExportService.php`, then restart the Drive daemon. Existing failed records can be requeued with Reupload after deployment.
+- Validation: PHP lint passed; diff check passed for changed Drive files. VPS file/DB verification remains pending.
+
+### 2026-10-16 — Add per-slot Drive source fallback
+- Root cause: upload processing skipped an empty asset field before checking the previous upload record or existing Drive folder file, so one missing DB URL could block a slot even when another persisted source existed.
+- Changed: each image slot now checks current asset URL, previous `drive_files` URL, and matching Drive folder file before failing. Relative and absolute `/storage/` URLs are supported.
+- Validation: PHP lint and diff check passed. Deploy and retry the affected upload records on VPS.
