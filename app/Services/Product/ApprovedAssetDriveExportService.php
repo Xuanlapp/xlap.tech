@@ -174,8 +174,18 @@ class ApprovedAssetDriveExportService
         $fileInfo = [];
         $imageNumber = 1;
 
-        $driveFolder = $this->drive->createUploadFolder($this->folderNameForUser($asset), (string) $asset->id);
         $previousFiles = collect($upload->drive_files ?: [])->keyBy('field');
+        if (! $this->assetHasAnyPersistedSource($asset, $previousFiles)) {
+            $upload->update([
+                'status' => 'failed',
+                'error' => 'Khong tim thay anh local, link Drive hoac file Drive da luu cho item nay.',
+                'completed_at' => now(),
+            ]);
+
+            return 0;
+        }
+
+        $driveFolder = $this->drive->createUploadFolder($this->folderNameForUser($asset), (string) $asset->id);
         $folderFiles = $upload->drive_folder_id
             ? $this->drive->listFolderImages($upload->drive_folder_id)
             : [];
@@ -507,6 +517,38 @@ class ApprovedAssetDriveExportService
             });
 
         return $count;
+    }
+
+    private function assetHasAnyPersistedSource(ProductDesignAsset $asset, $previousFiles): bool
+    {
+        if ($this->hasLocalAssetImage($asset)) {
+            return true;
+        }
+
+        foreach ($previousFiles as $file) {
+            if (is_array($file) && preg_match('#/file/d/[^/]+#', (string) ($file['drive_url'] ?? '')) === 1) {
+                return true;
+            }
+        }
+
+        return $this->assetHasDriveImages($asset);
+    }
+
+    private function hasLocalAssetImage(ProductDesignAsset $asset): bool
+    {
+        foreach (ProductDriveUploadQueueService::IMAGE_FIELDS as $field) {
+            if ($this->isLocalStorageUrl($asset->getAttribute($field))) {
+                return true;
+            }
+        }
+
+        foreach (($asset->redesign_candidates ?: []) as $url) {
+            if ($this->isLocalStorageUrl($url)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function assetHasDriveImages(ProductDesignAsset $asset): bool
