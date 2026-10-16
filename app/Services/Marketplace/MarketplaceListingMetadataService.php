@@ -450,10 +450,16 @@ PROMPT;
 
     private function runQueueMaintenance(): void
     {
+        if (Cache::has('marketplace-listing-metadata:maintenance:recent')) {
+            return;
+        }
+
         $lock = Cache::lock('marketplace-listing-metadata:maintenance', 30);
         if (! $lock->get()) {
             return;
         }
+
+        Cache::put('marketplace-listing-metadata:maintenance:recent', true, now()->addSeconds(30));
 
         try {
             $this->recoverStaleProcessingAssets();
@@ -533,7 +539,10 @@ PROMPT;
     }
     public function recoverStaleProcessingAssets(): int
     {
-        return ProductDesignAsset::query()
+        $recovered = 0;
+
+        ProductDesignAsset::query()
+            ->with(['user', 'product'])
             ->where('is_approved', true)
             ->where('marketplace_listing_status', 'processing')
             ->where(function (Builder $query): void {
@@ -541,11 +550,22 @@ PROMPT;
                     ->whereNull('marketplace_listing_started_at')
                     ->orWhere('marketplace_listing_started_at', '<=', $this->staleProcessingCutoff());
             })
-            ->update([
-                'marketplace_listing_status' => 'failed',
-                'marketplace_listing_completed_at' => now(),
-                'marketplace_listing_error' => 'Listing metadata bi ket qua lau khong cap nhat. He thong da tu dong chuyen ve Failed, hay bam Retry de chay lai.',
-            ]);
+            ->chunkById(100, function ($assets) use (&$recovered): void {
+                foreach ($assets as $asset) {
+                    $marketplace = $this->marketplaceForAsset($asset);
+                    if ($this->hasCompleteMetadata($asset, $marketplace)) {
+                        $this->assets->markListingCompleted($asset, $marketplace);
+                    } else {
+                        $this->assets->markListingFailed(
+                            $asset,
+                            'Listing metadata bi ket qua lau khong cap nhat. Hay bam Retry de chay lai.',
+                        );
+                    }
+                    $recovered++;
+                }
+            });
+
+        return $recovered;
     }
 
     private function claimNextPendingApprovedAsset(): ?ProductDesignAsset

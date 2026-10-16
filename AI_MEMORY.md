@@ -13205,3 +13205,9 @@ esources/views/livewire/modals/image/review-image.blade.php; deferred metadata s
 - Changed: listing queue maintenance is guarded by a shared cache lock; only one worker performs maintenance while the others proceed to claim work.
 - Deploy impact: deploy `MarketplaceListingMetadataService.php`, clear Laravel cache, restart listing daemon group. Queue impact: all 10 workers remain available, but maintenance runs once per lock window.
 - Validation: PHP lint and diff check passed.
+
+### 2026-10-16 — Recover complete metadata before stale failure
+- Root cause: stale `processing` recovery always marked records `failed`, even when metadata had already been fully saved before the worker failed to update status. This left complete items such as RGC9-3 displayed as Running/Failed incorrectly.
+- Changed: stale recovery now checks marketplace-required fields per asset; complete metadata is marked `completed`, incomplete metadata is marked `failed`. Maintenance scans are throttled to one pass per 30 seconds in addition to the shared lock.
+- Deploy impact: deploy `MarketplaceListingMetadataService.php`, clear cache, restart listing daemons. No migration.
+- Validation: PHP lint and diff check passed.
