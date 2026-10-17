@@ -24,6 +24,7 @@ use App\Livewire\Pages\Financial\FinancialManagement as UserFinancialManagement;
 use App\Livewire\Pages\Marketplace\MarketplaceExports;
 use App\Livewire\Pages\Marketplace\ListingMetadataStatus;
 use App\Livewire\Pages\Admin\ListingPromptSettings;
+use App\Livewire\Pages\Admin\DataSkuSearch;
 use App\Livewire\Pages\Order\Index as OrderIndex;
 use App\Livewire\Pages\Suncatcher\AutomationCatalog;
 use App\Livewire\Pages\Salary\Wali;
@@ -112,6 +113,10 @@ Route::middleware(['auth', 'verified'])->prefix('offorest')->group(function (): 
     Route::get('admin/mail-test', MailTest::class)
         ->middleware('admin')
         ->name('offorest.admin.mail-test');
+
+    Route::get('data/sku-search', DataSkuSearch::class)
+        ->middleware('admin')
+        ->name('offorest.data.sku-search');
 
     Route::get('admin/listing-prompts', ListingPromptSettings::class)
         ->middleware('admin')

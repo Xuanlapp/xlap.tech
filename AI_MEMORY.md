@@ -13211,3 +13211,70 @@ esources/views/livewire/modals/image/review-image.blade.php; deferred metadata s
 - Changed: stale recovery now checks marketplace-required fields per asset; complete metadata is marked `completed`, incomplete metadata is marked `failed`. Maintenance scans are throttled to one pass per 30 seconds in addition to the shared lock.
 - Deploy impact: deploy `MarketplaceListingMetadataService.php`, clear cache, restart listing daemons. No migration.
 - Validation: PHP lint and diff check passed.
+
+### 2026-10-16 — Add super-admin DATA SKU search
+- Root cause: DATA navigation had no cross-user SKU lookup for super_admin operations.
+- Changed: added `DataSkuSearch` Livewire page with exact multi-SKU matching, comma/newline parsing, case normalization, pagination, user/product context, and a super-admin authorization guard. Added `/offorest/data/sku-search` route and DATA navigation links for desktop and mobile.
+- Changed files: `app/Livewire/Pages/Admin/DataSkuSearch.php`, `resources/views/livewire/pages/admin/data-sku-search.blade.php`, `routes/web.php`, `resources/views/livewire/layout/navigation.blade.php`, `.design/data-sku-search/DESIGN_BRIEF.md`.
+- Deploy impact: deploy the changed PHP/Blade files and clear route/view caches if the server caches them. No migration or queue restart required.
+- Queue impact: none; this page is read-only and does not enqueue work.
+- Validation: PHP lint passed, route registered, Blade cache passed, `npm run build` passed, and `git diff --check` passed for this change.
+- Follow-up: verify with a super_admin using `RGC8-1,RGC8-2`; ordinary admins should receive 403 and should not see the DATA SKU Search link.
+
+### 2026-10-16 — Expand DATA SKU filters
+- Root cause: SKU search only supported the global scope and could not narrow results by user or product.
+- Changed: added filter modes for all, user, user + product, and product; added user/product selectors and query constraints while preserving comma-separated SKU matching.
+- Affected modules: super-admin DATA SKU Search Livewire page and Blade view only.
+- Deploy impact: deploy the updated component and view; no migration or queue restart required.
+- Queue impact: none; this remains read-only.
+- Validation: PHP lint and Blade cache passed. `git diff --check` reports only the existing trailing-whitespace line in `AI_MEMORY.md`.
+
+### 2026-10-16 — Restrict DATA SKU product filter to Page group
+- Root cause: the product selector showed every active product, including Support products, and user options exposed email unnecessarily.
+- Changed: user selector now displays names only; product selector is limited to the same Page slugs used by the main navigation and displays product names.
+- Affected modules: `DataSkuSearch` Livewire page and its Blade view.
+- Deploy impact: deploy the updated PHP/Blade files; no migration or queue restart required.
+- Queue impact: none.
+- Validation: PHP lint and Blade cache should be rerun after deployment.
+
+### 2026-10-17 — Simplify DATA SKU result columns
+- Changed: removed result Title and user email; table now shows SKU, user name, product, and approval status only.
+- Deploy impact: Blade view update only; no migration or queue restart.
+
+### 2026-10-17 - Remove individual SKU from DATA search
+- Root cause: results had no way to remove one SKU without editing the comma-separated field.
+- Changed: per-row X removes that SKU from the current filter only, preserving other SKUs and scope; no records are deleted.
+- Affected: DataSkuSearch component and view. Deploy both files; no migration or queue impact.
+- Follow-up: visually verify desktop/mobile after deployment.
+
+
+### 2026-10-17 - Reset item approval and listing metadata from DATA
+- Changed: super_admin can reset one result to unapproved and clear listing metadata/status/export markers while preserving all image and update-image columns.
+- Affected: DataSkuSearch component and view only. No migration or queue restart.
+- Safety: action requires confirmation and server-side super_admin authorization.
+
+
+### 2026-10-17 - Add bulk reset to unapproved
+- Changed: added a super_admin-only bulk action that resets every item in the current SKU/user/product filter to unapproved, clears listing metadata/status/export markers, and preserves all image/update-image fields.
+- Safety: confirmation is required; processing is chunked in batches to avoid loading all records at once.
+- Validation: PHP lint and Blade cache passed; frontend build remains required after deployment if assets are rebuilt.
+
+
+### 2026-10-17 - Preserve marketplace selection during reset
+- Root cause: reset action incorrectly cleared marketplace_listing_marketplace along with generated listing metadata.
+- Changed: reset actions no longer modify marketplace_listing_marketplace; existing affected TT93/TT94 rows with NULL were restored to amazon after verifying adjacent same-product records and their prior listing context.
+- Deploy impact: deploy DataSkuSearch component; no migration or queue restart.
+- Follow-up: verify marketplace value before/after future reset actions.
+
+
+### 2026-10-17 - Split DATA SKU results by approval
+- Changed: DATA SKU search now renders separate approved and unapproved tables; bulk reset and per-item reset actions appear only in the approved table.
+- Safety: bulk reset scopes to approved filtered assets only; marketplace_listing_marketplace is preserved.
+- Validation: PHP lint, Blade cache, and frontend build passed.
+
+
+### 2026-10-17 - Fix DATA SKU Blade parse error
+- Root cause: the split-table Blade template omitted the closing @endif for the SKU-empty/results branch, causing unexpected end of file on VPS.
+- Changed: restored the closing directive and cleared/rebuilt compiled views; also removed the marketplace reset assignment from the component so reset preserves marketplace.
+- Validation: PHP lint and view cache passed; run frontend build before deploy.
+

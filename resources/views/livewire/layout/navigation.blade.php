@@ -333,6 +333,12 @@ new class extends Component
                             </svg>
                             <span>Export</span>
                         </a>
+                        @if (auth()->user()->isSuperAdmin())
+                            <a href="{{ route('offorest.data.sku-search') }}" wire:navigate class="{{ $navItemClass }} {{ request()->routeIs('offorest.data.sku-search') ? $activeClass : $inactiveClass }}">
+                                <svg class="{{ $iconClass }} {{ request()->routeIs('offorest.data.sku-search') ? 'text-white' : 'text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><circle cx="11" cy="11" r="6" /><path d="m16 16 4 4" /></svg>
+                                <span>SKU Search</span>
+                            </a>
+                        @endif
                     </div>
                 </div>
                 @endif
@@ -506,6 +512,9 @@ new class extends Component
                             <a href="{{ route('offorest.suncatcher.catalog') }}" x-on:click="sidebarOpen = false" class="block rounded-md px-2 py-1 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100">Suncatcher Catalog</a>
                             <a href="{{ route('offorest.drive-uploads') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md px-2 py-1 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100">Uploads</a>
                             <a href="{{ route('offorest.exports') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md px-2 py-1 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100">Export</a>
+                            @if (auth()->user()->isSuperAdmin())
+                                <a href="{{ route('offorest.data.sku-search') }}" wire:navigate x-on:click="sidebarOpen = false" class="block rounded-md px-2 py-1 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100">SKU Search</a>
+                            @endif
                         </div>
                     </div>
                     @endif
