@@ -219,7 +219,8 @@ class ApprovedAssetDriveExportService
                     throw new \RuntimeException("Khong xac dinh duoc Drive file ID cho {$field}.");
                 }
 
-                $filename = (string) ($folderFile['name'] ?? (is_array($oldFile) ? ($oldFile['filename'] ?? "{$asset->id}_{$field}.png") : "{$asset->id}_{$field}.png"));
+                $sourceFilename = (string) ($folderFile['name'] ?? (is_array($oldFile) ? ($oldFile['filename'] ?? "{$asset->id}_{$field}.png") : "{$asset->id}_{$field}.png"));
+                $filename = $this->driveFilenameFromName($asset, $imageNumber, $sourceFilename);
                 $upload->update(['started_at' => now()]);
                 $driveUrl = $this->drive->copyFileToFolder($sourceId, $filename, $driveFolder['id']);
                 $updates[$field] = $driveUrl;
@@ -241,7 +242,7 @@ class ApprovedAssetDriveExportService
                 if (! $folderFile) {
                     throw new \RuntimeException("Khong tim thay file local cho {$field}.");
                 }
-                $filename = (string) $folderFile['name'];
+                $filename = $this->driveFilenameFromName($asset, $imageNumber, (string) $folderFile['name']);
                 $upload->update(['started_at' => now()]);
                 $driveUrl = $this->drive->copyFileToFolder($folderFile['id'], $filename, $driveFolder['id']);
                 $updates[$field] = $driveUrl;
@@ -563,6 +564,13 @@ class ApprovedAssetDriveExportService
         $name = preg_replace('/[^a-z0-9]+/', '', Str::lower(Str::ascii((string) $user?->name))) ?? '';
 
         return $name !== '' ? $name : 'user-'.$asset->user_id;
+    }
+
+    private function driveFilenameFromName(ProductDesignAsset $asset, int $imageNumber, string $sourceName): string
+    {
+        $extension = pathinfo($sourceName, PATHINFO_EXTENSION) ?: 'png';
+
+        return "{$asset->id}_item{$imageNumber}_{$this->folderNameForUser($asset)}.{$extension}";
     }
 
     private function driveFilename(ProductDesignAsset $asset, int $imageNumber, string $absolutePath): string

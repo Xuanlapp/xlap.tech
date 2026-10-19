@@ -13286,3 +13286,10 @@ esources/views/livewire/modals/image/review-image.blade.php; deferred metadata s
 - Queue impact: Drive uploads only; listing and mockup workers are unaffected.
 - Follow-up: retry one affected FCAMZ item and verify a new folder/link is saved in product_drive_uploads.
 
+
+### 2026-10-19 - Prevent duplicate item filenames in fresh Drive batches
+- Root cause: old drive_files or fallback folder filenames could be reused during a new upload, allowing duplicate item5/item6/item7 names in the new Drive folder.
+- Changed: Drive-sourced copies now always receive a deterministic slot filename based on asset ID, item number, user, and source extension; previous folders are not scanned.
+- Deploy impact: deploy ApprovedAssetDriveExportService and restart Drive workers. Existing duplicate folders are historical and are not modified automatically.
+- Follow-up: reupload one affected item and verify its new folder has one file per item number.
+
