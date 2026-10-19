@@ -13278,3 +13278,11 @@ esources/views/livewire/modals/image/review-image.blade.php; deferred metadata s
 - Changed: restored the closing directive and cleared/rebuilt compiled views; also removed the marketplace reset assignment from the component so reset preserves marketplace.
 - Validation: PHP lint and view cache passed; run frontend build before deploy.
 
+
+### 2026-10-19 - Use a fresh Drive folder for regenerated mockups
+- Root cause: each export created a new Drive folder but then scanned the previous upload folder through drive_folder_id; old duplicate item slots triggered errors such as duplicate item7 during research-SKU mockup reuploads.
+- Changed: ApprovedAssetDriveExportService no longer lists or reuses files from the previous Drive folder. It uses current asset image URLs and per-slot previous drive_files URLs as fallback, then writes the new folder/link and file list.
+- Deploy impact: deploy the service and restart the Drive upload daemon; existing failed records can be requeued after deployment.
+- Queue impact: Drive uploads only; listing and mockup workers are unaffected.
+- Follow-up: retry one affected FCAMZ item and verify a new folder/link is saved in product_drive_uploads.
+

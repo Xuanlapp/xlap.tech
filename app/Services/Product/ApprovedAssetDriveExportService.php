@@ -186,20 +186,9 @@ class ApprovedAssetDriveExportService
         }
 
         $driveFolder = $this->drive->createUploadFolder($this->folderNameForUser($asset), (string) $asset->id);
-        $folderFiles = $upload->drive_folder_id
-            ? $this->drive->listFolderImages($upload->drive_folder_id)
-            : [];
+        // Every export/reupload gets a fresh folder. Do not inspect or reuse the
+        // previous folder: it may contain an older mockup batch with duplicate slots.
         $folderByItem = [];
-        foreach ($folderFiles as $file) {
-            if (! preg_match('/^'.preg_quote((string) $asset->id, '/').'_item(\d+)_/i', (string) $file['name'], $matches)) {
-                continue;
-            }
-            $index = (int) $matches[1];
-            if (isset($folderByItem[$index])) {
-                throw new \RuntimeException("Folder Drive cu co nhieu file item{$index}; can kiem tra thu cong.");
-            }
-            $folderByItem[$index] = $file;
-        }
 
         foreach (ProductDriveUploadQueueService::IMAGE_FIELDS as $field) {
             $url = $asset->getAttribute($field);
