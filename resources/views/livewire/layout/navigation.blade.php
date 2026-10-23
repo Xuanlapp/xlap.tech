@@ -77,7 +77,7 @@ new class extends Component
     $iconClass = 'h-5 w-5 shrink-0';
     $isAdminUser = auth()->user()?->role === 'admin' || (bool) auth()->user()?->is_admin;
     $isWaliUser = (bool) (auth()->user()?->can_access_wali) && ! $isAdminUser && ! auth()->user()?->isManager();
-    $pageProducts = $products->whereIn('slug', ['decal', 'suncatcher', 'ornament', 'ornament-etsy', 'ornament-amazon-2', 'sticker', 'glass', 'ceramic']);
+    $pageProducts = $products->whereIn('slug', ['decal', 'suncatcher', 'suncatcher-two', 'ornament', 'ornament-etsy', 'ornament-amazon-2', 'sticker', 'glass', 'ceramic']);
     $supportSlugs = ['camp', 'proxy', 'ytrends', 'idea-amazon', 'idea-etsy'];
     $supportProducts = $products
         ->whereIn('slug', $supportSlugs)
@@ -580,5 +580,6 @@ new class extends Component
         </aside>
     </div>
 </div>
+
 
 

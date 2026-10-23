@@ -50,6 +50,10 @@ return [
         'secret_key' => env('TURNSTILE_SECRET_KEY'),
     ],
 
+    'amz_research' => [
+        'extension_id' => env('AMZ_RESEARCH_EXTENSION_ID'),
+    ],
+
     'vertex' => [
         'model' => env('VERTEX_MODEL', 'gemini-2.5-flash-image'),
         'text_model' => env('VERTEX_TEXT_MODEL', 'gemini-2.5-flash'),
@@ -161,4 +165,6 @@ return [
         ],
     ],
 ];
+
+
 

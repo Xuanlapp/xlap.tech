@@ -200,7 +200,7 @@ class ApiKeyImageGenerator
         );
 
         if ($response->failed()) {
-            throw $this->providerFailure($user, $providerKey, $response);
+            throw $this->providerFailure($user, $providerKey, $response, 'tao script/text');
         }
 
         $content = $response->json('choices.0.message.content');
@@ -684,9 +684,9 @@ OUTPUT REQUIREMENT (non-negotiable): Create one square Etsy listing image at exa
         return config("ai_providers.providers.{$providerKey}.label", $providerKey);
     }
 
-    private function providerFailure(User $user, string $providerKey, Response $response): RuntimeException
+    private function providerFailure(User $user, string $providerKey, Response $response, string $operation = 'tao anh'): RuntimeException
     {
-        $message = $this->errorMessage($providerKey, $response);
+        $message = $this->errorMessage($providerKey, $response, $operation);
 
         if ($this->isBalanceExhaustedResponse($response, $message)) {
             Cache::put(
@@ -722,12 +722,16 @@ OUTPUT REQUIREMENT (non-negotiable): Create one square Etsy listing image at exa
 
         return false;
     }
-    private function errorMessage(string $providerKey, Response $response): string
+    private function errorMessage(string $providerKey, Response $response, string $operation = 'tao anh'): string
     {
+        if ($response->status() === 524) {
+            return "{$this->providerLabel($providerKey)} qua thoi gian cho khi {$operation}. HTTP 524: Dich vu phia provider chua tra ket qua kip. Loi nay khong xac nhan API key sai hay het quota. Hay thu lai sau.";
+        }
+
         $message = $response->json('error.message')
             ?: $response->json('message')
             ?: 'Hay kiem tra endpoint, quota hoac API key.';
 
-        return "{$this->providerLabel($providerKey)} loi khi tao anh. HTTP {$response->status()}: ".mb_substr((string) $message, 0, 500);
+        return "{$this->providerLabel($providerKey)} loi khi {$operation}. HTTP {$response->status()}: ".mb_substr((string) $message, 0, 500);
     }
 }

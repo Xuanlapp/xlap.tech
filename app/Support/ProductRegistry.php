@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Livewire\Pages\Suncatcher\ListSuncatcher;
+use App\Livewire\Pages\SuncatcherTwo\ListSuncatcherTwo;
 use App\Livewire\Pages\OrnamentAmazonTwo\ListOrnamentAmazonTwo;
 use App\Livewire\Pages\OrnamentEtsy\ListOrnamentEtsy;
 use App\Livewire\Pages\Proxy\Index as ProxyPage;
@@ -72,6 +73,16 @@ class ProductRegistry
                 'path' => 'suncatcher',
                 'component' => ListSuncatcher::class,
                 'sort_order' => 35,
+                'is_active' => true,
+            ],
+            [
+                'name' => 'Suncatcher 2',
+                'slug' => 'suncatcher-two',
+                'description' => 'Create a fully separate Suncatcher 2 workspace.',
+                'route_name' => 'offorest.products.suncatcher-two',
+                'path' => 'suncatcher-two',
+                'component' => ListSuncatcherTwo::class,
+                'sort_order' => 35.5,
                 'is_active' => true,
             ],
             [
@@ -147,3 +158,7 @@ class ProductRegistry
         ];
     }
 }
+
+
+
+

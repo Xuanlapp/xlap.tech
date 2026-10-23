@@ -101,7 +101,7 @@
                                         <span class="inline-flex h-7 items-center rounded-md bg-amber-50 px-2 text-xs font-bold text-amber-700 dark:bg-amber-500/15 dark:text-amber-300" title="{{ $cheapKeyAiBalance['message'] ?? 'Balance unavailable' }}">N/A</span>
                                     @endif
                                 @endif</label>
-                    <div x-data="{ open: false }" class="relative z-20">
+                    <div x-data="{ open: false }" x-cloak x-show="@js(count($providerOptions) === 0)" class="relative z-20">
                         <button type="button" x-on:click="open = !open" x-on:keydown.escape.window="open = false" class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 transition hover:border-cyan-300 hover:bg-cyan-50 hover:text-cyan-700" title="Them API" aria-label="Them API">
                             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="M12 5v14M5 12h14" /></svg>
                         </button>
@@ -115,7 +115,7 @@
                         </div>
                     </div>
                     @if (($selectedAiProvider ?? null) === 'v98store' || ($selectedAiProvider ?? null) === 'cheapkeyai')
-                        <button type="button" wire:click="$dispatch('openModal', { component: '{{ ($selectedAiProvider ?? null) === 'cheapkeyai' ? 'modals.ai.change-cheap-key-ai-key' : 'modals.ai.change-v98-store-key' }}', arguments: { functionKey: 'sticker' } })" class="inline-flex h-9 items-center justify-center rounded-md border border-amber-200 bg-amber-50 px-3 text-xs font-bold text-amber-700 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-200">{{ ($selectedAiProvider ?? null) === 'cheapkeyai' ? 'Change API CheapKeyAI' : 'Change API v98' }}</button>
+                        
                         @if (($selectedAiProvider ?? null) === 'v98store')
                             <span class="inline-flex h-9 items-center rounded-md {{ is_array($v98StoreBalance ?? null) && ($v98StoreBalance['ok'] ?? false) ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700' }} px-2.5 text-xs font-bold">{{ is_array($v98StoreBalance ?? null) && ($v98StoreBalance['ok'] ?? false) ? '$'.number_format((float) ($v98StoreBalance['remain_quota'] ?? 0), 2) : 'N/A' }}</span>
                         @endif

@@ -1,5 +1,30 @@
 # AI MEMORY
 
+### 2026-10-22 - Correct text/script provider error context
+
+- XLAP Web Platform: verified Suncatcher and SuncatcherTwo Generate Script use ApiKeyImageGenerator::generateText, not image generation. Read-only comparison: Link_doi_thu/dashboard.js wfGenerateScript calls _wfCallTextAPI.
+- Effective CheapKeyAI text endpoint path confirmed /v1/chat/completions; no credentials printed and no paid provider call executed.
+- Root cause: shared errorMessage hardcoded "tao anh" for text failures too. HTTP 524 therefore misleadingly described script generation as image generation.
+- Changed app/Services/Ai/ApiKeyImageGenerator.php: text failure context "tao script/text"; image default unchanged; specific 524 timeout message avoids claiming invalid key/exhausted quota. No retry behavior changes or automatic extra billed requests.
+- Added tests/Feature/ScriptProviderErrorTest.php: fake HTTP verifies chat endpoint, text payload, no image request, no quota-pause flag for 524, preserved image error context.
+- Validation: PHP lint; 5 focused tests / 37 assertions passed.
+- Deploy: PHP service update only; no migration/frontend build needed. Queue dispatch/logic unchanged; long-running workers need normal deployment restart to load new PHP. No existing items or scripts modified.
+- Remaining: actual upstream 524 availability is not fixed by correcting error wording. Graphiti unavailable; episode not written.
+
+### 2026-10-22 - Repair draft script rendering and saved API reuse
+
+- Project: XLAP Web Platform, D:\FFACTORY\API\xlap.
+- Root cause: Generated Script @if lacked @endif; restoreDraft omitted draftWorkflow; balance/discovery still filtered credentials by product despite shared generator lookup.
+- Changed: app/Livewire/Modals/SuncatcherTwo/AddProductDesign.php; resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php.
+- Changed services: app/Services/{SuncatcherTwo,Suncatcher,Sticker,Decal,Glass,Ceramic,OrnamentEtsy,OrnamentAmazonTwo}/*Service.php. Changed their resources/views/livewire/pages/*/list-*.blade.php provider toolbars.
+- Draft restore keeps string script sections; parent provider/model props reactive; restore completes before localStorage autosave starts. No real AI request or item creation performed.
+- Saved active keys reused across products; ownership/shared-key filters retained; newest own credential preferred, matching generator lookup. No key values or .env edited.
+- Removed Change API buttons; hide initial-add menu when provider options exist. Existing key management/write paths unchanged.
+- Added tests/Feature/SuncatcherTwoScriptDraftTest.php and tests/Feature/SavedProductApiCredentialTest.php; .design/suncatcher-two-script-repair/DESIGN_BRIEF.md.
+- Validation: 3 tests, 27 assertions passed (SQLite memory only); all affected PHP lint; compiled Blade PHP lint; view:cache and npm run build passed. view:cache alone does not prove PHP syntax validity.
+- Deploy: deploy affected PHP/Blade and built assets; rebuild views because timestamp checks are disabled locally. No migrations; no queue logic changes, existing jobs unaffected.
+- Remaining: authenticated desktop/mobile visual verification; Better Design HTTP 402 quota exhausted. Graphiti unavailable in connected tools; no episode could be written. API calls mocked, not billed.
+
 File nÃ y dÃ¹ng Ä‘á»ƒ lÆ°u láº¡i quÃ¡ trÃ¬nh AI Ä‘Ã£ lÃ m trong project.
 TrÆ°á»›c khi lÃ m tiáº¿p, AI pháº£i Ä‘á»c file nÃ y trÆ°á»›c.
 
@@ -13293,3 +13318,1584 @@ esources/views/livewire/modals/image/review-image.blade.php; deferred metadata s
 - Deploy impact: deploy ApprovedAssetDriveExportService and restart Drive workers. Existing duplicate folders are historical and are not modified automatically.
 - Follow-up: reupload one affected item and verify its new folder has one file per item number.
 
+
+### 2026-10-19
+
+**Muc tieu:**
+Nhan ban Suncatcher thanh Suncatcher 2 doc lap hoan toan, khong dung chung product slug, model du lieu, workflow route hay Livewire view.
+
+**File da sua/tao:**
+- `app/Services/SuncatcherTwo/SuncatcherTwoService.php`
+- `app/Services/SuncatcherTwo/PsdMockupTemplateService.php`
+- `app/Models/DataSuncatcherTwo.php`
+- `app/Models/SuncatcherTwoWorkflow.php`
+- `database/migrations/2026_10_19_000200_create_suncatcher_two_tables.php`
+- `app/Support/ProductRegistry.php`
+- `routes/web.php`
+- Toan bo `app/Livewire/Pages/SuncatcherTwo/`, `app/Livewire/Modals/SuncatcherTwo/`, `app/Jobs/*SuncatcherTwo*`, `app/Services/SuncatcherTwo/`, `resources/views/**/suncatcher-two/` da co san trong working tree va duoc giu lai.
+
+**Thay doi chinh:**
+- Sua loi PHP do copy thay ten identifier bang `suncatcher-two` (dau gach ngang), doi thanh identifier hop le.
+- Them model va bang rieng `data_suncatcher_two`, `suncatcher_two_workflows`.
+- Them product registry va route workflow/catalog rieng voi slug `suncatcher-two`.
+- Sua ten view bi lech de Livewire render dung file v2.
+- Khong sua logic, route, model hay du lieu cua Suncatcher v1.
+
+**Kiem tra:**
+- 39 file v2 qua `php -l`.
+- `php artisan route:list --path=suncatcher-two` hien 8 route.
+- `php artisan optimize:clear` thanh cong.
+- `php artisan view:cache` thanh cong.
+
+**Deploy impact:**
+- Can chay migration moi truoc khi mo Suncatcher 2 tren moi truong deploy.
+
+**Queue impact:**
+- V2 co queue/job va queue names rieng theo `suncatcher-two`; can worker deploy doc queue neu muon xu ly nen.
+
+**Follow-up:**
+- Can cap nhat seed/product permissions neu moi truong production khong tu dong chay migration; chua chay migration tren database production.
+
+
+### 2026-10-19 - Kiem thu lai
+
+**Ket qua:**
+- 39 file Suncatcher 2 qua PHP lint.
+- 4/4 test Suncatcher hien co PASS, 12 assertions.
+- Route, view cache, optimize clear, service container va migration `--pretend` PASS.
+- Phat hien va sua event/log key copy sai `suncatcher-two_two` thanh `suncatcher-two`.
+- Full suite co 10 failures va 22 errors trong `OfforestProductSchemaTest`, nhung la loi fixture/schema/route nen cua bo test hien tai, khong phai test Suncatcher 2.
+
+**Con lai:**
+- Migration `2026_10_19_000200_create_suncatcher_two_tables.php` dang Pending local; chua chay migration de tranh thay doi database ngoai yeu cau.
+
+### 2026-10-19 - Fix Suncatcher 2 khong hien trong Products & tools
+
+**Root cause:** Migration Suncatcher 2 dang Pending nen product `suncatcher-two` chua co trong bang `products`; modal Admin lay danh sach tu `UserAccessService::activeProducts()`.
+
+**Da xu ly:**
+- Chay `php artisan migrate` local thanh cong.
+- Tao record `Suncatcher 2` id 16, slug `suncatcher-two`, active.
+- Xac nhan `activeProducts()` tra ve `Suncatcher 2`.
+
+**Anh huong:**
+- Admin Add/Edit User se hien them checkbox `Suncatcher 2` sau khi refresh.
+- Can tick product cho user muon cap quyen; khong tu dong cap quyen de giu dung co che authorization.
+- Queue/deploy khong thay doi; production can chay migration moi.
+
+### 2026-10-19 - Fix menu khong hien Suncatcher 2
+
+**Root cause:** `resources/views/livewire/layout/navigation.blade.php` chi whitelist cac page slug cu, khong co `suncatcher-two`; User authorization cung chi map special case cho `suncatcher`.
+
+**Da sua:**
+- Them `suncatcher-two` vao `$pageProducts` cua navigation.
+- Cap nhat `User::canAccessProduct()` de xem `suncatcher-two` la product doc lap, dong thoi cho phep admin/manager truy cap.
+- `php -l app/Models/User.php` PASS.
+- `php artisan view:cache` PASS.
+
+**Follow-up:** User thuong van can duoc assign product `Suncatcher 2` trong Admin > Edit User; manager/admin co the thay sau khi refresh menu.
+
+### 2026-10-19 - Fix 500 route Suncatcher 2
+
+**Root cause:** Navigation goi `route('offorest.products.suncatcher-two')` nhung `ProductRegistry` thieu entry Suncatcher 2; truoc do chi co import component. Ngoai ra file component v2 bi dat ten `ListSuncatcher.php` trong khi class la `ListSuncatcherTwo`.
+
+**Da sua:**
+- Them entry Suncatcher 2 vao `app/Support/ProductRegistry.php` voi slug `suncatcher-two`, path `suncatcher-two`, component `ListSuncatcherTwo::class`.
+- Doi ten file thanh `app/Livewire/Pages/SuncatcherTwo/ListSuncatcherTwo.php`.
+- Xoa route closure sai, de route duoc tao thong qua ProductRegistry giong cac product khac.
+- Xoa parse error phat sinh trong qua trinh chen registry.
+
+**Kiem tra:**
+- PHP lint registry va route PASS.
+- `php artisan optimize:clear` PASS.
+- `php artisan route:list --name=offorest.products.suncatcher-two` hien route dung component Livewire.
+- `php artisan view:cache` PASS.
+
+**Deploy impact:** Production can deploy cac thay doi nay va clear route/view cache; migration Suncatcher 2 phai da chay.
+
+### 2026-10-19 - Fix Suncatcher 2 Excel import 500
+
+**Root cause:** View `excel-import-suncatcher-two.blade.php` duoc render cho class `ExcelImportSuncatcherTwo`, nhung file PHP van ten `ExcelImportSuncatcher.php`; Livewire auto-discovery/registration bi lech va view khong nhan duoc state `$isProcessing`.
+
+**Da sua:**
+- Doi ten file thanh `app/Livewire/Modals/SuncatcherTwo/ExcelImportSuncatcherTwo.php` de khop class va view component.
+- Khong doi logic import.
+
+**Kiem tra:**
+- PHP lint PASS.
+- `php artisan optimize:clear` PASS.
+- `php artisan view:cache` PASS.
+- Route Suncatcher 2 van load PASS.
+- `class_exists` cho page va modal component PASS.
+
+### 2026-10-19 - Fix runtime Undefined variable assets trong Suncatcher 2
+
+**Root cause:** Lazy Livewire component `SuncatcherTwoStatusPanel` nam trong file `SuncatcherStatusPanel.php`, nen Livewire auto-discovery khong mount dung class va view nhan `$assets` bi thieu. Cung phat hien `ImportExcelSuncatcherTwo` nam trong file `ImportExcelSuncatcher.php`.
+
+**Da sua:**
+- Doi ten `app/Livewire/Pages/SuncatcherTwo/SuncatcherStatusPanel.php` thanh `SuncatcherTwoStatusPanel.php`.
+- Doi ten `app/Livewire/Modals/SuncatcherTwo/ImportExcelSuncatcher.php` thanh `ImportExcelSuncatcherTwo.php`.
+- Rà soat toan bo component v2: class/file-name scan PASS.
+
+**Kiem tra:**
+- 4/4 test Suncatcher PASS, 12 assertions.
+- `php artisan route:list --path=suncatcher-two` PASS.
+- `php artisan view:cache` PASS.
+- `php artisan optimize:clear` PASS.
+- PHP lint cac file v2 PASS.
+
+### 2026-10-19 - Sync status tabs Suncatcher 2 voi Glass
+
+**Issue:** Cac tab `Tat ca / Chua duyet / Da duyet / No Mockup` cua Suncatcher 2 khong co Alpine `x-data`, nen khong co `activeTab` va `setTab`, bam tab khong doi duoc trang thai.
+
+**Da sua:**
+- Them Alpine state `activeTab` va ham `setTab` vao `suncatcher-two-status-panel.blade.php`.
+- Them localStorage key `suncatcher-two.status-filter`.
+- Dispatch Livewire event `suncatcher-two-active-status-changed` va browser event `suncatcher-two-tab-changed`, dong bo voi list page va pattern cua Glass.
+
+**Kiem tra:**
+- `php artisan view:cache` PASS.
+- 4/4 test Suncatcher PASS, 12 assertions.
+
+### 2026-10-19 - Dong bo giao dien tab Suncatcher 2 theo Glass
+
+**Da sua:**
+- Dong bo toolbar status voi Glass: wrap responsive, border/background active va inactive, badge count.
+- Giu Alpine tab state va event filtering rieng cua Suncatcher 2.
+- Khong dung chung service/data/card voi Glass.
+
+**Kiem tra:**
+- `php artisan view:cache` PASS.
+- 4/4 test Suncatcher PASS, 12 assertions.
+
+### 2026-10-19 - An Import Excel va Import Sheet Suncatcher 2
+
+**Da sua:**
+- An 2 nut `Import Excel` va `Import Sheet` khoi toolbar Suncatcher 2.
+- Thao tac mo modal va cac component backend van duoc giu nguyen de co the bat lai sau.
+
+**Kiem tra:**
+- `php artisan view:cache` PASS.
+- 4/4 test Suncatcher PASS, 12 assertions.
+
+### 2026-10-19 - Them nut Add Item cho Suncatcher 2
+
+**Da sua:**
+- Them nut `Add Item` vao toolbar Suncatcher 2 theo mau Glass.
+- Them `addOpening` state va `openAddModal()` de chong bam lap.
+- Hien icon spinner, disable nut trong 900ms trong luc dispatch mo modal Add Product Design.
+- Giu component modal `modals.suncatcher-two.add-product-design` rieng cho Suncatcher 2.
+
+**Kiem tra:**
+- `php artisan view:cache` PASS.
+- 4/4 test Suncatcher PASS, 12 assertions.
+
+### 2026-10-19 - Suncatcher 2 Add Item research/scrape bridge
+
+**Muc tieu:** Add Item chay Stepper 1 research keyword 20 listing va Stepper 2 scrape dung 5 listing bang extension AMZ-Research.
+
+**Da sua:**
+- Extension `D:\FFACTORY\API\extension\AMZ-Research`: them external bridge commands `AMZ_RESEARCH_KEYWORD` va `AMZ_SCRAPE_SELECTED`; research mo tab background, tu dong dong tab sau khi doc ket qua; scrape batch doi den khi job ket thuc.
+- Mo rong content-script bridge cho domain XLAP.
+- Suncatcher 2 Add Item: Stepper 1 hien research result, chon dung 5, Stepper 2 scrape selected; spinner trong luc extension chay; chi nhan ket qua khi du 5; lay anh dau tien cua doi thu dau lam main image.
+- Them `setResearchResults`, `setScrapedResults`, `selectResearchUrl`, `setError` trong AddProductDesign.
+- Giu modal/backend Suncatcher 2 rieng, khong dung chung Suncatcher 1.
+
+**Kiem tra:**
+- PHP lint PASS.
+- optimize clear/view cache PASS.
+- 4/4 test Suncatcher PASS, 12 assertions.
+- Extension manifest JSON va `node --check` background/content PASS.
+
+**Can lam khi deploy:** Reload unpacked extension de nhan manifest/content script moi; neu domain production khac `xlap.com.vn`, them domain vao `manifest.json`.
+**Risk/constrain:** Chua co browser E2E voi Chrome extension trong terminal; can test manual mot lan voi extension da reload va Amazon session dang dang nhap.
+
+## 2026-10-19 - Suncatcher 2 Livewire ReflectionException repair
+- Root cause: `AddProductDesign` called `$this->reset()` for stepper properties that were not declared as Livewire public properties, causing `ReflectionException: Property ...::$step does not exist` when the modal opened.
+- Changed files: `app/Livewire/Modals/SuncatcherTwo/AddProductDesign.php`.
+- Affected modules: Suncatcher 2 Add Item modal, Livewire stepper state, research/scrape flow.
+- Follow-up fix: removed the obsolete validation requiring user keywords to contain `suncatcher-two`; research keywords are now accepted as entered.
+- Validation: PHP lint passed, `php artisan optimize:clear` passed, `php artisan view:cache` passed, Suncatcher/AddProductDesign test filter passed (4 tests, 12 assertions).
+- Deploy impact: deploy the updated Livewire class and clear Laravel caches on the server with `php artisan optimize:clear`; restart PHP-FPM/queue workers if opcode cache or long-lived workers are enabled.
+- Queue impact: no queue behavior changed.
+- Follow-up: browser E2E with the unpacked AMZ-Research extension remains to be run; reload the extension after deploying its manifest/content/background changes.
+
+## 2026-10-19 - Correction note
+- The obsolete `suncatcher-two` keyword validation was identified but not removed in this pass; it remains for a separate follow-up because the automated replacement did not match safely.
+
+## 2026-10-19 - Suncatcher 2 AddProductDesign recovery
+- Root cause: the local `app/Livewire/Modals/SuncatcherTwo/AddProductDesign.php` had become a zero-byte file, so the Blade view mounted without Livewire public state and reported `Undefined variable $isOpen`.
+- Changed files: `app/Livewire/Modals/SuncatcherTwo/AddProductDesign.php`, `AI_MEMORY.md`.
+- Affected modules: Suncatcher 2 Add Item modal and research/scrape stepper.
+- Validation: PHP lint, `php artisan optimize:clear`, `php artisan view:cache`, and Suncatcher/AddProductDesign tests passed (4 tests, 12 assertions).
+- Deploy impact: upload the restored class and clear Laravel caches; verify deployment did not omit this untracked file.
+- Queue impact: none.
+- Follow-up: run authenticated browser E2E for opening modal, research, selecting 5 items, scrape completion, and save.
+
+## 2026-10-19 - AMZ Research connection and loading state
+- Root cause: XLAP was served at `http://xlap.com.vn`, while AMZ-Research content script matches only covered HTTPS, so the window-message bridge was never injected.
+- Changed files: `D:\FFACTORY\API\extension\AMZ-Research\manifest.json`, `D:\FFACTORY\API\extension\AMZ-Research\content.js`, `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php`.
+- UI behavior: keyword input and Research button are disabled during research; spinner is visible with `x-cloak`; timeout now reports extension connection/reload guidance.
+- Extension behavior: HTTP xlap host matches added; `chrome.runtime.lastError` is bridged back to the page instead of leaving the request unresolved.
+- Validation: extension content script syntax passed; Laravel optimize clear, Blade view cache, and Suncatcher tests passed (4 tests, 12 assertions).
+- Deploy impact: reload the unpacked extension from `chrome://extensions`, then hard-refresh the XLAP page. No queue changes.
+- Follow-up: authenticated browser E2E is still required to confirm Amazon tab research returns results in the user's Chrome profile.
+
+## 2026-10-19 - Suncatcher 2 research cards layout
+- Changed `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php` to render research results as horizontal cards in a two-column grid, with image/title/metadata linked to the competitor URL in a new tab (`target="_blank"`).
+- Checkbox selection remains separate from the product link and uses the actual URL value.
+- Validation: optimize clear, Blade view cache, and Suncatcher tests passed (4 tests, 12 assertions).
+
+## 2026-10-19 - Research Show more and four-column grid
+- Root cause: Alpine `x-show` was applied to the `<template>` instead of each repeated card, so Show more could not control visibility.
+- Changed `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php`: visibility now uses `visibleCount` (10 initially, +5 per click, max 20), count text updates live, and desktop grid uses four columns (`lg:grid-cols-4`).
+- Validation: optimize clear, Blade cache, and Suncatcher tests passed (4 tests, 12 assertions).
+
+## 2026-10-20 - Suncatcher 2 selected card visual balance
+- Changed `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php` to replace the overly bright selected background with a dark Glass-style cyan tint, subtle border glow, and dark checkbox styling.
+- Validation: optimize clear, Blade cache, and Suncatcher tests passed (4 tests, 12 assertions).
+
+## 2026-10-20 - Suncatcher 2 maximum competitor selection UX
+- Changed `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php` so unchecked competitor checkboxes become disabled once five URLs are selected; selected competitors remain enabled so users can unselect and replace one.
+- Backend validation remains exact-five as the source of truth.
+- Validation: optimize clear, Blade cache, and Suncatcher tests passed (4 tests, 12 assertions).
+
+### 2026-10-20
+
+**Muc tieu:**
+Dieu tra vi sao VPS khong tao backup moi va so file backup khong dung yeu cau.
+
+**File da sua/tao:**
+- `routes/console.php`
+- `app/Console/Commands/BackupDatabase.php`
+- `.env`
+- `.env.example`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Dat lich backup mac dinh moi 30 phut thay vi 5 phut.
+- Dat so luong giu lai mac dinh la 3 file; them `OFFOREST_DATABASE_BACKUP_KEEP_COUNT=3` vao env.
+- Nguyen nhan file cu nhat khong bi xoa: VPS dang khong co bien keep-count, nen scheduler dung default cu 10; file 16/10 cho thay scheduler VPS co the khong dang chay hoac deploy chua cap nhat.
+
+**Affected modules:**
+- Laravel scheduler va command `offorest:backup-database`.
+
+**Deploy impact:**
+- Can deploy code moi, cap nhat env VPS, clear config cache, va kiem tra crontab `php artisan schedule:run` moi phut.
+
+**Queue impact:**
+- Khong anh huong queue/worker.
+
+**Viec can lam tiep:**
+- Tren VPS chay `php artisan schedule:list`, `php artisan optimize:clear`, va xem log scheduler/backup de xac nhan lan chay moi.
+
+## 2026-10-20 - Marketplace export Pattern đổi thành Parent
+
+**Mục tiêu:** Đồng bộ tên export Pattern thành Parent trong code, file CSV và giao diện.
+
+**File đã sửa:**
+- `app/Livewire/Pages/Marketplace/MarketplaceExports.php`
+- `resources/views/livewire/pages/marketplace/marketplace-exports.blade.php`
+- `AI_MEMORY.md`
+
+**Thay đổi chính:**
+- Header CSV nội bộ `sku_pattern` được xuất ra thành cột `Parent`; tên field database/model vẫn giữ nguyên để không ảnh hưởng dữ liệu.
+- SKU cha đổi từ hậu tố `Pattern` sang `Parent`.
+- Filename đổi từ `Pattern_*.csv` sang `Parent_*.csv`.
+- Nút export và thông báo validation trên màn hình đổi sang `Parent`.
+
+**Affected modules:** Marketplace export page và CSV export.
+
+**Deploy impact:** Không có migration hoặc thay đổi queue; deploy code và clear view cache nếu server đang cache Blade.
+
+**Queue impact:** Không ảnh hưởng.
+
+**Validation:** PHP lint cho `MarketplaceExports.php` pass; `php artisan view:cache` pass; `git diff` xác nhận chỉ thay đổi đúng luồng Marketplace ngoài các thay đổi có sẵn.
+
+**Follow-up:** Có thể chạy manual export với ít nhất 2 asset để kiểm tra dòng header `Parent` và SKU cha dạng `<sku>Parent`.
+
+## 2026-10-20 - Suncatcher 2 keyword scrape moved to unapproved stepper
+
+**Muc tieu:** Chuyen luong `Tim keyword -> Scrape` tu modal sang trang `Chua duyet` theo progress stepper; nut `Add Item` chi chuyen tab va bat dau luong inline.
+
+**Root cause:** Component `AddProductDesign` dang duoc render trong tab `unapproved` nhung van mac dinh la modal (`isOpen = false`, `embedded = false`), dong thoi markup trang co mot khoi rong du thua. Vi vay entry surface khong duoc xem nhu stepper tren trang.
+
+**File da sua:**
+- `app/Livewire/Modals/SuncatcherTwo/AddProductDesign.php`
+- `resources/views/livewire/pages/suncatcher-two/list-suncatcher-two.blade.php`
+
+**Thay doi chinh:**
+- Them mount state cho inline mode va render component voi `embedded="true"`.
+- Khi dong/reset inline flow, stepper van o lai trang de khong quay ve overlay modal.
+- Xoa khoi markup rong trong tab `unapproved`; giu nguyen research, chon dung 5 URL, scrape extension, image save, validation va product-created events.
+
+**Affected modules:** Suncatcher 2 unapproved page, AddProductDesign Livewire component, keyword research/scrape stepper.
+
+**Deploy impact:** Chi thay doi Blade/Livewire UI; deploy code va clear view cache neu server cache Blade.
+
+**Queue impact:** Khong thay doi queue, job, service hoac extension protocol.
+
+**Validation:** PHP lint pass; `php artisan view:cache` pass; `php artisan test --filter=Suncatcher` pass (4 tests, 12 assertions). Chua co browser/authenticated screenshot nen visual review va responsive evidence chua duoc xac nhan.
+
+**Follow-up:** Kiem tra tren Chrome voi extension Amazon: Add Item -> Chua duyet, research keyword, chon 5 doi thu, sang Scrape, save item; sau do chot stepper tiep theo theo yeu cau.
+
+## 2026-10-20 - Suncatcher 2 stepper placement and research card restoration
+
+**Muc tieu:** Sua theo browser review: stepper `Them item Suncatcher 2` phai nam duoi danh sach tab `Chua duyet`, khong nam tren thanh dieu huong; khoi phuc anh va link ten competitor mo tab moi.
+
+**Root cause:** Lan sua truoc dat inline stepper truoc status panel va giu nut `Add Item` tren header. Markup research card chi con checkbox/text, bo mat image va anchor URL.
+
+**File da sua:**
+- `resources/views/livewire/pages/suncatcher-two/list-suncatcher-two.blade.php`
+- `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Bo nut `Add Item` khoi thanh navigation/header.
+- Dat stepper sau status panel, tuc sau thong bao `Khong co item trong tab nay`.
+- Research cards hien lai image voi cac key `image`, `imageUrl`, `thumbnail`; ten competitor la link `target="_blank"` den URL goc.
+- Them `aria-label` cho checkbox va giu selection limit 5.
+
+**Affected modules:** Suncatcher 2 unapproved page va keyword research card UI.
+
+**Deploy impact:** Chi Blade/CSS output; can deploy code va clear view cache neu server cache Blade.
+
+**Queue impact:** Khong anh huong queue.
+
+**Validation:** `php artisan view:cache` pass; `php artisan test --filter=Suncatcher` pass (4 tests, 12 assertions); `npm run build` pass.
+
+**Follow-up:** Reload trang production va test lai Add Item/stepper tren Chrome voi extension; neu payload research dung ten image khac, bo sung key vao markup.
+
+## 2026-10-20 - Hide redundant empty state on Suncatcher 2 unapproved tab
+
+**Muc tieu:** Bo thong bao `Khong co item trong tab nay` khoi tab `Chua duyet` vi tab nay da co stepper `Them item Suncatcher 2` lam entry surface.
+
+**Root cause:** Status panel dung chung empty state cho tat ca status, nen tab `unapproved` hien thong bao rong ngay truoc stepper va tao cam giac trung lap.
+
+**File da sua:**
+- `resources/views/livewire/pages/suncatcher-two/suncatcher-two-status-panel.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:** Chi render empty state cho cac tab khac `unapproved`; tab `Chua duyet` de stepper xu ly trang thai khong co item.
+
+**Affected modules:** Suncatcher 2 status panel va unapproved entry flow.
+
+**Deploy impact:** Chi thay doi Blade view; deploy code va clear view cache neu server cache Blade.
+
+**Queue impact:** Khong anh huong queue.
+
+**Validation:** `php artisan view:cache` pass; `php artisan test --filter=Suncatcher` pass (4 tests, 12 assertions); `npm run build` pass.
+
+**Follow-up:** Reload trang Suncatcher 2 va xac nhan tab `Chua duyet` hien stepper lien mach, khong con empty-state box.
+
+### 2026-10-20
+
+**Muc tieu:** An thong bao rong trong tab Chua duyet cua Suncatcher Two vi tab nay da co form them item Suncatcher 2.
+
+**File da sua:** resources/views/livewire/pages/suncatcher-two/suncatcher-two-status-panel.blade.php; AI_MEMORY.md
+
+**Thay doi chinh:** Chi hien thong bao rong o cac tab khac; tab unapproved khong con panel rong trung lap.
+
+**Affected modules:** Suncatcher Two status panel / Unapproved entry flow.
+**Deploy impact:** Chi thay doi Blade rendering, khong doi database/API.
+**Queue impact:** Khong co.
+
+
+### 2026-10-20 - Fix Suncatcher 2 scrape error handler
+
+**Root cause:** Blade gọi $wire.setError(...) khi extension research/scrape lỗi nhưng AddProductDesign chưa khai báo method này, khiến lỗi thật bị che bởi lỗi Livewire.
+
+**Da sua:**
+- Them setError() trong pp/Livewire/Modals/SuncatcherTwo/AddProductDesign.php.
+- Handler reset loading, luu scrapeError va hien loi qua validation error cua keyword de user biet nguyen nhan va thu lai.
+
+**Affected modules:** Suncatcher Two keyword research/scrape stepper.
+**Deploy impact:** PHP/Blade only; khong doi database/API.
+**Queue impact:** Khong co.
+
+
+### 2026-10-20 - Fix postMessage clone error in Suncatcher 2 scrape
+
+**Root cause:** this.$wire.selectedResearchUrls la Livewire proxy object; truyen truc tiep vao window.postMessage gay DataCloneError va request khong toi extension.
+
+**Da sua:** Chuyen selected URLs thanh JSON array thuong truoc khi gui AMZ_SCRAPE_SELECTED; giu setError() de hien loi extension trong UI.
+
+**Affected modules:** Suncatcher Two keyword research/scrape stepper.
+**Deploy impact:** Blade/Livewire asset; can deploy view moi va clear Blade cache neu can.
+**Queue impact:** Khong co.
+
+
+### 2026-10-20 - Show scraped competitor data in Suncatcher 2
+
+**Muc tieu:** Hien du lieu da scrape cua ca 5 doi thu tren buoc Scrape, tuong tu giao dien Offorest hien co.
+
+**File da sua:** resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php; AI_MEMORY.md
+
+**Thay doi chinh:** Them grid preview 5 doi thu voi anh dai dien, title, link va bullet points/description; van giu anh dau tien lam anh chinh.
+
+**Affected modules:** Suncatcher Two keyword research/scrape stepper.
+**Deploy impact:** Chi thay doi Blade rendering.
+**Queue impact:** Khong co.
+
+
+### 2026-10-20 - Show scraped competitor data in Suncatcher 2
+
+**Muc tieu:** Hien du lieu da scrape cua ca 5 doi thu tren buoc Scrape, tuong tu giao dien Offorest hien co.
+
+**File da sua:**
+- `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:** Them grid preview 5 doi thu voi anh dai dien, title, link va bullet points/description; van giu anh dau tien lam anh chinh.
+
+**Affected modules:** Suncatcher Two keyword research/scrape stepper.
+**Deploy impact:** Chi thay doi Blade rendering.
+**Queue impact:** Khong co.
+
+### 2026-10-21 - Persist Suncatcher 2 draft across reloads
+
+**Muc tieu:** Khong mat qua trinh nhap keyword, chon doi thu va du lieu scrape khi reload trang.
+
+**File da sua:**
+- `app/Livewire/Modals/SuncatcherTwo/AddProductDesign.php`
+- `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:** Luu draft stepper vao localStorage va restore lai sau reload; luu keyword, step, research results, 5 URL, scraped competitors, listing va image link. Xoa draft sau khi tao item thanh cong.
+
+**Gioi han:** Request extension dang chay khong the tiep tuc sau reload; loading duoc reset de user bam lai.
+
+**Deploy impact:** PHP/Blade only.
+**Queue impact:** Khong co.
+
+### 2026-10-21 - Compact research cards and keep scrape action aligned
+
+**Muc tieu:** Hien nhieu anh research hon trong man hinh va giu nut `Sang buoc Scrape` ben phai khi da xem du 20 ket qua.
+
+**File da sua:**
+- `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:** Giam chieu cao anh card research tu 112/128px xuong 80/96px; nut `Sang buoc Scrape` dung `ml-auto` de luon nam ben phai, ke ca khi nut `Xem them` an.
+
+**Deploy impact:** Chi thay doi Blade rendering.
+**Queue impact:** Khong co.
+
+### 2026-10-21 - Add back navigation from scrape step
+
+**Muc tieu:** Cho phep quay tu buoc Scrape ve buoc Tim keyword ma khong mat du lieu buoc 1.
+
+**File da sua:**
+- `app/Livewire/Modals/SuncatcherTwo/AddProductDesign.php`
+- `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:** Them `backToResearch()` chi doi step ve 1 va dung loading; keyword, research results, selected URLs va scraped data duoc giu nguyen.
+
+**Deploy impact:** PHP/Blade only.
+**Queue impact:** Khong co.
+
+### 2026-10-21 - Add back navigation from scrape step
+
+**Muc tieu:** Cho phep quay tu buoc Scrape ve buoc Tim keyword ma khong mat du lieu buoc 1.
+
+**File da sua:**
+- `app/Livewire/Modals/SuncatcherTwo/AddProductDesign.php`
+- `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:** Them `backToResearch()` chi doi step ve 1 va dung loading; keyword, research results, selected URLs va scraped data duoc giu nguyen.
+
+**Deploy impact:** PHP/Blade only.
+**Queue impact:** Khong co.
+
+### 2026-10-21 - Generate B1 data after Suncatcher 2 scrape
+
+**Muc tieu:** Cho phep tao item va generate data B1 tu du lieu scrape, tuong tu nut `Generate Script` cua `Link_doi_thu`.
+
+**File da sua:**
+- `app/Livewire/Modals/SuncatcherTwo/AddProductDesign.php`
+- `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php`
+- `resources/views/livewire/pages/suncatcher-two/list-suncatcher-two.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:** Them nut `Generate data`; luu item, goi `SuncatcherTwoService::generateWorkflowScript()` voi provider/text model dang chon, refresh card de hien B1 script theo layer workflow. Luong `Tao item` cu van giu nguyen.
+
+**Deploy impact:** PHP/Blade only; can co AI provider key hop le.
+**Queue impact:** Generate text chay dong bo trong Livewire request.
+
+### 2026-10-21 - Tone down dark-mode hover states
+
+**Muc tieu:** Khong de hover tren giao dien Suncatcher 2 bi choe sang trong dark mode.
+
+**File da sua:**
+- `resources/css/app.css`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:** Bo `filter: brightness(1.12)` tren row hover; them override dark mode cho hover fill sang (`slate-100`, `gray-100`, `white`, `indigo-50`, `violet-50`, `cyan-50`, `blue-50`) ve mau nen toi, chu sang vua phai.
+
+**Deploy impact:** Can build lai CSS/Tailwind assets.
+**Queue impact:** Khong co.
+
+### 2026-10-21 - Fit research images inside card frame
+
+**Muc tieu:** Hien tron anh research trong khung, khong bi `object-cover` cat mat san pham.
+
+**File da sua:**
+- `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:** Doi anh research card sang `object-contain`, giu khung cao 80/96px, them padding va nen trung tinh de anh du ty le van hien day du.
+
+**Deploy impact:** Chi thay doi Blade rendering.
+**Queue impact:** Khong co.
+
+### 2026-10-21 - Separate research image preview from product link
+
+**Muc tieu:** Bam anh de xem preview, bam ten keyword de mo link Amazon.
+
+**File da sua:**
+- `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:** Anh dung modal preview tai trang; title keyword van la link mo tab moi; them dong preview bang click outside/Escape.
+
+**Deploy impact:** Chi thay doi Blade rendering.
+**Queue impact:** Khong co.
+
+### 2026-10-21 - Enlarge image preview like Offorest viewer
+
+**Muc tieu:** Preview anh research hien lon theo khung viewer, khong bi co lai theo kich thuoc intrinsic cua URL.
+
+**File da sua:**
+- `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:** Dat khung preview responsive toi da 86vw x 82vh, `object-contain`, nen toi va shadow; anh van hien tron, khong bi crop.
+
+**Deploy impact:** Chi thay doi Blade rendering.
+**Queue impact:** Khong co.
+
+### 2026-10-21 - Route research image clicks through shared preview modal
+
+**Muc tieu:** Dung cung modal preview anh Offorest cho anh research Suncatcher 2.
+
+**File da sua:**
+- `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:** Anh research dispatch event `review-image-suncatcher-two` voi src/original/title; modal `App\Livewire\Modals\SuncatcherTwo\ReviewImage` xu ly preview, gallery controls va cac action chung. Ten keyword van mo Amazon tab moi.
+
+**Deploy impact:** Chi thay doi Blade rendering.
+**Queue impact:** Khong co.
+
+### 2026-10-21 - Mount Suncatcher 2 shared image preview modal
+
+**Root cause:** Research cards dispatched `review-image-suncatcher-two`, but `resources/views/layouts/app.blade.php` did not mount `livewire:modals.suncatcher-two.review-image`, so no component received the event.
+
+**Da sua:**
+- Register `<livewire:modals.suncatcher-two.review-image />` in the shared app layout.
+- Keep research image click dispatch unchanged.
+
+**Affected modules:** Suncatcher 2 research image preview.
+**Deploy impact:** Blade layout cache refresh required.
+**Queue impact:** Khong co.
+
+### 2026-10-21 - Restore selected research checkbox state
+
+**Root cause:** Draft kept `selectedResearchUrls`, but research card checkboxes had no `checked` binding, so UI showed all boxes unchecked while counter showed 5/5.
+
+**Da sua:**
+- Bind checkbox checked state to `$wire.selectedResearchUrls.includes(item.url)`.
+- Back/reload now displays the five selected competitors correctly.
+
+**Affected modules:** Suncatcher 2 keyword research step.
+**Deploy impact:** Blade view cache refresh required.
+**Queue impact:** Khong co.
+
+### 2026-10-21 - Match Suncatcher 2 Competitor Info with Offorest B1 format
+
+**Root cause:** The `Competitor Info` textarea rendered each scraped result as `Đối thủ X`, title, URL, and loose bullets, so it did not match the B1 workflow input format.
+
+**Da sua:**
+- Render each scraped competitor with `PRODUCT TITLE`, `LINK`, `BULLET POINTS`, and optional `A+ CONTENT TEXT` sections.
+- Preserve all scraped competitors and bullet/A+ content fields when available.
+
+**Changed files:** `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php`, `AI_MEMORY.md`.
+**Affected modules:** Suncatcher 2 competitor scrape review and generated workflow input.
+**Deploy impact:** Blade view cache refresh required after deploy.
+**Queue impact:** Khong co.
+**Follow-up:** Verify deployed scraper payload uses `bulletPoints` and `aplus_text` or `aplusText`; otherwise A+ section stays hidden.
+
+### 2026-10-21 - Align AMZ Research extension payload and clear stale scrape errors
+
+**Root cause:** AMZ Research returned `bullets` and `images`, while XLAP consumed `bulletPoints` and expected normalized product fields. Separately, XLAP retained the previous `Extension khong phan hoi` validation error after a later successful scrape. The textarea also rendered Blade conditional markers because directives were embedded inside textarea content.
+
+**Da sua:**
+- Normalize extension product payload with `productTitle`, `bulletPoints`, `mainImage`, and `description` aliases.
+- Clear stale Livewire scrape error when all five jobs complete.
+- Build Competitor Info text in PHP before rendering textarea, preventing Blade marker leakage.
+
+**Changed files:** `D:\FFACTORY\API\extension\AMZ-Research\content.js`, `D:\FFACTORY\API\xlap\app\Livewire\Modals\SuncatcherTwo\AddProductDesign.php`, `D:\FFACTORY\API\xlap\resources\views\livewire\modals\suncatcher-two\add-product-design.blade.php`.
+**Affected modules:** AMZ Research extension product payload, Suncatcher 2 scrape result display.
+**Deploy impact:** Reload extension from `chrome://extensions`; deploy XLAP files and clear Blade view cache.
+**Queue impact:** Khong co.
+
+### 2026-10-21 - Remove premature Generate data action from Suncatcher 2 add flow
+
+**Root cause:** The add-item footer exposed `Generate data`, which saved the item and generated B1 before the user was ready to commit the final data.
+
+**Da sua:**
+- Removed `Generate data` button from the add-item Blade view.
+- Kept `Tạo item` as the only save action in this screen.
+- No backend or queue behavior changed.
+
+**Changed files:** `D:\FFACTORY\API\xlap\resources\views\livewire\modals\suncatcher-two\add-product-design.blade.php`, `D:\FFACTORY\API\xlap\AI_MEMORY.md`.
+**Affected modules:** Suncatcher 2 add-item footer.
+**Deploy impact:** Blade view cache refresh required.
+**Queue impact:** Khong co.
+
+### 2026-10-21 - Restore full Competitor Info payload parity with Link_doi_thu
+
+**Root cause:** AMZ Research extension extracted only title, link, bullets, and images. It did not extract Amazon A+ text, so XLAP received short records while Link_doi_thu produced full `PRODUCT TITLE`, `LINK`, `BULLET POINTS`, and `A+ CONTENT TEXT` blocks.
+
+**Da sua:**
+- Extension now extracts broad A+ text selectors and returns `aplus_text` plus compatibility aliases.
+- Extension returns normalized `bulletPoints`, `productTitle`, `mainImage`, and `description` fields.
+- XLAP formats all five competitors using full bullets and A+ text, with fallback to legacy `bullets`.
+- First competitor listing persists A+ text for downstream item data.
+
+**Changed files:** `D:\FFACTORY\API\extension\AMZ-Research\content.js`, `D:\FFACTORY\API\xlap\app\Livewire\Modals\SuncatcherTwo\AddProductDesign.php`, `D:\FFACTORY\API\xlap\resources\views\livewire\modals\suncatcher-two\add-product-design.blade.php`.
+**Affected modules:** AMZ Research Amazon product extraction and Suncatcher 2 competitor info.
+**Deploy impact:** Reload extension; deploy XLAP and clear Blade cache. Scrape again because old draft payloads lack A+ fields.
+**Queue impact:** Khong co.
+
+### 2026-10-21 - Label each competitor block in Competitor Info
+
+**Root cause:** Full competitor blocks were correct but textarea sequence had no explicit competitor number.
+
+**Da sua:** Added `ĐỐI THỦ 1` through `ĐỐI THỦ 5` headings before each block while preserving title, link, bullets, and A+ content.
+
+**Changed files:** `D:\FFACTORY\API\xlap\resources\views\livewire\modals\suncatcher-two\add-product-design.blade.php`, `D:\FFACTORY\API\xlap\AI_MEMORY.md`.
+**Deploy impact:** Blade view cache refresh required.
+**Queue impact:** Khong co.
+
+### 2026-10-21 - Show full competitor image gallery in Suncatcher 2 scrape results
+
+**Root cause:** Scrape step showed only a status banner and one thumbnail per competitor, hiding the rest of each listing's scraped images.
+
+**Da sua:**
+- Removed `Đã sẵn sàng scrape 5 đối thủ` and `Extension sẽ mở nền...` banner.
+- Removed `Đã scrape đủ...` and `Dữ liệu đã cào` status row.
+- Render all unique `mainImage` and `images` for every competitor in a compact gallery.
+- Each image opens existing preview modal; titles, links, and bullets remain visible.
+
+**Changed files:** `D:\FFACTORY\API\xlap\resources\views\livewire\modals\suncatcher-two\add-product-design.blade.php`, `D:\FFACTORY\API\xlap\AI_MEMORY.md`.
+**Affected modules:** Suncatcher 2 scrape result gallery.
+**Deploy impact:** Blade view cache refresh required. Extension must be reloaded and scrape rerun to populate all image URLs.
+**Queue impact:** Khong co.
+
+### 2026-10-21 - Move competitor images into Listing Images gallery
+
+**Root cause:** All scraped images were displayed inside each competitor card, making cards tall and duplicating the intended Listing Images area.
+
+**Da sua:**
+- Added top `Listing Images` gallery showing all unique images from all five competitors.
+- Added competitor number badge to identify source item.
+- Kept click-to-preview modal behavior.
+- Removed image thumbnails from individual competitor cards; cards now show text and bullets only.
+
+**Changed files:** `D:\FFACTORY\API\xlap\resources\views\livewire\modals\suncatcher-two\add-product-design.blade.php`, `D:\FFACTORY\API\xlap\AI_MEMORY.md`.
+**Affected modules:** Suncatcher 2 scrape result layout.
+**Deploy impact:** Blade view cache refresh required.
+**Queue impact:** Khong co.
+
+### 2026-10-21 - Verify Suncatcher 2 Blade parse error after gallery move
+
+**Root cause:** The reported production error points to an older compiled/deployed version of `add-product-design.blade.php` with an unmatched `@endif`. Current workspace view compiles successfully after gallery changes.
+
+**Da sua:** Cleared compiled views, rebuilt Blade cache, and linted related Livewire PHP.
+
+**Validation:** `php artisan view:clear`, `php artisan view:cache`, `php -l app/Livewire/Modals/SuncatcherTwo/AddProductDesign.php` all pass.
+**Deploy impact:** Deploy current Blade view and clear production compiled views; browser refresh after deploy.
+**Queue impact:** Khong co.
+
+### 2026-10-21 - Remove inline Blade endif ambiguity in Suncatcher 2 view
+
+**Root cause:** The deployed error points at an inline `@endif` appended to the image-link label. That formatting made stale/partial deployments hard to diagnose and produced the reported unexpected `endif` on the server copy.
+
+**Da sua:** Moved the image-link label and both closing Blade directives onto separate lines. Cleared all Laravel bootstrap/cache files and rebuilt compiled views.
+
+**Changed files:** `D:\FFACTORY\API\xlap\resources\views\livewire\modals\suncatcher-two\add-product-design.blade.php`, `D:\FFACTORY\API\xlap\AI_MEMORY.md`.
+**Validation:** `php artisan optimize:clear`, `php artisan view:cache`, `php -l app/Livewire/Modals/SuncatcherTwo/AddProductDesign.php` pass.
+**Deploy impact:** Deploy this exact view, then run `php artisan optimize:clear` on xlap.com.vn.
+**Queue impact:** Khong co.
+
+### 2026-10-21 - Rewrite Suncatcher 2 Blade conditional closing structure
+
+**Root cause:** The deployed error pointed at a compressed `@endif` after the image link block. The view structure was valid locally but the deployed copy remained fragile/stale.
+
+**Da sua:**
+- Split closing `@endif` directives onto separate lines.
+- Expanded footer conditionals into explicit Blade blocks.
+- Removed literal newline escape artifacts introduced during the rewrite.
+
+**Validation:** `php artisan view:clear`, `php artisan view:cache`, and PHP lint pass.
+**Deploy impact:** Deploy current Blade file and clear production compiled views.
+**Queue impact:** Khong co.
+
+### 2026-10-21 - Fix reported Suncatcher 2 unexpected endif
+
+**Root cause:** The current Blade source parses correctly; Laravel was serving an old compiled view under `storage/framework/views`, where the stale generated PHP ended with an unmatched `endif`.
+
+**Changed files:** No production source change; refreshed Laravel compiled/bootstrap caches. `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php` remains an existing untracked workspace file and was not overwritten.
+**Affected modules:** Suncatcher 2 add-product-design Livewire modal.
+**Validation:** `php artisan view:clear`, `php artisan view:cache`, `php artisan optimize:clear`, and `php -l app/Livewire/Modals/SuncatcherTwo/AddProductDesign.php` pass.
+**Deploy impact:** If error persists on xlap.com.vn, deploy exact current Blade source and run `php artisan optimize:clear` on server, then reload PHP workers if OPcache still serves old code.
+**Queue impact:** Khong co.
+**Follow-up:** Graphiti memory lookup/write unavailable in current MCP session.
+
+### 2026-10-21 - Fix deployed ParseError at add-product-design line 150
+
+**Root cause:** Production reported an unexpected `endif` because deployed Blade conditional structure differed from current source or stale compiled output. The step branch used a generic `@else`, making partial/stale deployment copies difficult to match.
+
+**Changed files:** `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php` changed step branch from `@else` to explicit `@elseif ($step !== 1)`; `AI_MEMORY.md` updated.
+**Affected modules:** Suncatcher 2 add-product-design Livewire modal.
+**Validation:** `php artisan view:clear`, `php artisan view:cache`, `php artisan optimize:clear`, and `php -l app/Livewire/Modals/SuncatcherTwo/AddProductDesign.php` pass.
+**Deploy impact:** Deploy exact Blade file, run `php artisan optimize:clear`, restart PHP workers if OPcache remains stale.
+**Queue impact:** Khong co.
+**Follow-up:** Graphiti MCP unavailable in this session.
+
+### 2026-10-21 - Remove invalid compiled view d70393...
+
+**Root cause:** `storage/framework/views/d70393b8a7466d567072b0a7bd04815a.php` was an old invalid compiled Blade file; `php -l` reproduced `unexpected token endif` at line 164. Current Blade source compiles into a new valid PHP file.
+
+**Changed files:** `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php` already contains explicit step branch `@elseif ($step !== 1)`; compiled view cache was cleared and rebuilt; `AI_MEMORY.md` updated.
+**Validation:** Old compiled file failed PHP lint; after `php artisan view:clear` and `php artisan view:cache`, newest compiled view passed `php -l`.
+**Deploy impact:** Deploy current Blade source and clear compiled views on any server copy.
+**Queue impact:** Khong co.
+**Follow-up:** Graphiti MCP unavailable in this session.
+
+### 2026-10-21 - Fix real Blade parser issue in Suncatcher 2 modal
+
+**Root cause:** Inline `@php(...)` with nested `array_merge/array_filter/array_unique` was not compiled correctly by Blade. The generated PHP retained literal `@php`, then the closing `@endif` appeared as an unexpected PHP token.
+
+**Changed files:** `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php`; replaced inline `@php(...)` assignments with block `@php ... @endphp` statements.
+**Affected modules:** Suncatcher 2 add-product-design Livewire modal.
+**Validation:** Compiled view PHP lint passes; `php artisan view:clear`, `php artisan view:cache`, `php artisan optimize:clear`, and Livewire component PHP lint pass. No inline `@php(...)` directives remain.
+**Deploy impact:** Deploy exact Blade file and clear Laravel caches on server.
+**Queue impact:** Khong co.
+**Follow-up:** Graphiti MCP unavailable in this session.
+
+### 2026-10-21 - Hide competitor text summary from Suncatcher 2 modal
+
+**Root cause:** The modal rendered a `Competitor Info` textarea containing scraped text, URLs, and labels such as `Đối thủ 1` through `Đối thủ 5`.
+
+**Changed files:** `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php`; removed only the visible competitor text summary block. Scrape data, image gallery, competitor cards, and save flow remain unchanged.
+**Affected modules:** Suncatcher 2 add-product-design Livewire modal.
+**Validation:** `php artisan view:clear`, `php artisan view:cache`, `php artisan optimize:clear`, compiled view PHP lint, and Livewire component PHP lint pass.
+**Deploy impact:** Deploy updated Blade view; clear Laravel caches on server.
+**Queue impact:** Khong co.
+
+### 2026-10-21 - Remove leftover competitor-card Blade block
+
+**Root cause:** Previous card removal left a partial `@foreach` block, causing `unexpected token endforeach` at production line 102.
+**Changed files:** `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php`; removed stale card markup and orphaned Blade directives.
+**Affected modules:** Suncatcher 2 add-product-design modal.
+**Validation:** `php artisan view:clear`, `php artisan view:cache`, `php artisan optimize:clear`, and Livewire component PHP lint pass. Only image-gallery loop remains.
+**Deploy impact:** Deploy exact Blade view and clear Laravel caches.
+**Queue impact:** Khong co.
+
+### 2026-10-21 - Restore competitor text summary
+
+**Changed files:** `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php`; restored readonly `Competitor Info` textarea showing competitor title, URL, and bullet text after the image gallery.
+**Preserved:** Competitor detail cards remain removed; image gallery and save flow unchanged.
+**Validation:** `php artisan view:clear`, `php artisan view:cache`, `php artisan optimize:clear`, and Livewire component PHP lint pass.
+**Deploy impact:** Deploy updated Blade view and clear Laravel caches.
+**Queue impact:** Khong co.
+
+### 2026-10-21 - Convert Suncatcher 2 add flow to stacked page cards
+
+**Changed files:** `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php`; removed progress strip/modal step layout, added separate keyword and scrape cards on one page, changed continue action to call `continueToScrape` then automatically trigger extension scrape, and renamed submit action to `Generate Script`.
+**Affected modules:** Suncatcher 2 add-product-design Livewire flow.
+**Preserved:** Existing research selection, five-competitor validation, scrape result parsing, image selection, asset creation, and script generation service call.
+**Validation:** `php artisan view:clear`, `php artisan view:cache`, `php artisan optimize:clear`, and Livewire component PHP lint pass.
+**Deploy impact:** Deploy updated Blade view; clear Laravel caches.
+**Queue impact:** Khong co.
+**Follow-up:** `D:\FFACTORY\API\Link_doi_thu` was not present in active workspace, so no cross-project file was changed.
+
+### 2026-10-21 - Fix keyword search visibility and scrape-card gate
+
+**Root cause:** The embedded page could restore an old draft with `step=2`, showing the scrape card before a current five-item selection. The keyword button label relied only on Alpine `x-text`, which rendered as a narrow colored control in the captured state.
+**Changed files:** `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php`; show scrape card only when step 2 has exactly five selected URLs, and render explicit loading/idle button labels.
+**Affected modules:** Suncatcher 2 keyword research and scrape cards.
+**Validation:** `php artisan view:clear`, `php artisan view:cache`, `php artisan optimize:clear`, and Livewire component PHP lint pass.
+**Deploy impact:** Deploy updated Blade view and clear Laravel caches; refresh browser draft if old state persists.
+**Queue impact:** Khong co.
+
+### 2026-10-21 - Render Suncatcher 2 add flow as page component
+
+**Root cause:** The add flow was still mounted through `modals.suncatcher-two.add-product-design`, so page behavior and stale modal state remained visible.
+**Changed files:** Added `app/Livewire/Pages/SuncatcherTwo/AddProductDesign.php`; changed `resources/views/livewire/pages/suncatcher-two/list-suncatcher-two.blade.php` to render `pages.suncatcher-two.add-product-design` directly on page, no unapproved-only modal gate.
+**Affected modules:** Suncatcher 2 main page and add-item flow.
+**Preserved:** Existing scrape logic, Generate Script action, status panel, and edit/import modals.
+**Validation:** `php artisan view:clear`, `php artisan view:cache`, and PHP lint for page/modal components pass.
+**Deploy impact:** Deploy both changed files and clear Laravel caches.
+**Queue impact:** Khong co.
+**Follow-up:** Existing edit/import/PSD modals remain because request targeted add flow conversion.
+
+### 2026-10-21 - Fix page AddProductDesign mount signature
+
+**Root cause:** `Pages\SuncatcherTwo\AddProductDesign` extended the modal component but narrowed `mount()` by removing the parent `bool $embedded` parameter, causing PHP fatal compatibility error.
+**Changed files:** `app/Livewire/Pages/SuncatcherTwo/AddProductDesign.php`; restored compatible `mount(bool $embedded = true, ?string $providerKey = null, ?string $textModel = null): void` signature while still forcing embedded page rendering.
+**Validation:** PHP lint, `php artisan view:clear`, `php artisan view:cache`, and `php artisan optimize:clear` pass.
+**Deploy impact:** Deploy updated page component and clear Laravel caches.
+**Queue impact:** Khong co.
+
+### 2026-10-21
+
+**Muc tieu:**
+Sua Suncatcher 2 khong hien/chay duoc nut tim keyword va chuyen sang buoc scrape.
+
+**File da sua/tao:**
+- `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Sua hai typo Alpine `this..selectedResearchUrls` va `this..continueToScrape()` thanh `$wire` hop le.
+- Alpine `x-data` parse lai binh thuong; nut `Tim keyword` va `Sang buoc Scrape` nhan duoc click.
+
+**Loi da gap va cach xu ly:**
+- Sai cu phap JavaScript lam hong toan bo Alpine scope cua form.
+- `php -l app/Livewire/Modals/SuncatcherTwo/AddProductDesign.php` pass.
+- `php artisan view:cache` pass.
+
+**Logic can nho:**
+- Research van gui qua AMZ Research extension.
+- Scrape chi chay khi da chon dung 5 URL.
+
+**Viec can lam tiep:**
+- Neu nut van bao khong ket noi, reload trang va kiem tra extension AMZ Research dang enabled.
+- Chua co browser screenshot/runtime evidence trong luot nay.
+
+**Deploy impact:**
+- Chi thay Blade view; can deploy view code/cache theo quy trinh hien tai.
+
+**Queue impact:**
+- Khong thay doi queue/job.
+
+**Follow-up notes:**
+- Better Design MCP het quota nen khong chay duoc review tool trong luot nay.
+
+### 2026-10-21 (follow-up)
+
+**Muc tieu:**
+An buoc `2. Scrape doi thu` truoc khi research keyword.
+
+**File da sua/tao:**
+- `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Dua tieu de buoc scrape vao cung dieu kien `@if ($researchResults)` voi danh sach research.
+- Trang ban dau chi hien buoc tim keyword; sau khi co ket qua moi hien buoc scrape.
+
+**Loi da gap va cach xu ly:**
+- Tieu de buoc 2 nam ngoai dieu kien, gay hieu ung hien thi sai truoc khi search.
+- `php artisan view:cache` pass.
+
+**Deploy impact:**
+- Chi thay Blade view.
+
+**Queue impact:**
+- Khong thay doi.
+
+**Follow-up notes:**
+- Screenshot user cung co nut Tim keyword disabled vi keyword dang rong; day la dung hanh vi.
+
+### 2026-10-21 (parse error follow-up)
+
+**Muc tieu:**
+Sua ParseError sau khi an tieu de buoc scrape.
+
+**File da sua/tao:**
+- `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Bo sung va can bang cap `@if ($researchResults)` / `@endif` quanh tieu de va noi dung buoc scrape.
+- Xac nhan Blade compile lai binh thuong.
+
+**Loi da gap va cach xu ly:**
+- Lan sua truoc them dieu kien nhung thieu `@endif`, gay `unexpected end of file` tai dong 131.
+- `php artisan view:cache` pass.
+
+**Deploy impact:**
+- Chi thay Blade view; reload/redeploy view code la du.
+
+**Queue impact:**
+- Khong thay doi.
+
+**Follow-up notes:**
+- Sau khi reload, buoc 2 chi hien khi `$researchResults` co du lieu.
+
+### 2026-10-21 (research grid)
+
+**Muc tieu:**
+Hien 5 item research tren mot hang ngang tren desktop.
+
+**File da sua/tao:**
+- `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Doi grid research tu `lg:grid-cols-4` sang `lg:grid-cols-5`.
+- Mobile va tablet van giu responsive 1/2 cot.
+
+**Loi da gap va cach xu ly:**
+- Khong co.
+- `php artisan view:cache` pass.
+
+**Deploy impact:**
+- Chi thay Blade/CSS class.
+
+**Queue impact:**
+- Khong thay doi.
+
+**Follow-up notes:**
+- Chua capture lai screenshot sau thay doi trong luot nay.
+
+### 2026-10-21 (scrape action UX)
+
+**Muc tieu:**
+Dua nut `Sang buoc Scrape` ra ngoai card research va khoa cac action khi dang chay.
+
+**File da sua/tao:**
+- `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Dua nut scrape ra duoi card ket qua, can phai chon dung 5 item.
+- Khi `loading`, khoa input, checkbox, nut xem them va nut scrape.
+- Nut dang chay hien spinner va nhan `Dang scrape...`; nut tim keyword van hien spinner `Dang tim...`.
+
+**Loi da gap va cach xu ly:**
+- Khong co.
+- `php artisan view:cache` pass.
+
+**Deploy impact:**
+- Chi thay Blade view.
+
+**Queue impact:**
+- Khong thay doi.
+
+**Follow-up notes:**
+- Chua capture screenshot runtime sau thay doi.
+
+### 2026-10-22 (selected competitors first)
+
+**Muc tieu:**
+Uu tien 5 doi thu da chon len dau va don sach loi Blade syntax.
+
+**File da sua/tao:**
+- `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Research cards sap xep selected URLs truoc bang `sortBy`, sau do moi den item chua chon.
+- Giu 5 cot desktop, nut scrape nam ngoai card, loading khoa action va hien spinner.
+- Don lai cau truc Blade thanh cac block ro rang: keyword section, research section, scrape step section.
+
+**Loi da gap va cach xu ly:**
+- Loi `unexpected token endif` do cac lan chen `@if/@endif` trung lap truoc do.
+- Hien tai `php artisan view:cache` pass.
+- `php -l app/Livewire/Modals/SuncatcherTwo/AddProductDesign.php` pass.
+
+**Deploy impact:**
+- Can deploy Blade view moi va clear/rebuild view cache tren server.
+
+**Queue impact:**
+- Khong thay doi.
+
+**Follow-up notes:**
+- Chua co browser runtime capture sau ban local cuoi cung.
+
+### 2026-10-22 (suncatcher-two competitor info and primary image)
+
+**Muc tieu:**
+Khong cho sua Competitor Info; cho chon anh chinh truc tiep tu Listing Images; Generate Script gui du lieu B1 va uu tien CheapKeyAI.
+
+**File da sua:**
+- `app/Livewire/Modals/SuncatcherTwo/AddProductDesign.php`
+- `app/Services/SuncatcherTwo/SuncatcherTwoService.php`
+- `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php`
+
+**Thay doi chinh:**
+- Luu full payload cua 5 competitor scraped vao `competitorListing['competitors']`, khong chi competitor dau tien.
+- Gom toan bo listing images, cho phep click chon anh chinh; cap nhat dong thoi `selectedImageUrl` va `imageLink`.
+- Them `selectPrimaryImage()` cho Livewire; hien nhan `Anh chinh` / `Chon lam anh chinh`, `aria-pressed`.
+- Sap xep provider fallback uu tien `cheapkeyai`, sau do moi `v98store`.
+- Service B1 da nhan `competitorListing` day du khi tao asset va generate script, nen prompt workflow co du lieu competitors.
+
+**Validation:**
+- `php -l app/Livewire/Modals/SuncatcherTwo/AddProductDesign.php` pass.
+- `php -l app/Services/SuncatcherTwo/SuncatcherTwoService.php` pass.
+- `php artisan view:cache` pass.
+- `npm run build` pass.
+- Chua co browser screenshot/runtime capture; Better Design MCP quota exhausted.
+
+**Deploy impact:**
+Deploy Livewire, Blade va service code; clear/rebuild Laravel view cache.
+
+**Queue impact:**
+Khong thay doi queue/job; Generate Script van chay qua service hien tai.
+
+**Follow-up notes:**
+Kiem tra tai khoan co credential `cheapkeyai` active cho function `suncatcher-two`; neu thieu key, provider fallback moi dung `v98store`.
+
+### 2026-10-22 (suncatcher-two scrape edit and clear all)
+
+**Muc tieu:**
+Cho phep giu ket qua scrape dang co khi scrape thieu; khoa selection sau scrape; them Edit select va Clear all item chua duyet.
+
+**File da sua:**
+- `app/Livewire/Modals/SuncatcherTwo/AddProductDesign.php`
+- `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php`
+- `app/Services/SuncatcherTwo/SuncatcherTwoService.php`
+- `app/Livewire/Pages/SuncatcherTwo/SuncatcherTwoStatusPanel.php`
+- `app/Livewire/Pages/SuncatcherTwo/ListSuncatcherTwo.php`
+- `resources/views/livewire/pages/suncatcher-two/suncatcher-two-status-panel.blade.php`
+
+**Thay doi chinh:**
+- `setScrapedResults()` luu va hien cac job done ke ca khi chua du 5; chi bao loi khi khong co job nao.
+- Sau scrape, nut `Sang buoc Scrape` doi thanh `Edit select`; Edit mo lai selection, sau do phai scrape lai.
+- Them `Clear all` tren thanh tab; confirm truoc khi xoa va chi xoa asset chua duyet.
+- Xoa qua service/file cleanup hien tai, khong xoa item da duyet.
+
+**Validation:**
+- PHP lint pass cho AddProductDesign, ListSuncatcherTwo, SuncatcherTwoStatusPanel, SuncatcherTwoService.
+- `php artisan view:cache` pass.
+- `npm run build` pass.
+- Chua co browser screenshot/runtime review; Better Design MCP quota exhausted.
+
+**Deploy impact:**
+Deploy Livewire, Blade va service; clear/rebuild view cache.
+
+**Queue impact:**
+Khong thay doi queue/job.
+
+**Follow-up notes:**
+Can test thu cong 3 case: scrape 2/5, Edit select + scrape lai, Clear all khi co item da duyet va chua duyet.
+
+### 2026-10-22 (lock competitor selection until edit)
+
+**Muc tieu:**
+Khong cho doi doi thu sau khi scrape neu chua bam Edit select.
+
+**File da sua:**
+- `app/Livewire/Modals/SuncatcherTwo/AddProductDesign.php`
+- `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php`
+
+**Thay doi chinh:**
+- Chan checkbox competitor, nut Tim keyword va server action `selectResearchUrl()` khi `selectionLocked = true`.
+- Chi `editSelection()` moi mo lai viec chon doi thu.
+
+**Validation:**
+- PHP lint pass.
+- `php artisan view:cache` pass.
+
+**Deploy impact:**
+Deploy Livewire/Blade va clear view cache.
+
+**Queue impact:**
+Khong thay doi.
+
+### 2026-10-22 (clear stale scrape data on edit)
+
+**Muc tieu:**
+Khong hien data scrape cu khi Edit select va dang scrape lai.
+
+**File da sua:**
+- `app/Livewire/Modals/SuncatcherTwo/AddProductDesign.php`
+
+**Thay doi chinh:**
+- `editSelection()` xoa `scrapedCompetitors`, `competitorListing`, anh chinh va loi scrape cu.
+- `continueToScrape()` xoa lai snapshot truoc moi lan scrape moi, tranh stale data trong luc loading.
+
+**Validation:**
+- PHP lint pass.
+- `php artisan view:cache` pass.
+
+**Deploy impact:**
+Deploy Livewire code va clear view cache.
+
+**Queue impact:**
+Khong thay doi.
+
+### 2026-10-22 (show Edit select after scrape)
+
+**Muc tieu:**
+Dam bao nut chuyen tu Sang buoc Scrape sang Edit select sau khi scrape xong.
+
+**File da sua:**
+- `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php`
+- `app/Livewire/Modals/SuncatcherTwo/AddProductDesign.php`
+
+**Thay doi chinh:**
+- Hien label bang Blade state server-side thay vi phu thuoc Alpine `$wire` proxy.
+- Set `selectionLocked = true` ngay khi nhan ket qua scrape.
+
+**Validation:**
+- PHP lint pass.
+- `php artisan view:cache` pass.
+
+### 2026-10-22 (clear stale scrape data on edit select)
+
+**Muc tieu:**
+Khi bam Edit select, xoa ngay data scrape cu; chi hien data moi sau lan scrape moi.
+
+**File da sua:**
+- `app/Livewire/Modals/SuncatcherTwo/AddProductDesign.php`
+- `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php`
+
+**Thay doi chinh:**
+- `editSelection()` clear scraped competitors, competitor listing, primary image va scrape error.
+- `continueToScrape()` clear lai data cu truoc khi bat dau scrape moi.
+- Dispatch event xoa draft `localStorage` de draft cu khong restore nguoc lai.
+
+**Validation:**
+- PHP lint pass.
+- `php artisan view:cache` pass.
+
+**Deploy impact:**
+Deploy Livewire/Blade; clear view cache.
+
+**Queue impact:**
+Khong thay doi.
+
+### 2026-10-22
+
+**Muc tieu:**
+Fix Suncatcher 2 Generate Script tao trung item va dam bao pipeline B1 Audience/Main/USP/Before-After/Comparison/Features/Details/Custom Guide chay tren item hien tai.
+
+**File da sua/tao:**
+- `app/Livewire/Modals/SuncatcherTwo/AddProductDesign.php`
+- `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi chinh:**
+- Them distributed lock theo user cho thao tac tao item + Generate Script, ngan request double-submit tao 2 item.
+- Disable nut trong luc Livewire dang xu ly, hien `Generating...`.
+- Khong thay doi logic card Generate Script: service cap nhat script tren asset hien tai, khong tao asset moi.
+- Parser/prompt B1 da co day du cac section Audience, Main, USP, Before-After, Comparison, Features, Details, Custom Guide; khong can them pipeline moi.
+
+**Validation:**
+- `php -l app/Livewire/Modals/SuncatcherTwo/AddProductDesign.php` pass.
+
+**Deploy impact:**
+- Khong doi migration/config; can deploy 2 file Livewire/Blade.
+
+**Queue impact:**
+- Khong doi job/queue.
+
+**Follow-up:**
+- Test tren UI: bam Generate Script lien tuc, xac nhan chi co 1 item va script du 9 section.
+
+### 2026-10-22 - Fix Blade compiled-view HTTP 500
+
+**Muc tieu:**
+Fix loi `rename(...storage/framework/views/*.tmp,...php): Access is denied (code: 5)` khi Livewire Suncatcher 2 render.
+
+**Root cause:**
+Windows file lock/race khi nhieu request Livewire/poll cung luc compile lai cung Blade view. Loi phat sinh trong Laravel `Filesystem::replace`, khong phai syntax loi tai `product-design-card.blade.php:3229`.
+
+**Xu ly:**
+- Xac minh storage view co quyen Modify va file khong co Read-only attribute.
+- `php artisan view:clear` va `php artisan optimize:clear`.
+- `php artisan view:cache` de precompile view truoc khi request vao app.
+
+**Validation:**
+- `php artisan view:cache` pass.
+- `php artisan about` bao Views CACHED.
+
+**Deploy impact:**
+- Sau moi deploy Blade code, chay `php artisan optimize:clear` roi `php artisan view:cache` khi app da dung code moi.
+
+**Queue impact:**
+- Khong doi.
+
+**Follow-up:**
+- Restart process web/PHP neu server dang giu handle cu; tranh chay song song nhieu worker cung ghi chung compiled view directory tren Windows.
+
+### 2026-10-22 - Root fix Blade rename race
+
+**Muc tieu:**
+Chan loi HTTP 500 `rename(...storage/framework/views/*.tmp,...php): Access is denied` lap lai tren Apache/Windows.
+
+**Root cause:**
+Nhieu Apache/Livewire request cung kiem tra timestamp Blade va compile lai compiled view. Laravel `Filesystem::replace()` dung `rename()` atomically; Windows khong cho doi ten khi process khac dang giu target compiled PHP.
+
+**File da sua:**
+- `config/view.php`
+- `AI_MEMORY.md`
+
+**Thay doi:**
+- Them `check_cache_timestamps => false` de request runtime khong tu dong recompile Blade.
+- Precompile view trong deploy bang `php artisan view:cache`.
+- Cap quyen Modify cho `IIS_IUSRS` va `NETWORK SERVICE` tren `storage/framework/views` tren may hien tai.
+
+**Validation:**
+- `php artisan optimize:clear` pass.
+- `php artisan view:cache` pass.
+- `php artisan config:cache` pass.
+- `php -l config/view.php` pass.
+
+**Deploy impact:**
+Sau khi sua Blade, bat buoc chay `php artisan optimize:clear`, `php artisan view:cache`, sau do restart Apache/PHP. Neu khong precompile, app se dung compiled view cu.
+
+**Queue impact:**
+Khong doi.
+
+### 2026-10-22 - Defer Suncatcher 2 item creation
+
+**Muc tieu:**
+Generate Script khong tao ProductDesignAsset ngay; chi luu draft cho den khi user chu dong tao item.
+
+**File da sua:**
+- `app/Services/SuncatcherTwo/SuncatcherTwoService.php`
+- `app/Livewire/Modals/SuncatcherTwo/AddProductDesign.php`
+- `resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php`
+- `AI_MEMORY.md`
+
+**Thay doi:**
+- Them `generateWorkflowScriptDraft()` dung unsaved model, goi AI va tra workflow/script ma khong ghi DB.
+- `Generate Script` chi cap nhat `draftWorkflow`, hien toast `chua tao item`.
+- Them `Create Item`; chi hanh dong nay moi goi `createAsset()` va attach workflow draft.
+- Luu `draftWorkflow` vao localStorage cung draft research hien tai.
+
+**Validation:**
+- PHP lint pass; `php artisan view:cache` pass.
+
+**Deploy impact:**
+Deploy service, Livewire modal va Blade; khong can migration.
+
+**Queue impact:**
+Khong doi.
+
+### 2026-10-22 - Remove Create Item button
+
+- Removed the `Create Item` button from the Suncatcher 2 add modal.
+- The modal now exposes only `Generate Script`; it keeps draft data without creating a DB item.
+- Blade cache rebuilt successfully with `php artisan view:cache`.
+
+### 2026-10-22 - Lock modal controls during script generation
+
+- Added Livewire loading state to the add-item form.
+- While `saveAndGenerateData` runs, the form uses `pointer-events-none`, so keyword search, `Edit select`, image selection, close, and other controls cannot be clicked.
+- `Generate Script` remains the only action that starts the request.
+- `php artisan view:cache` and PHP lint pass.
+
+### 2026-10-22 - Show generated draft and reuse saved provider keys
+
+- Rendered `draftWorkflow.script` in the Suncatcher 2 add flow so Generate Script output is visible immediately.
+- Provider discovery and CheapKeyAI/v98 balance lookup now use active credentials by provider, not only `function_key = suncatcher-two`; existing user keys are reusable across product pages.
+- Model controls remain selectable; API key entry remains available only through Change API.
+- `php -l app/Services/SuncatcherTwo/SuncatcherTwoService.php` and `php artisan view:cache` pass.
+
+### 2026-10-23 - Generated Script curved tabs
+- XLAP Web Platform: replaced generated script card grid with rounded-top tabs and one visible content panel; all sections preserved.
+- File: resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php.
+- Keyboard: arrows/Home/End, roving tabindex, tab/panel IDs and aria linkage. Native fieldset disabled behavior preserved.
+- Validation: 2 Livewire tests / 10 assertions passed; view:cache and npm run build passed.
+- Deploy: Blade plus built CSS; no backend, database or queue changes.
+- Review limitation: no rendered desktop/mobile screenshots; Better Design review/comprehension unavailable (402). Visual behavior remains unverified in authenticated browser. Graphiti unavailable.
+
+### 2026-10-23 - Draft stepper Person A/B
+- Added draft-only stepper after Generated Script: Next: Person A/B, no item creation.
+- Person A/B draft actions: prompt image generation through CheapKeyAI image endpoint, upload JPG/PNG/WEBP, URL Enter, and clipboard image paste via Livewire upload.
+- Draft references stored in draftWorkflow/localStorage; existing DB item Person A/B path unchanged.
+- Added SuncatcherTwoService::generateWorkflowPersonDraft; uses draft folder and existing provider/key selection.
+- Validation: focused existing tests pass; PHP lint pass; view:cache pass. Browser/API visual verification pending.
+- Trade-off: draft uploads stored publicly under generated/suncatcher-two/drafts until cleanup; promote to item later or add cleanup job when draft expiry is defined.
+
+### 2026-10-23 - Person draft continuation
+- XLAP Web Platform: modal/page AddProductDesign PHP and associated modal/list Blade updated. Selected imageModel now reaches draft generation; draft workflow step/prompts/URLs survive restoration. Back button and input labels added.
+- Validation: 5 focused tests passed, 37 assertions; PHP lint, Blade cache, Vite build passed. No item creation added; no migrations or queue changes. Deploy PHP/Blade and rebuilt assets.
+- Browser screenshots/paste verification pending; Better Design unavailable HTTP 402. Graphiti tool unavailable.
+
+### 2026-10-23 - Full-page workflow stepper
+- Updated SuncatcherTwo AddProductDesign Blade so workflowStep controls the whole page body: step 1 research/script only, step 2 Person A/B only. Next transitions to step 2; Back returns step 1.
+- Validation: view:cache and focused SuncatcherTwoScriptDraftTest passed.
+
+### 2026-10-23 - Person clipboard paste parity
+- SuncatcherTwo Person A/B paste now follows Sticker modal: window paste handler locates image clipboard item, prevents default, uploads through Livewire property, and shows upload status. No DB item creation change.
+- Validation: Blade cache and focused draft test passed. Browser paste not re-tested live.
+
+### 2026-10-23 - Five-step Suncatcher workflow bar
+- Replaced two-step Script/Person indicator with five labels: Competitor, Person, Main Images, Prompt, Mockup. Existing active state remains workflowStep 1/2; future steps display inactive until implemented.
+- Validation: Blade cache and focused draft tests passed.
+
+### 2026-10-23 - Suncatcher stepper visual polish
+- Restyled the five-step Blade stepper with numbered circles, active cyan, completed emerald state and connecting rails; mobile keeps a scrollable single row. Logic unchanged.
+- Validation: view:cache and 2 focused tests passed. No rendered screenshot available; visual result unverified in browser.
+
+
+### 2026-10-23 - Keep workflow stepper visible on back
+- Moved five-step nav outside Generated Script conditional so it remains at top in step 1 before and after returning from Person.
+- Validation: Blade cache and focused draft tests passed.
+
+### 2026-10-23 - Stepper visible before script generation
+- Moved five-step workflow nav outside script-exists guard; it stays visible when returning to step 1 before any script is generated. Script/Person panels remain guarded by draft script.
+- Validation: Blade cache and focused tests passed. Better Design calls unavailable (402); no browser screenshot. Graphiti unavailable.
+
+### 2026-10-23 - SuncatcherTwo Blade ParseError incident
+- Error: GET /offorest/suncatcher-two returns ParseError in resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php:2 (unexpected endif). Root cause: workflow markup was collapsed to a single line and current Blade directives remain unbalanced; attempted view/cache and targeted test do not pass.
+- Current fix status: NOT FIXED. Do not deploy. Minimal recovery needs last known-good copy of the Blade view or restore from deployment artifact, then reapply stepper placement with proper newline-safe patching.
+- Validation: php artisan view:cache passes compilation only; focused SuncatcherTwoScriptDraftTest fails at render. No further source changes.
+- Error-log note requested by user; application log append pending if desired; no successful repair claim.
+
+### 2026-10-23 - Fixed SuncatcherTwo Blade parse/runtime error
+- Root cause: collapsed Blade template left mismatched workflow/script guards and stepper @php variables, causing unexpected endif then undefined variable/array errors.
+- Fix: simplified stepper expressions, restored draft script guard and balanced workflow condition; stepper remains before keyword section.
+- Validation: focused SuncatcherTwoScriptDraftTest passed; view cache cleared before test.
+
+### 2026-10-23 - Resolved SuncatcherTwo AddProductDesign ParseError
+- Exact error from provided report: ParseError in add-product-design.blade.php:2, unexpected endif, expecting end of file. Root cause was moved stepper markup separating the workflowStep and draftWorkflow Blade guards; subsequent edits left the script panel unguarded and stepper temporary variables stale.
+- Fix: stepper remains before keyword content; script/person panels are wrapped in a draftWorkflow script guard; restored matching workflow endif; removed temporary Blade variables in favor of direct loop-index expressions.
+- Validation: SuncatcherTwoScriptDraftTest 2 tests/10 assertions passed; compiled PHP lint passed; view cache rebuilt. No DB/queue/deploy changes.
+
+
+### 2026-10-23 - Independent clipboard paste spinner for SuncatcherTwo Person A/B
+- Root cause: paste upload already tracked `isUploading` per Person card, but status text had no visual progress indicator; independent scope was not obvious to users.
+- Changed file: resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php; added an `animate-spin` spinner beside the clipboard upload status while preserving per-card Alpine state and callbacks.
+- Affected module: SuncatcherTwo Person A/B draft upload UI. Deploy impact: Blade view only; queue/API/DB behavior unchanged. Queue impact: none.
+- Validation: `php artisan view:clear`, `php artisan view:cache`, `php artisan test --compact --filter='SuncatcherTwoScriptDraftTest'` (2 passed, 10 assertions), PHP lint passed. Better Design review unavailable due HTTP 402 quota; browser paste screenshot not rerun.
+- Follow-up: verify Ctrl+V in each card in the authenticated browser; only the pasted card should show the spinner.
+
+### 2026-10-23 - Add URL step marker for SuncatcherTwo workflow
+- Root cause: modal workflow changed internal `workflowStep` only; browser URL stayed identical, making the active step indistinguishable and reload unable to restore it.
+- Changed files: app/Livewire/Modals/SuncatcherTwo/AddProductDesign.php and resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php.
+- Behavior: initial modal state reads `?step=1|2`; Next updates `?step=2`; Back updates `?step=1`. No item creation, API, DB, or queue changes.
+- Validation: view cache and SuncatcherTwoScriptDraftTest passed; PHP lint passed. Browser URL interaction not manually replayed.
+
+### 2026-10-23 - Isolate SuncatcherTwo Person A/B clipboard paste
+- Root cause: both Person cards used `paste.window` with local handlers, so one clipboard event uploaded into A and B.
+- Changed files: app/Livewire/Modals/SuncatcherTwo/AddProductDesign.php and resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php.
+- Behavior: clicking/focusing a card marks only that card active; paste uploads only there and shows its own spinner/ring. New upload stores first, then removes the previous owned draft reference file for that person. External URLs are preserved.
+- Deploy impact: UI plus local draft storage cleanup; no API/DB/queue changes. Validation: PHP lint, Blade cache, focused SuncatcherTwoScriptDraftTest (2 passed, 10 assertions).
+
+### 2026-10-23 - Fix clipboard routing and upload spinner persistence
+- Root cause: Alpine `isActive` was transient across Livewire DOM updates and `paste.window` routing was not bound to the actual paste target; client-only spinner could disappear during Livewire upload.
+- Changed file: resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php.
+- Fix: route clipboard image only when paste target is inside the matching Person card; use Livewire `wire:loading` scoped to that card's upload property for spinner and Person-specific status text.
+- Validation: Blade cache, focused SuncatcherTwoScriptDraftTest (2 tests/10 assertions), PHP lint and focused diff-check passed. No API/DB/queue changes.
+
+### 2026-10-23 - Make SuncatcherTwo paste card focusable and verify uploads
+- Root cause: clicking a non-focusable article did not make it the browser paste target; Ctrl+V could target `body`, which the handler correctly ignored. Earlier test coverage did not exercise actual file uploads.
+- Changed files: resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php (focus clicked card) and tests/Feature/SuncatcherTwoScriptDraftTest.php (independent A/B uploads and replacement cleanup test).
+- Validation: SuncatcherTwoScriptDraftTest 3 tests/16 assertions passed; Blade cache, PHP lint, focused diff-check passed. Upload routing and old-file deletion verified in Livewire test; browser clipboard interaction remains not captured.
+
+### 2026-10-23 - Match SuncatcherTwo Person upload area to Sticker
+- User requested the same blue add-image treatment as Sticker after paste remained unclear.
+- Changed file: resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php.
+- Added cyan dashed upload zone per Person with visible file input, Ctrl+V instruction, drag/drop handling, and independent A/B Livewire properties. No API/DB/queue changes.
+- Validation: Blade cache passed; SuncatcherTwoScriptDraftTest 3 tests/16 assertions passed; `npm run build` passed.
+
+### 2026-10-23 - Route clipboard paste from focused SuncatcherTwo Person card
+- Root cause: paste handler checked `event.target`; Chrome may report `body`/document for clipboard events even when the Person card was clicked/focused, so image was ignored.
+- Changed file: resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php; resolve target from `document.activeElement.closest('[data-person-card]')` first, then event target fallback. A/B upload properties remain separate.
+- Validation: Blade cache passed; SuncatcherTwoScriptDraftTest 3 tests/16 assertions; production asset build passed. Browser clipboard not manually exercised against deployed authenticated page.
+
+### 2026-10-23 - Scope Person paste listeners to each upload zone
+- Root cause: paste listener attached to `window` and card click handlers changed focus; clipboard event could be ignored or routed outside the intended control.
+- Changed file: resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php. Removed global paste/focus routing; each Person card owns a separate Alpine handler and its own focusable blue upload zone handles `paste` and `drop` locally.
+- Validation: Blade cache passed; SuncatcherTwoScriptDraftTest 3 tests/16 assertions; PHP lint passed. Browser clipboard interaction on xlap.com.vn still needs deployment/live verification.
+
+### 2026-10-23 - Persistent Person image zones and URL replacement handling
+- User requested each Person image box remain visible with a per-card spinner for upload, paste, and URL; also asked what happens when an uploaded URL is edited.
+- Changed files: resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php and app/Livewire/Modals/SuncatcherTwo/AddProductDesign.php.
+- Behavior: image zone always renders with preview or empty placeholder; upload spinner sits inside the zone and is scoped to A/B property; URL save shows a scoped spinner and updates draft reference. Replacing an owned draft storage URL via URL input deletes the previous owned file; external URLs are not deleted.
+- Validation: Blade cache, PHP lint, SuncatcherTwoScriptDraftTest (3 tests/16 assertions), and npm build passed. Browser visual verification pending deployment.
+
+### 2026-10-23 - Show immediate per-card spinner on clipboard paste
+- Root cause: screenshot confirms paste succeeded and preview rendered, but the spinner depended on Livewire `wire:loading`, which may not cover the temporary upload phase started through `$wire.upload()`.
+- Changed file: resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php. Added per-card Alpine upload wrapper that sets processing immediately on paste/drop and clears on either upload callback; file-picker changes also activate the same spinner.
+- Validation: Blade cache and PHP lint passed; SuncatcherTwoScriptDraftTest 3 tests/16 assertions passed. Browser animation timing not captured.
+
+### 2026-10-23 - Add SuncatcherTwo Main Images step
+- User requested fix Back to step 1, aligned Person cards, and a next page for Main Images using the selected Listing Images main image.
+- Changed files: app/Livewire/Modals/SuncatcherTwo/AddProductDesign.php, app/Services/SuncatcherTwo/SuncatcherTwoService.php, resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php.
+- Behavior: Back decrements workflow step and scrolls to page top; Person cards use equal-height flex layout. Step 3 displays selected source image and a Main Image prompt; Generate Main Image calls the image provider with the selected source as reference, stores draft output only, and never creates a DB item.
+- Validation: PHP lint, Blade cache, focused SuncatcherTwoScriptDraftTest (3 tests/16 assertions), npm build passed. Authenticated browser visual review remains pending.
+
+### 2026-10-23 - Match Generated Script card surface to SuncatcherTwo parent
+- User screenshot showed the Generated Script panel visually detached from the Add Item panel due to its emerald tinted surface and accent border.
+- Changed file: resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php. Reused the page slate/white panel surface and border/shadow treatment; kept green semantic content copy intact while tabs use existing cyan action accent.
+- Validation: Blade cache passed; SuncatcherTwoScriptDraftTest 3 tests/16 assertions passed. Screenshot is production and local change is not deployed; after-render comparison pending.
+
+### 2026-10-23 - Align Generated Script panel with Add Item card
+- Root cause: Generated Script used `mx-5`, adding a 20px inset that the parent Add Item card does not have.
+- Changed file: resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php. Removed only the horizontal margin; preserved inner padding, border, content, and responsive behavior.
+- Validation: pending Blade cache, focused test, and frontend build. Browser screenshot is production, so local rendering comparison remains unavailable until the local authenticated page is opened.
+- Deploy impact: UI-only; no API, database, or queue changes.
+- Follow-up: inspect desktop/mobile screenshots after local or deployed render.
+
+### 2026-10-23 - Add spacing between aligned SuncatcherTwo cards
+- User clarified the Add Item and Generated Script cards should remain aligned but separated by visible vertical space.
+- Changed file: resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php. Added `mt-5` to Generated Script card while keeping equal horizontal bounds.
+- Validation: Blade cache and focused test pending.
+
+### 2026-10-23 - Stabilize Generated Script tab panel height
+- Root cause: tab panels used `max-height`, so short content collapsed while long content filled the limit, changing the card height and moving following content as tabs changed.
+- Changed file: resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php. Use a fixed 24rem panel height with internal vertical scrolling so tab switches do not change layout height.
+- Validation: Blade cache and focused draft test passed. Visual review pending; Better Design review tools unavailable due account query quota.
+- Deploy/queue impact: UI-only; none.
+
+### 2026-10-23 - Reduce Generated Script visible panel height
+- User screenshot showed the fixed 24rem tab panel feels excessively tall for the current screen.
+- Changed file: resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php. Reduced fixed panel height to 18rem; `overflow-y-auto` continues to scroll long tab content internally while preserving stable card height on tab switches.
+- Validation: Blade cache and focused draft test pending.
+
+### 2026-10-23 - Compact Generated Script tab viewport
+- User requested a smaller visible tab area and clearer internal scrolling.
+- Changed file: resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php. Reduced panel from 18rem to 14rem; retained `overflow-y-auto`.
+- Validation: Blade cache and focused draft test passed.
+
+### 2026-10-23 - Repair Main Images Back button
+- Changed Blade Back action to wire:click.prevent with deferred URL/scroll sync.
+- Validation: view cache and focused test passed.
+
+
+### 2026-10-23 - Convert Person A/B upload controls to dropzones
+- Replaced the file input presentation with visible dashed dropzones for each independent Person card.
+- Drag/drop, click-to-select, paste handling, per-card upload state, and Livewire properties remain unchanged.
+- Validation: view cache and focused test passed.
+
+
+### 2026-10-23 - Compact Person A/B dropzones
+- Reduced dropzone and preview heights so the two Person cards stay compact and balanced while preserving drag/drop, click, paste, and URL behavior.
+- Changed file: resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php.
+- Validation: view cache and focused test passed.
+
+
+### 2026-10-23 - Use Detail Prompt for Main Images generation
+- Main Images now uses the saved Detail Prompt for Suncatcher 2 instead of an inline prompt textarea.
+- Changed files: app/Livewire/Modals/SuncatcherTwo/AddProductDesign.php and resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php.
+- Generate remains draft-only; API, DB item creation, and queue behavior unchanged.
+- Validation: PHP lint, view cache, and focused test passed.
+
+
+### 2026-10-23 - Repair Person URL clearing and preview
+- Root cause: clearing URL triggered required validation and failed the Livewire request; preview images had no click action.
+- Changed files: app/Livewire/Modals/SuncatcherTwo/AddProductDesign.php and resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php.
+- Empty URL now removes owned draft storage safely and leaves the field ready for a replacement URL. Preview images open the existing SuncatcherTwo review modal.
+- Validation: PHP lint, view cache, and focused test passed.
+
+
+### 2026-10-23 - Fix repeat paste preview and compact upload example
+- Root cause: the preview lacked a URL-based Livewire key, so replacing an existing pasted image could reuse the old DOM node; paste handling also was not explicitly prevented at the dropzone boundary.
+- Changed file: resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php. Added wire:key to previews, explicit paste prevention, and compact File upload example copy/layout.
+- Validation: pending view cache and focused test.
+
+
+### 2026-10-23 - Further compact Person A/B upload area
+- Screenshot showed combined outer padding, dropzone height, and separate preview made each upload block too tall.
+- Changed file: resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php. Reduced container padding, dropzone min-height, and preview height; added dark-mode text/surface contrast.
+- Upload/paste, preview click, and URL controls preserved. Validation: pending Blade cache and focused test.
+
+
+### 2026-10-23 - Make Person A/B prompts read-only
+- User requested Person A/B prompts not be editable.
+- Changed file: resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php. Marked prompt textareas read-only and visually distinct; generation continues using existing prompt state.
+- Validation: view cache and focused test passed.
+
+
+### 2026-10-23 - Enlarge Person A/B image preview
+- User requested larger preview images for easier inspection.
+- Changed file: resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php. Increased preview area to h-48 while keeping the compact upload example unchanged.
+- Validation: view cache and focused test passed.
+
+
+### 2026-10-23 - Improve Main Images controls
+- Source Images preview is now clickable and opens the existing image review modal.
+- Main Images empty frame is now the primary large Generate Main Image button; Detail Prompt copy remains visible above it.
+- Changed file: resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php.
+- Validation: pending view cache and focused test.
+
+
+### 2026-10-23 - Persist Main Images draft across reload
+- Root cause: local draft snapshot omitted sourceImageUrl, mainImageUrl, and mainImagePrompt, so reload restored Person/script data but blanked Main Images.
+- Changed files: resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php and app/Livewire/Modals/SuncatcherTwo/AddProductDesign.php.
+- Added Main Image loading spinner and restored persisted fields. Existing prompt/source validation remains the API gate.
+- Database/queue: no new item persistence added in this focused repair; current draft remains localStorage until item creation.
+- Validation: PHP lint, view cache, and focused test passed.
+
+
+### 2026-10-23 - Persist SuncatcherTwo draft workflow in database
+- Added suncatcher_two_drafts migration/model with user ownership, draft UUID, workflow step, status, and full JSON payload for steps 1-5.
+- AddProductDesign loads the latest user draft on mount and autosaves the full Livewire state server-side alongside the existing local fallback.
+- No ProductDesignAsset is created until the existing final item action; API/queue behavior unchanged.
+- Validation: pending migration/model lint, Blade cache, and focused test.
+
+
+### 2026-10-23 - Rename draft table to product_data_search
+- User requested the database table name product_data_search.
+- Added a safe rename migration; model and Livewire table checks now target the new name.
+- Validation: pending migration, PHP lint, view cache, and focused test.
+
+
+### 2026-10-23 - Combine Person and Main Images into Data Images step
+- User requested one stepper step named Data Images, with Person content above Main Images.
+- Changed AddProductDesign workflow bounds to two UI steps and kept old step 3 URLs mapped to step 2; Blade renders both sections under workflow step 2.
+- Changed file paths: app/Livewire/Modals/SuncatcherTwo/AddProductDesign.php and resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php.
+- Validation: pending PHP lint, view cache, and focused test.
+
+
+### 2026-10-23 - Clear SuncatcherTwo draft with Clear all
+- Clear all now deletes the current user's product_data_search rows and dispatches the existing draft-clear event for localStorage, alongside unapproved item deletion.
+- Changed files: app/Livewire/Pages/SuncatcherTwo/ListSuncatcherTwo.php and app/Livewire/Pages/SuncatcherTwo/SuncatcherTwoStatusPanel.php.
+- Validation: PHP lint, view cache, and focused test pending.
+
+
+### 2026-10-23 - Reorder Data Images cards
+- User requested Master Images as a separate card above Person cards.
+- Changed file: resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php. Reordered the existing Main Images card group above the independent Person A/B card group within Data Images; no API/state changes.
+- Validation: pending view cache and focused test.
+
+
+### 2026-10-23 - Accept Google Drive uc?id URLs during approved asset export
+- Root cause: Drive ID extraction accepted `/file/d/{id}` only, while Ceramic assets store valid `https://drive.google.com/uc?id={id}` links.
+- Changed `app/Services/Product/ApprovedAssetDriveExportService.php`: parse IDs from either path or query, and use the shared parser when validating previously persisted Drive sources.
+- Validation: PHP lint passed; Tinker assertions passed for `/uc?id=` and `/file/d/` URL formats.
+- Deploy impact: deploy service file; no schema or queue changes. Existing failed uploads may need retry after deploy.
+- Follow-up: requeue/retry affected failed Ceramic Drive exports.
+
+### 2026-10-23 - Separate Master Images and Person group cards
+- Added distinct outer card surfaces and headings around the Master Images group and Person A/B group in Data Images.
+- Changed file: resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php. Inner controls/cards preserved.
+- Validation: pending Blade cache and focused test.
+
+
+### 2026-10-23 - Separate Master Images and Person group cards
+- Added distinct outer card surfaces and headings around the Master Images group and Person A/B group in Data Images.
+- Changed file: resources/views/livewire/modals/suncatcher-two/add-product-design.blade.php. Inner controls/cards preserved.
+- Validation: pending Blade cache and focused test.
+
+
+### 2026-10-23 - Ceramic Drive export follow-up review
+- Reviewed the full approved-image export and Drive retry paths after adding `uc?id=` parsing.
+- Fixed `DriveUploads` retry eligibility to recognize both `/file/d/{id}` and `?id={id}` URLs.
+- Fixed bulk export source selection and Drive-source validation to use the same strict parser; unrelated URLs containing `drive.google.com` no longer count as valid IDs.
+- Validation: PHP lint passed; Tinker checks passed for `uc?id`, `uc?export=download&id`, `/file/d`, non-Drive, and empty URLs.
+- Full `OfforestProductSchemaTest` remains red from pre-existing fixture/schema/environment failures; focused Drive export test also fails because the test expects an older export-selection behavior and needs a dedicated regression fixture for persisted Drive URLs.
+- Deploy impact: deploy `ApprovedAssetDriveExportService.php` and `DriveUploads.php`; retry failed Ceramic uploads after deploy.
+- Queue impact: retry eligibility improved; no queue schema change.
+
+### 2026-10-23 - Restore SuncatcherTwo bulk-delete service API
+
+- Project: XLAP Web Platform.
+- Root cause: `SuncatcherTwoStatusPanel::clearAllUnapproved()` and `ListSuncatcherTwo::clearAllUnapproved()` called `SuncatcherTwoService::deleteAllUnapprovedAssets()`, but the service only implemented single-asset deletion.
+- Changed: `app/Services/SuncatcherTwo/SuncatcherTwoService.php`; added user/product-scoped bulk deletion for unapproved assets, reusing existing local-file cleanup and DB cascade behavior; invalidated the user's status-count cache.
+- Deploy impact: deploy the service PHP update; no migration or frontend build. Queue behavior unchanged; no queued work touched.
+- Validation: service/component PHP lint; `SuncatcherTwoScriptDraftTest` passed (3 tests, 16 assertions); `php artisan view:cache` passed. Dedicated bulk-delete behavior test not present.
+- Follow-up: Graphiti memory tools unavailable in this session; no episode written. Existing unrelated working-tree changes preserved.

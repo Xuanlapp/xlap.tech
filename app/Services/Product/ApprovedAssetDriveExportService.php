@@ -35,6 +35,7 @@ class ApprovedAssetDriveExportService
             ->where(function ($query): void {
                 foreach (ProductDriveUploadQueueService::IMAGE_FIELDS as $field) {
                     $query->orWhere($field, 'like', '%/storage/%');
+                $query->orWhere($field, 'like', '%drive.google.com%');
                 }
 
                 $query->orWhereNotNull('redesign_candidates');
@@ -212,8 +213,8 @@ class ApprovedAssetDriveExportService
             if (! $this->isLocalStorageUrl($url)) {
                 $oldUrl = $oldDriveUrl !== '' ? $oldDriveUrl : (string) $url;
                 $sourceId = $folderFile['id'] ?? null;
-                if (! $sourceId && preg_match('#/file/d/([^/]+)#', $oldUrl, $matches)) {
-                    $sourceId = $matches[1];
+                if (! $sourceId) {
+                    $sourceId = $this->driveFileIdFromUrl($oldUrl);
                 }
                 if (! $sourceId) {
                     throw new \RuntimeException("Khong xac dinh duoc Drive file ID cho {$field}.");
@@ -516,7 +517,7 @@ class ApprovedAssetDriveExportService
         }
 
         foreach ($previousFiles as $file) {
-            if (is_array($file) && preg_match('#/file/d/[^/]+#', (string) ($file['drive_url'] ?? '')) === 1) {
+            if (is_array($file) && $this->driveFileIdFromUrl((string) ($file['drive_url'] ?? '')) !== null) {
                 return true;
             }
         }
@@ -550,7 +551,7 @@ class ApprovedAssetDriveExportService
         foreach (ProductDriveUploadQueueService::IMAGE_FIELDS as $field) {
             $url = $asset->getAttribute($field);
 
-            if (is_string($url) && str_contains($url, 'drive.google.com')) {
+            if (is_string($url) && $this->driveFileIdFromUrl($url) !== null) {
                 return true;
             }
         }
@@ -579,6 +580,23 @@ class ApprovedAssetDriveExportService
         $extension = pathinfo($absolutePath, PATHINFO_EXTENSION) ?: 'png';
 
         return "{$asset->id}_item{$imageNumber}_{$userName}.{$extension}";
+    }
+
+    private function driveFileIdFromUrl(string $url): ?string
+    {
+        if (parse_url($url, PHP_URL_HOST) !== 'drive.google.com') {
+            return null;
+        }
+
+        $path = parse_url($url, PHP_URL_PATH) ?: '';
+        if (preg_match('#/file/d/([^/]+)#', $path, $matches) === 1) {
+            return $matches[1];
+        }
+
+        parse_str((string) (parse_url($url, PHP_URL_QUERY) ?: ''), $params);
+        return isset($params['id']) && is_string($params['id']) && trim($params['id']) !== ''
+            ? trim($params['id'])
+            : null;
     }
 
     private function drivePreviewUrl(string $driveUrl): string

@@ -120,7 +120,7 @@ class User extends Authenticatable
 
         if ($slug === 'suncatcher') {
             return $this->products()
-                ->whereIn('slug', ['suncatcher', 'ornament'])
+                ->whereIn('slug', ['suncatcher', 'suncatcher-two', 'ornament'])
                 ->where('is_active', true)
                 ->exists();
         }
@@ -252,4 +252,5 @@ class User extends Authenticatable
         return $this->hasMany(PsdMockupTemplate::class);
     }
 }
+
 

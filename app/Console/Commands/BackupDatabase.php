@@ -14,7 +14,7 @@ class BackupDatabase extends Command
     protected $signature = 'offorest:backup-database
         {--drive : Upload the compressed backup to configured Google Drive}
         {--keep-days=14 : Delete local database backups older than this many days. Use 0 to keep all}
-        {--keep-count=10 : Keep only this many newest local database backups. Use 0 to keep all}';
+        {--keep-count=3 : Keep only this many newest local database backups. Use 0 to keep all}';
 
     protected $description = 'Create a local SQL backup of the configured MySQL database, optionally uploading it to Google Drive.';
 

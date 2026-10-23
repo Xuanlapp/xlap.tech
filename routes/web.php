@@ -6,6 +6,7 @@ use App\Http\Controllers\IdeaEtsyExtensionDownloadController;
 use App\Http\Controllers\IdeaAmazonExtensionDownloadController;
 use App\Http\Controllers\ImagePreviewController;
 use App\Http\Controllers\SuncatcherWorkflowImageController;
+use App\Http\Controllers\SuncatcherTwoWorkflowImageController;
 use App\Http\Controllers\OrnamentAmazonTwoWorkflowImageController;
 use App\Http\Controllers\Webhook\TelegramWebhookController;
 use App\Livewire\Pages\Admin\ActivityLogs;
@@ -27,6 +28,8 @@ use App\Livewire\Pages\Admin\ListingPromptSettings;
 use App\Livewire\Pages\Admin\DataSkuSearch;
 use App\Livewire\Pages\Order\Index as OrderIndex;
 use App\Livewire\Pages\Suncatcher\AutomationCatalog;
+use App\Livewire\Pages\SuncatcherTwo\ListSuncatcherTwo;
+use App\Livewire\Pages\SuncatcherTwo\AutomationCatalog as SuncatcherTwoAutomationCatalog;
 use App\Livewire\Pages\Salary\Wali;
 use App\Livewire\Modals\Salary\MonthSummary;
 use App\Support\ProductRegistry;
@@ -164,6 +167,19 @@ Route::middleware(['auth', 'verified'])->prefix('offorest')->group(function (): 
         }
     })->middleware('admin')->name('offorest.admin.debug.listing-metadata.retry');
 
+    Route::get('suncatcher-two-catalog', SuncatcherTwoAutomationCatalog::class)
+        ->middleware('product:suncatcher-two')
+        ->name('offorest.suncatcher-two.catalog');
+
+
+    Route::post('suncatcher-two/workflow/{asset}/listing-images/prepare', [SuncatcherTwoWorkflowImageController::class, 'prepare'])->middleware('product:suncatcher-two')->name('offorest.suncatcher-two.workflow.listing-images.prepare');
+    Route::get('suncatcher-two/workflow/{asset}/listing-images/status', [SuncatcherTwoWorkflowImageController::class, 'status'])->middleware('product:suncatcher-two')->name('offorest.suncatcher-two.workflow.listing-images.status');
+    Route::get('suncatcher-two/workflow/{asset}/mockups/download', [SuncatcherTwoWorkflowImageController::class, 'downloadMockups'])->middleware('product:suncatcher-two')->name('offorest.suncatcher-two.workflow.mockups.download');
+    Route::post('suncatcher-two/workflow/{asset}/redesign', [SuncatcherTwoWorkflowImageController::class, 'redesign'])->middleware('product:suncatcher-two')->name('offorest.suncatcher-two.workflow.redesign');
+    Route::post('suncatcher-two/workflow/{asset}/script', [SuncatcherTwoWorkflowImageController::class, 'script'])->middleware('product:suncatcher-two')->name('offorest.suncatcher-two.workflow.script');
+    Route::post('suncatcher-two/workflow/{asset}/person/{person}', [SuncatcherTwoWorkflowImageController::class, 'person'])->middleware('product:suncatcher-two')->name('offorest.suncatcher-two.workflow.person');
+    Route::post('suncatcher-two/workflow/{asset}/listing-images/{slot}', [SuncatcherTwoWorkflowImageController::class, 'generate'])->middleware('product:suncatcher-two')->name('offorest.suncatcher-two.workflow.listing-images.generate');
+
     Route::get('suncatcher-catalog', AutomationCatalog::class)
         ->middleware('product:suncatcher')
         ->name('offorest.suncatcher.catalog');
@@ -276,5 +292,7 @@ if (app()->environment('local')) {
     Route::view('ui-preview', 'ui-preview')
         ->name('ui-preview');
 }
+
+
 
 

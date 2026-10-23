@@ -124,7 +124,7 @@
                                 @endif</label>
                         @endif
 
-                        <div class="relative z-50" x-data="{ open: false }" x-on:click.outside="open = false">
+                        <div class="relative z-50" x-data="{ open: false }" x-cloak x-show="@js(count($providerOptions) === 0)" x-on:click.outside="open = false">
                             <button type="button" x-on:click="open = ! open" class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 transition hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700" title="Them API Suncatcher">
                                 <span class="text-lg font-bold leading-none">+</span>
                             </button>
@@ -142,7 +142,7 @@
                         </div>
 
                         @if (($selectedAiProvider ?? null) === 'v98store' || ($selectedAiProvider ?? null) === 'cheapkeyai')
-                            <button type="button" wire:click="$dispatch('openModal', { component: '{{ ($selectedAiProvider ?? null) === 'cheapkeyai' ? 'modals.ai.change-cheap-key-ai-key' : 'modals.ai.change-v98-store-key' }}', arguments: { functionKey: 'suncatcher' } })" class="inline-flex h-9 items-center justify-center rounded-md border border-amber-200 bg-amber-50 px-3 text-xs font-bold text-amber-700 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-200">{{ ($selectedAiProvider ?? null) === 'cheapkeyai' ? 'Change API CheapKeyAI' : 'Change API v98' }}</button>
+                            
                         @endif
                     </div>
 

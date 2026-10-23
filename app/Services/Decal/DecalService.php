@@ -102,13 +102,13 @@ class DecalService
             $options['vertex'] = $configured['vertex']['label'] ?? 'Vertex';
         }
 
-        if (UserApiCredential::query()->where('provider_key', 'v98store')->where('function_key', 'decal')->where('is_active', true)->where(function ($query) use ($user): void {
+        if (UserApiCredential::query()->where('provider_key', 'v98store')->where('is_active', true)->where(function ($query) use ($user): void {
             $query->where('user_id', $user->id)->orWhereNull('user_id');
         })->exists()) {
             $options['v98store'] = $configured['v98store']['label'] ?? 'v98Store';
         }
 
-                if (UserApiCredential::query()->where('provider_key', 'cheapkeyai')->where('function_key', 'decal')->where('is_active', true)->where(function ($query) use ($user): void {
+                if (UserApiCredential::query()->where('provider_key', 'cheapkeyai')->where('is_active', true)->where(function ($query) use ($user): void {
             $query->where('user_id', $user->id)->orWhereNull('user_id');
         })->exists()) {
             $options['cheapkeyai'] = $configured['cheapkeyai']['label'] ?? 'CheapKeyAI';
@@ -126,12 +126,12 @@ class DecalService
 
         $credential = UserApiCredential::query()
             ->where('provider_key', 'cheapkeyai')
-            ->where('function_key', 'decal')
             ->where('is_active', true)
             ->where(function ($query) use ($user): void {
                 $query->where('user_id', $user->id)->orWhereNull('user_id');
             })
             ->orderByRaw('CASE WHEN user_id = ? THEN 0 ELSE 1 END', [$user->id])
+            ->orderByDesc('id')
             ->first();
 
         if (! $credential) {
@@ -188,12 +188,12 @@ class DecalService
 
         $credential = UserApiCredential::query()
             ->where('provider_key', 'v98store')
-            ->where('function_key', 'decal')
             ->where('is_active', true)
             ->where(function ($query) use ($user): void {
                 $query->where('user_id', $user->id)->orWhereNull('user_id');
             })
             ->orderByRaw('CASE WHEN user_id = ? THEN 0 ELSE 1 END', [$user->id])
+            ->orderByDesc('id')
             ->first();
 
         if (! $credential) {

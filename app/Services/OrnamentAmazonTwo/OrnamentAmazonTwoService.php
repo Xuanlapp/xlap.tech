@@ -176,6 +176,7 @@ class OrnamentAmazonTwoService
                     ->orWhereNull('user_id');
             })
             ->orderByRaw('CASE WHEN user_id = ? THEN 0 ELSE 1 END', [$user->id])
+            ->orderByDesc('id')
             ->first();
 
         if (! $credential) {
@@ -202,12 +203,12 @@ class OrnamentAmazonTwoService
 
         $credential = UserApiCredential::query()
             ->where('provider_key', 'cheapkeyai')
-            ->where('function_key', $this->product()->slug)
             ->where('is_active', true)
             ->where(function ($query) use ($user): void {
                 $query->where('user_id', $user->id)->orWhereNull('user_id');
             })
             ->orderByRaw('CASE WHEN user_id = ? THEN 0 ELSE 1 END', [$user->id])
+            ->orderByDesc('id')
             ->first();
 
         if (! $credential) {

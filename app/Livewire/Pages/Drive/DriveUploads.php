@@ -109,7 +109,7 @@ class DriveUploads extends Component
     {
         $asset = ProductDesignAsset::query()->find($upload->product_design_asset_id);
         $hasDriveSource = collect(ProductDriveUploadQueueService::IMAGE_FIELDS)
-            ->contains(fn (string $field): bool => preg_match('#/file/d/[^/]+#', (string) $asset?->getAttribute($field)) === 1);
+            ->contains(fn (string $field): bool => $this->driveFileIdFromUrl((string) $asset?->getAttribute($field)) !== null);
         if (! $asset?->is_approved || (! app(ProductDriveUploadQueueService::class)->hasLocalExportableImages($asset) && ! $hasDriveSource && ! $upload->drive_folder_id)) {
             return false;
         }
@@ -118,6 +118,23 @@ class DriveUploads extends Component
             ->whereKey($upload->id)
             ->whereIn('status', ['failed', 'waiting'])
             ->update(['status' => 'waiting', 'error' => null, 'started_at' => null, 'completed_at' => null]) === 1;
+    }
+
+    private function driveFileIdFromUrl(string $url): ?string
+    {
+        if (parse_url($url, PHP_URL_HOST) !== 'drive.google.com') {
+            return null;
+        }
+
+        $path = parse_url($url, PHP_URL_PATH) ?: '';
+        if (preg_match('#/file/d/([^/]+)#', $path, $matches) === 1) {
+            return $matches[1];
+        }
+
+        parse_str((string) (parse_url($url, PHP_URL_QUERY) ?: ''), $params);
+        return isset($params['id']) && is_string($params['id']) && trim($params['id']) !== ''
+            ? trim($params['id'])
+            : null;
     }
 
     public function render(): View

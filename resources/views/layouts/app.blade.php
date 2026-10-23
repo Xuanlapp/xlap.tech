@@ -88,6 +88,7 @@
             </div>
             <livewire:modals.image.review-image />
             <livewire:modals.suncatcher.review-image />
+            <livewire:modals.suncatcher-two.review-image />
             <livewire:modals.account-manager.data-form />
             <x-toast />
         </div>
