@@ -5,6 +5,7 @@ namespace App\Services\Product;
 use App\Models\ProductDesignAsset;
 use App\Models\ProductDriveUpload;
 use App\Models\User;
+use App\Services\Google\DriveSourceNotFoundException;
 use App\Services\Google\GoogleDriveService;
 use App\Services\Logging\ActivityLogService;
 use Illuminate\Support\Facades\DB;
@@ -174,6 +175,7 @@ class ApprovedAssetDriveExportService
         $uploaded = [];
         $fileInfo = [];
         $errors = [];
+        $warnings = [];
         $imageNumber = 1;
 
         $previousFiles = collect($upload->drive_files ?: [])->keyBy('field');
@@ -300,7 +302,11 @@ class ApprovedAssetDriveExportService
                 ];
                 $imageNumber++;
                 } catch (\Throwable $exception) {
-                $errors[] = $field.': '.mb_substr($exception->getMessage(), 0, 500);
+                if ($field === 'redesign' && $exception instanceof DriveSourceNotFoundException) {
+                    $warnings[] = 'redesign: bo qua vi file nguon khong con ton tai hoac khong kha dung (404).';
+                } else {
+                    $errors[] = $field.': '.mb_substr($exception->getMessage(), 0, 500);
+                }
                 $imageNumber++;
             }
         }
@@ -313,7 +319,7 @@ class ApprovedAssetDriveExportService
             $updates['redesign_candidates'] = null;
         }
 
-        if ($updates === []) {
+        if ($updates === [] && $uploaded === []) {
             $upload->update([
                 'status' => 'failed',
                 'error' => $errors === [] ? 'Khong tim thay file co the upload hoac copy.' : mb_substr(implode(' | ', $errors), 0, 2000),
@@ -325,7 +331,7 @@ class ApprovedAssetDriveExportService
 
         $updates['drive_uploaded_at'] = now();
 
-        DB::transaction(function () use ($asset, $upload, $updates, $fileInfo, $uploaded, $errors, $driveFolder): void {
+        DB::transaction(function () use ($asset, $upload, $updates, $fileInfo, $uploaded, $errors, $warnings, $driveFolder): void {
             $lockedUpload = ProductDriveUpload::query()->lockForUpdate()->findOrFail($upload->id);
             if ($lockedUpload->status !== 'processing') {
                 throw new \RuntimeException('Luot upload da het han hoac duoc worker khac nhan; khong ghi de link Drive.');
@@ -338,7 +344,7 @@ class ApprovedAssetDriveExportService
                 'drive_files' => $uploaded,
                 'drive_folder_id' => $driveFolder['id'],
                 'drive_folder_link' => $driveFolder['link'],
-                'error' => $errors === [] ? null : mb_substr(implode(' | ', $errors), 0, 2000),
+                'error' => $errors === [] && $warnings === [] ? null : mb_substr(implode(' | ', [...$errors, ...$warnings]), 0, 2000),
                 'completed_at' => now(),
             ]);
         });

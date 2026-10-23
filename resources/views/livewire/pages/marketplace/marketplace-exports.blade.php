@@ -63,7 +63,7 @@
                         @disabled($selectedCount === 0 || $patternSelectionError !== null)
                         class="inline-flex h-11 items-center gap-2 rounded-md border border-indigo-200 bg-indigo-50 px-5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                        <span wire:loading.remove wire:target="exportPattern">Export Excel Parent</span>
+                        <span wire:loading.remove wire:target="exportPattern">Export Excel Pattern</span>
                         <span wire:loading wire:target="exportPattern">Đang chuẩn bị...</span>
                     </button>
                 </div>

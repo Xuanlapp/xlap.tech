@@ -172,6 +172,9 @@ class GoogleDriveService
                 return $this->uploadImageBytes($image['body'], $filename, $image['content_type'], $folderId);
             } catch (\Throwable $fallbackException) {
                 Log::warning('Google Drive copy fallback failed.', ['file_id' => $fileId, 'copy_status' => $response->status(), 'fallback' => $this->redactedBody($fallbackException->getMessage())]);
+                if ($fallbackException instanceof DriveSourceNotFoundException) {
+                    throw $fallbackException;
+                }
                 throw new RuntimeException('Khong doc/copy duoc file Drive cu. Hay share file nguon cho tai khoan Google Drive cua XLAP.');
             }
         }
@@ -206,6 +209,10 @@ class GoogleDriveService
 
         if ($response->failed()) {
             $this->logExternalApiFailure('Google Drive authenticated image download failed.', $response->status(), $response->body());
+
+            if ($response->status() === 404) {
+                throw new DriveSourceNotFoundException('Google Drive source returned 404.');
+            }
 
             throw new RuntimeException('Khong tai duoc anh Drive bang API. Hay kiem tra OAuth/service account co quyen doc file nay.');
         }

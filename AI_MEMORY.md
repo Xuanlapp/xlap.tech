@@ -13589,30 +13589,31 @@ Dieu tra vi sao VPS khong tao backup moi va so file backup khong dung yeu cau.
 **Viec can lam tiep:**
 - Tren VPS chay `php artisan schedule:list`, `php artisan optimize:clear`, va xem log scheduler/backup de xac nhan lan chay moi.
 
-## 2026-10-20 - Marketplace export Pattern đổi thành Parent
+## 2026-10-23 - Marketplace export Parent đổi lại thành Pattern
 
-**Mục tiêu:** Đồng bộ tên export Pattern thành Parent trong code, file CSV và giao diện.
+**Mục tiêu:** Dùng thống nhất tên `Pattern` cho Marketplace export trong code, giao diện và CSV.
 
 **File đã sửa:**
 - `app/Livewire/Pages/Marketplace/MarketplaceExports.php`
 - `resources/views/livewire/pages/marketplace/marketplace-exports.blade.php`
 - `AI_MEMORY.md`
 
+**Root cause:** Giao diện và CSV từng dùng `Parent`, không khớp thuật ngữ nghiệp vụ `Pattern` mà người dùng yêu cầu.
+
 **Thay đổi chính:**
-- Header CSV nội bộ `sku_pattern` được xuất ra thành cột `Parent`; tên field database/model vẫn giữ nguyên để không ảnh hưởng dữ liệu.
-- SKU cha đổi từ hậu tố `Pattern` sang `Parent`.
-- Filename đổi từ `Pattern_*.csv` sang `Parent_*.csv`.
-- Nút export và thông báo validation trên màn hình đổi sang `Parent`.
+- Header CSV `sku_pattern` hiển thị là `Pattern`; tên field database/model không đổi.
+- SKU dòng pattern dùng hậu tố `Pattern`; filename dùng `Pattern_*.csv`.
+- Nút export và thông báo validation đổi sang `Pattern`.
 
 **Affected modules:** Marketplace export page và CSV export.
 
-**Deploy impact:** Không có migration hoặc thay đổi queue; deploy code và clear view cache nếu server đang cache Blade.
+**Deploy impact:** Không migration; deploy hai file ứng dụng và clear view cache nếu server đang cache Blade. File xuất vẫn là CSV; không đổi định dạng thành XLSX.
 
 **Queue impact:** Không ảnh hưởng.
 
-**Validation:** PHP lint cho `MarketplaceExports.php` pass; `php artisan view:cache` pass; `git diff` xác nhận chỉ thay đổi đúng luồng Marketplace ngoài các thay đổi có sẵn.
+**Validation:** PHP lint cho `MarketplaceExports.php`, `php artisan view:cache`, và `git diff --check` đều pass.
 
-**Follow-up:** Có thể chạy manual export với ít nhất 2 asset để kiểm tra dòng header `Parent` và SKU cha dạng `<sku>Parent`.
+**Follow-up:** Chạy export thủ công với ít nhất 2 asset để xác nhận header `Pattern` và SKU dòng pattern dạng `<sku>Pattern`. Graphiti memory tools không khả dụng trong phiên này.
 
 ## 2026-10-20 - Suncatcher 2 keyword scrape moved to unapproved stepper
 
@@ -14925,3 +14926,20 @@ Khong doi.
 - Deploy impact: deploy PHP service/test; no migration or frontend assets. Restart the custom Drive upload daemon. Retry failures after deployment; local images should export while inaccessible Drive sources remain clearly failed.
 - Queue impact: one upload record remains failed until every required source succeeds; previously completed slots are not copied again.
 - Follow-up: share each inaccessible Drive source with the connected XLAP OAuth identity; code cannot bypass Drive ACL. Graphiti memory service was unavailable in configured MCP resources.
+
+### 2026-10-23 - Marketplace export header uses sku_pattern
+
+- Root cause: Pattern export renamed the CSV header `sku_pattern` to the display label `Pattern`, while the request expects the actual field-style header.
+- Changed: `app/Livewire/Pages/Marketplace/MarketplaceExports.php` now emits and populates `sku_pattern`. Added `docs/marketplace/Pattern_export_sample.csv` with representative Amazon columns and two sample rows.
+- Affected module: Marketplace Pattern CSV export. Deploy impact: deploy PHP change; no migration. Queue impact: none.
+- Validation: PHP lint, Blade cache, diff check, sample CSV header assertion passed. Graphiti write unavailable in this session.
+- Follow-up: manually export real selected assets and compare headers/values with the sample.
+
+### 2026-10-23 - Skip missing Drive redesign when other exports succeed
+
+- Project: XLAP Web Platform.
+- Root cause: Google Drive returns HTTP 404 for source redesign IDs; previous per-image failure handling left the entire export marked failed even when all other images had uploaded.
+- Changed: app/Services/Google/GoogleDriveService.php, app/Services/Google/DriveSourceNotFoundException.php, app/Services/Product/ApprovedAssetDriveExportService.php. A Drive 404 now has a typed exception; only redesign 404 is warning-only when at least one other image has exported. Original redesign URL remains unchanged; access/network errors and 404-only assets remain failed.
+- Added regression coverage in tests/Feature/ApprovedAssetDrivePartialFailureTest.php. Validation: 3 focused tests, 19 assertions passed; PHP lint passed for changed PHP files.
+- Deploy impact: PHP deploy only; restart/reload xlap-drive-upload-daemon. No migration. Queue impact: eligible partial exports complete with warning instead of retry loops; non-404 source errors still fail.
+- Follow-up: deploy and retry one affected item; verify completed status and warning in Drive logs. Graphiti MCP unavailable in this session.

@@ -218,7 +218,7 @@ class MarketplaceExports extends Component
         }
 
         $groups = collect(['selected' => $assets]);
-        $filename = 'Parent_'.now()->format('Ymd_His').'.csv';
+        $filename = 'Pattern_'.now()->format('Ymd_His').'.csv';
         $rows = $this->patternCsvRows($groups);
         ProductDesignAsset::query()->whereKey($assets->pluck('id')->all())->update([
             'marketplace_exported_at' => now(),
@@ -645,7 +645,7 @@ class MarketplaceExports extends Component
     private function patternSelectionError(Collection $assets, int $selectedCount): ?string
     {
         if ($selectedCount < 2 || $assets->count() !== $selectedCount) {
-            return 'Vui lòng chọn ít nhất 2 item hợp lệ để export Parent.';
+            return 'Vui lòng chọn ít nhất 2 item hợp lệ để export Pattern.';
         }
 
         return null;
@@ -657,7 +657,7 @@ class MarketplaceExports extends Component
         $assets = $groups->flatten(1);
         $marketplaces = $assets->map(fn (ProductDesignAsset $asset): string => $this->assetMarketplace($asset))->unique();
         $fields = array_merge(
-            array_map(fn (string $field): string => $field === 'sku_pattern' ? 'Parent' : $field, self::PATTERN_BASE_FIELDS),
+            self::PATTERN_BASE_FIELDS,
             $marketplaces->contains('amazon') ? self::PATTERN_AMAZON_FIELDS : [],
             $marketplaces->contains('etsy') ? ['tags'] : [],
             self::PATTERN_IMAGE_FIELDS,
@@ -666,7 +666,7 @@ class MarketplaceExports extends Component
 
         foreach ($groups as $group) {
             $first = $group->first();
-            $patternSku = (string) $first->sku.'Parent';
+            $patternSku = (string) $first->sku.'Pattern';
             $rows[] = $this->patternRow($first, $fields, $patternSku, $patternSku);
 
             foreach ($group as $asset) {
@@ -686,7 +686,7 @@ class MarketplaceExports extends Component
             if ($field === 'sku') {
                 return $sku;
             }
-            if ($field === 'Parent') {
+            if ($field === 'sku_pattern') {
                 return $patternSku;
             }
             if ($field === 'tags' && $marketplace !== 'etsy') {
