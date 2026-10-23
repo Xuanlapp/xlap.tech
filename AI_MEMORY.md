@@ -14899,3 +14899,13 @@ Khong doi.
 - Deploy impact: deploy the service PHP update; no migration or frontend build. Queue behavior unchanged; no queued work touched.
 - Validation: service/component PHP lint; `SuncatcherTwoScriptDraftTest` passed (3 tests, 16 assertions); `php artisan view:cache` passed. Dedicated bulk-delete behavior test not present.
 - Follow-up: Graphiti memory tools unavailable in this session; no episode written. Existing unrelated working-tree changes preserved.
+### 2026-10-23 - Repair Drive copy failures for approved exports
+
+- Project: XLAP Web Platform, D:\FFACTORY\API\xlap.
+- Root cause: Drive export used `drive.file`, which cannot reliably read arbitrary older files shared from outside the app; direct `files.copy` also fails under copy restrictions. The UI then reported the generic copy error and retries kept failing.
+- Changed: `app/Services/Google/GoogleDriveService.php` now requests full Drive scope for service-account tokens and falls back from Drive copy to authenticated image download plus upload into the new folder. Failure message now distinguishes unreadable source permission.
+- Changed: `config/services.php` and `app/Services/Google/GoogleDriveOAuthService.php` default OAuth scope changed from `drive.file` to `drive`.
+- Validation: PHP lint passed for all three changed PHP files. No production API call or secret access performed.
+- Deploy impact: deploy PHP/config changes; production `.env` must not override with `GOOGLE_DRIVE_SCOPES=...drive.file`. OAuth users must reconnect Google Drive to obtain the broader scope. Restart the custom `xlap-drive-upload-daemon` after deploy.
+- Queue impact: no queue schema or claim logic changed; retry remains idempotent. Retry one failed item first, then bulk retry.
+- Follow-up: source files still must be shared with the XLAP OAuth/service-account identity; scope alone cannot bypass Drive permissions.

@@ -30,7 +30,7 @@ class GoogleDriveOAuthService
             'client_id' => $clientId,
             'redirect_uri' => $this->redirectUri(),
             'response_type' => 'code',
-            'scope' => config('services.google_drive.scopes', 'https://www.googleapis.com/auth/drive.file'),
+            'scope' => config('services.google_drive.scopes', 'https://www.googleapis.com/auth/drive'),
             'access_type' => 'offline',
             'prompt' => 'consent',
             'state' => $state,

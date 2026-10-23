@@ -167,14 +167,30 @@ class GoogleDriveService
             ]), ['name' => $filename, 'parents' => [$folderId]]);
 
         if ($response->failed() || ! is_string($response->json('id'))) {
-            throw new RuntimeException('Khong copy duoc file Drive cu vao folder moi. Kiem tra quyen doc file nguon.');
+            try {
+                $image = $this->downloadImageFile($fileId);
+                return $this->uploadImageBytes($image['body'], $filename, $image['content_type'], $folderId);
+            } catch (\Throwable $fallbackException) {
+                Log::warning('Google Drive copy fallback failed.', ['file_id' => $fileId, 'copy_status' => $response->status(), 'fallback' => $this->redactedBody($fallbackException->getMessage())]);
+                throw new RuntimeException('Khong doc/copy duoc file Drive cu. Hay share file nguon cho tai khoan Google Drive cua XLAP.');
+            }
         }
-
         $id = $response->json('id');
 
         return $response->json('webViewLink') ?: 'https://drive.google.com/file/d/'.$id.'/view';
     }
 
+    private function uploadImageBytes(string $body, string $filename, string $mimeType, string $folderId): string
+    {
+        $metadata = ['name' => $filename, 'parents' => [$folderId]];
+        $boundary = 'offorest_'.bin2hex(random_bytes(12));
+        $multipart = implode("\r\n", ["--{$boundary}", 'Content-Type: application/json; charset=UTF-8', '', json_encode($metadata, JSON_THROW_ON_ERROR), "--{$boundary}", 'Content-Type: '.$mimeType, '', $body, "--{$boundary}--", '']);
+        $response = Http::withToken($this->accessToken())->withOptions($this->googleHttpOptions())->timeout(120)->withBody($multipart, "multipart/related; boundary={$boundary}")->post($this->uploadEndpoint());
+        if ($response->failed() || ! is_string($response->json('id'))) { $this->throwDriveUploadException($response->status(), $response->body()); }
+        $id = $response->json('id');
+        if ((bool) config('services.google_drive.make_public', true)) { $this->makePublic($id); }
+        return $response->json('webViewLink') ?: 'https://drive.google.com/file/d/'.$id.'/view';
+    }
     /**
      * Download an image file through the authenticated Google Drive API.
      *
@@ -428,7 +444,7 @@ class GoogleDriveService
             'typ' => 'JWT',
         ], JSON_THROW_ON_ERROR)).'.'.$this->base64UrlEncode(json_encode([
             'iss' => $clientEmail,
-            'scope' => 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets',
+            'scope' => 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets',
             'aud' => 'https://oauth2.googleapis.com/token',
             'iat' => $now,
             'exp' => $now + 3600,
