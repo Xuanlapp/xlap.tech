@@ -14909,3 +14909,10 @@ Khong doi.
 - Deploy impact: deploy PHP/config changes; production `.env` must not override with `GOOGLE_DRIVE_SCOPES=...drive.file`. OAuth users must reconnect Google Drive to obtain the broader scope. Restart the custom `xlap-drive-upload-daemon` after deploy.
 - Queue impact: no queue schema or claim logic changed; retry remains idempotent. Retry one failed item first, then bulk retry.
 - Follow-up: source files still must be shared with the XLAP OAuth/service-account identity; scope alone cannot bypass Drive permissions.
+### 2026-10-23 - Reconcile false failed Drive upload records
+
+- Root cause: failed retry records could retain a complete `drive_files` array and matching Drive URLs on the asset, then be retried as if source files needed copying again. This caused repeated permission errors despite the item already having all uploaded files.
+- Changed `app/Livewire/Pages/Drive/DriveUploads.php`: retry detects complete persisted Drive exports, changes status back to `completed`, clears stale error, and excludes them from the retry queue. Bulk retry reports queued versus reconciled items.
+- Added `tests/Feature/DriveUploadRetryReconciliationTest.php`; focused test passed with 1 test and 2 assertions.
+- Deploy impact: deploy Livewire PHP code; no migration. Queue impact: existing daemon unchanged; stale failed records can be reconciled by Retry all failed without copying them again. Items with incomplete/mismatched links still require valid Drive permissions.
+- Remaining: production deployment and one manual retry-all check required; external Drive permission cannot be verified locally.

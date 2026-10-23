@@ -65,7 +65,10 @@ class DriveUploads extends Component
                 throw new \RuntimeException('Manager chỉ được export dữ liệu của chính mình.');
             }
 
-            if ($this->queueFailedUpload($upload)) {
+            $result = $this->queueFailedUpload($upload);
+            if ($result === 'completed') {
+                $this->retryMessage = 'Item da co du file Drive; da cap nhat trang thai completed.';
+            } elseif ($result === 'queued') {
                 $itemNumber = $upload->asset?->item_number ?? $upload->product_design_asset_id;
                 $this->retryMessage = "Da dua item {$itemNumber} ve hang doi upload.";
             } else {
@@ -83,15 +86,19 @@ class DriveUploads extends Component
         $this->retryMessage = null;
         $this->retryError = null;
         $queued = 0;
+        $completed = 0;
         $skipped = 0;
 
         ProductDriveUpload::query()
             ->where('status', 'failed')
             ->select('id', 'product_design_asset_id', 'drive_files', 'drive_folder_id')
-            ->chunkById(100, function ($uploads) use (&$queued, &$skipped): void {
+            ->chunkById(100, function ($uploads) use (&$queued, &$completed, &$skipped): void {
                 foreach ($uploads as $upload) {
                     try {
-                        $this->queueFailedUpload($upload) ? $queued++ : $skipped++;
+                        $result = $this->queueFailedUpload($upload);
+                        if ($result === 'queued') $queued++;
+                        elseif ($result === 'completed') $completed++;
+                        else $skipped++;
                     } catch (Throwable $exception) {
                         $skipped++;
                         report($exception);
@@ -99,15 +106,22 @@ class DriveUploads extends Component
                 }
             });
 
-        $this->retryMessage = "Da dua {$queued} item ve hang doi upload.";
+        $this->retryMessage = "Da dua {$queued} item ve hang doi; xac nhan {$completed} item da co du file Drive.";
         if ($skipped > 0) {
             $this->retryError = "Bo qua {$skipped} item khong co nguon anh hop le hoac gap loi; kiem tra truoc khi thu lai.";
         }
     }
 
-    private function queueFailedUpload(ProductDriveUpload $upload): bool
+    private function queueFailedUpload(ProductDriveUpload $upload): string|false
     {
         $asset = ProductDesignAsset::query()->find($upload->product_design_asset_id);
+        if ($asset && $this->hasCompleteDriveExport($upload, $asset)) {
+            ProductDriveUpload::query()->whereKey($upload->id)->update([
+                'status' => 'completed', 'error' => null, 'completed_at' => now(),
+            ]);
+            return 'completed';
+        }
+
         $hasDriveSource = collect(ProductDriveUploadQueueService::IMAGE_FIELDS)
             ->contains(fn (string $field): bool => $this->driveFileIdFromUrl((string) $asset?->getAttribute($field)) !== null);
         if (! $asset?->is_approved || (! app(ProductDriveUploadQueueService::class)->hasLocalExportableImages($asset) && ! $hasDriveSource && ! $upload->drive_folder_id)) {
@@ -117,9 +131,30 @@ class DriveUploads extends Component
         return ProductDriveUpload::query()
             ->whereKey($upload->id)
             ->whereIn('status', ['failed', 'waiting'])
-            ->update(['status' => 'waiting', 'error' => null, 'started_at' => null, 'completed_at' => null]) === 1;
+            ->update(['status' => 'waiting', 'error' => null, 'started_at' => null, 'completed_at' => null]) === 1 ? 'queued' : false;
     }
 
+    private function hasCompleteDriveExport(ProductDriveUpload $upload, ProductDesignAsset $asset): bool
+    {
+        $files = is_array($upload->drive_files) ? $upload->drive_files : [];
+        if ($files === [] || ! empty($asset->redesign_candidates)) return false;
+        $recorded = [];
+        foreach ($files as $file) {
+            $field = $file['field'] ?? null;
+            if (! is_string($field) || ! in_array($field, ProductDriveUploadQueueService::IMAGE_FIELDS, true) || isset($recorded[$field])) return false;
+            $recorded[$field] = $this->driveFileIdFromUrl((string) ($file['drive_url'] ?? ''));
+            if (! $recorded[$field]) return false;
+        }
+        $assetCount = 0;
+        foreach (ProductDriveUploadQueueService::IMAGE_FIELDS as $field) {
+            $value = $asset->getAttribute($field);
+            if (! is_string($value) || trim($value) === '') continue;
+            $assetId = $this->driveFileIdFromUrl($value);
+            if ($assetId === null || ($recorded[$field] ?? null) !== $assetId) return false;
+            $assetCount++;
+        }
+        return $assetCount > 0 && $assetCount === count($recorded);
+    }
     private function driveFileIdFromUrl(string $url): ?string
     {
         if (parse_url($url, PHP_URL_HOST) !== 'drive.google.com') {
