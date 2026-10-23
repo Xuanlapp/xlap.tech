@@ -14916,3 +14916,12 @@ Khong doi.
 - Added `tests/Feature/DriveUploadRetryReconciliationTest.php`; focused test passed with 1 test and 2 assertions.
 - Deploy impact: deploy Livewire PHP code; no migration. Queue impact: existing daemon unchanged; stale failed records can be reconciled by Retry all failed without copying them again. Items with incomplete/mismatched links still require valid Drive permissions.
 - Remaining: production deployment and one manual retry-all check required; external Drive permission cannot be verified locally.
+
+### 2026-10-23 - Preserve local Drive exports when an external source is inaccessible
+
+- Root cause: export processed the Drive-hosted redesign first and aborted the whole item when OAuth could not read that source; available local mockups were never uploaded.
+- Changed: app/Services/Product/ApprovedAssetDriveExportService.php catches errors per image, persists successful files with a failed/partial result, preserves local candidate files on partial failure, and skips already-recorded matching Drive files on retry.
+- Added: tests/Feature/ApprovedAssetDrivePartialFailureTest.php. Focused partial-export and retry-reconciliation tests passed.
+- Deploy impact: deploy PHP service/test; no migration or frontend assets. Restart the custom Drive upload daemon. Retry failures after deployment; local images should export while inaccessible Drive sources remain clearly failed.
+- Queue impact: one upload record remains failed until every required source succeeds; previously completed slots are not copied again.
+- Follow-up: share each inaccessible Drive source with the connected XLAP OAuth identity; code cannot bypass Drive ACL. Graphiti memory service was unavailable in configured MCP resources.

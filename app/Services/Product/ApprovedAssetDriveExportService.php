@@ -173,6 +173,7 @@ class ApprovedAssetDriveExportService
         $deletePaths = [];
         $uploaded = [];
         $fileInfo = [];
+        $errors = [];
         $imageNumber = 1;
 
         $previousFiles = collect($upload->drive_files ?: [])->keyBy('field');
@@ -192,107 +193,121 @@ class ApprovedAssetDriveExportService
         $folderByItem = [];
 
         foreach (ProductDriveUploadQueueService::IMAGE_FIELDS as $field) {
-            $url = $asset->getAttribute($field);
+            try {
+                $url = $asset->getAttribute($field);
 
-            $folderFile = $folderByItem[$imageNumber] ?? null;
-            $oldFile = $previousFiles->get($field);
-            $oldDriveUrl = is_array($oldFile) && ! empty($oldFile['drive_url'])
-                ? (string) $oldFile['drive_url']
-                : '';
-
-            // Try every persisted source for this slot before declaring it missing:
-            // current asset URL, previous upload record, then the Drive folder file.
-            if (! is_string($url) || trim($url) === '') {
-                $url = $oldDriveUrl;
-            }
-
-            if (trim((string) $url) === '' && ! $folderFile) {
-                continue;
-            }
-
-            if (! $this->isLocalStorageUrl($url)) {
-                $oldUrl = $oldDriveUrl !== '' ? $oldDriveUrl : (string) $url;
-                $sourceId = $folderFile['id'] ?? null;
-                if (! $sourceId) {
-                    $sourceId = $this->driveFileIdFromUrl($oldUrl);
-                }
-                if (! $sourceId) {
-                    throw new \RuntimeException("Khong xac dinh duoc Drive file ID cho {$field}.");
+                $folderFile = $folderByItem[$imageNumber] ?? null;
+                $oldFile = $previousFiles->get($field);
+                $oldDriveUrl = is_array($oldFile) && ! empty($oldFile['drive_url'])
+                    ? (string) $oldFile['drive_url']
+                    : '';
+                $currentDriveId = $this->driveFileIdFromUrl((string) $url);
+                if ($oldDriveUrl !== '' && $currentDriveId !== null && $currentDriveId === $this->driveFileIdFromUrl($oldDriveUrl)) {
+                    $uploaded[] = $oldFile;
+                    $fileInfo[] = ['item' => 'item'.$imageNumber, 'field' => $field, 'filename' => $oldFile['filename'] ?? $asset->id.'_'.$field.'.png'];
+                    $imageNumber++;
+                    continue;
                 }
 
-                $sourceFilename = (string) ($folderFile['name'] ?? (is_array($oldFile) ? ($oldFile['filename'] ?? "{$asset->id}_{$field}.png") : "{$asset->id}_{$field}.png"));
-                $filename = $this->driveFilenameFromName($asset, $imageNumber, $sourceFilename);
+                // Try every persisted source for this slot before declaring it missing:
+                // current asset URL, previous upload record, then the Drive folder file.
+                if (! is_string($url) || trim($url) === '') {
+                    $url = $oldDriveUrl;
+                }
+
+                if (trim((string) $url) === '' && ! $folderFile) {
+                    continue;
+                }
+
+                if (! $this->isLocalStorageUrl($url)) {
+                    $oldUrl = $oldDriveUrl !== '' ? $oldDriveUrl : (string) $url;
+                    $sourceId = $folderFile['id'] ?? null;
+                    if (! $sourceId) {
+                        $sourceId = $this->driveFileIdFromUrl($oldUrl);
+                    }
+                    if (! $sourceId) {
+                        throw new \RuntimeException("Khong xac dinh duoc Drive file ID cho {$field}.");
+                    }
+
+                    $sourceFilename = (string) ($folderFile['name'] ?? (is_array($oldFile) ? ($oldFile['filename'] ?? "{$asset->id}_{$field}.png") : "{$asset->id}_{$field}.png"));
+                    $filename = $this->driveFilenameFromName($asset, $imageNumber, $sourceFilename);
+                    $upload->update(['started_at' => now()]);
+                    $driveUrl = $this->drive->copyFileToFolder($sourceId, $filename, $driveFolder['id']);
+                    $updates[$field] = $driveUrl;
+                    $fileInfo[] = ['item' => 'item'.$imageNumber, 'field' => $field, 'filename' => $filename];
+                    $uploaded[] = [
+                        'item' => 'item'.$imageNumber,
+                        'field' => $field,
+                        'drive_url' => $driveUrl,
+                        'preview_url' => $this->drivePreviewUrl($driveUrl),
+                        'filename' => $filename,
+                    ];
+                    $imageNumber++;
+                    continue;
+                }
+
+                $absolutePath = $this->absoluteStoragePath($url);
+
+                if (! $absolutePath || ! File::exists($absolutePath)) {
+                    if (! $folderFile) {
+                        throw new \RuntimeException("Khong tim thay file local cho {$field}.");
+                    }
+                    $filename = $this->driveFilenameFromName($asset, $imageNumber, (string) $folderFile['name']);
+                    $upload->update(['started_at' => now()]);
+                    $driveUrl = $this->drive->copyFileToFolder($folderFile['id'], $filename, $driveFolder['id']);
+                    $updates[$field] = $driveUrl;
+                    $fileInfo[] = ['item' => 'item'.$imageNumber, 'field' => $field, 'filename' => $filename];
+                    $uploaded[] = [
+                        'item' => 'item'.$imageNumber,
+                        'field' => $field,
+                        'drive_url' => $driveUrl,
+                        'preview_url' => $this->drivePreviewUrl($driveUrl),
+                        'filename' => $filename,
+                    ];
+                    $imageNumber++;
+                    continue;
+                }
+
+                $filename = $this->driveFilename($asset, $imageNumber, $absolutePath);
+                $mimeType = File::mimeType($absolutePath) ?: null;
+                // Read local metadata before uploading; Syncthing may remove the source immediately after upload.
+                $bytes = File::size($absolutePath);
                 $upload->update(['started_at' => now()]);
-                $driveUrl = $this->drive->copyFileToFolder($sourceId, $filename, $driveFolder['id']);
+                $driveUrl = $this->drive->uploadLocalFile(
+                    $absolutePath,
+                    $filename,
+                    $mimeType,
+                    $driveFolder['id'],
+                );
+
                 $updates[$field] = $driveUrl;
-                $fileInfo[] = ['item' => 'item'.$imageNumber, 'field' => $field, 'filename' => $filename];
+                $deletePaths[] = $absolutePath;
+                $fileInfo[] = [
+                    'item' => 'item'.$imageNumber,
+                    'field' => $field,
+                    'local_url' => $url,
+                    'filename' => $filename,
+                    'mime_type' => $mimeType,
+                    'bytes' => $bytes,
+                ];
                 $uploaded[] = [
                     'item' => 'item'.$imageNumber,
                     'field' => $field,
+                    'local_url' => $url,
                     'drive_url' => $driveUrl,
                     'preview_url' => $this->drivePreviewUrl($driveUrl),
                     'filename' => $filename,
                 ];
                 $imageNumber++;
-                continue;
-            }
-
-            $absolutePath = $this->absoluteStoragePath($url);
-
-            if (! $absolutePath || ! File::exists($absolutePath)) {
-                if (! $folderFile) {
-                    throw new \RuntimeException("Khong tim thay file local cho {$field}.");
-                }
-                $filename = $this->driveFilenameFromName($asset, $imageNumber, (string) $folderFile['name']);
-                $upload->update(['started_at' => now()]);
-                $driveUrl = $this->drive->copyFileToFolder($folderFile['id'], $filename, $driveFolder['id']);
-                $updates[$field] = $driveUrl;
-                $fileInfo[] = ['item' => 'item'.$imageNumber, 'field' => $field, 'filename' => $filename];
-                $uploaded[] = [
-                    'item' => 'item'.$imageNumber,
-                    'field' => $field,
-                    'drive_url' => $driveUrl,
-                    'preview_url' => $this->drivePreviewUrl($driveUrl),
-                    'filename' => $filename,
-                ];
+                } catch (\Throwable $exception) {
+                $errors[] = $field.': '.mb_substr($exception->getMessage(), 0, 500);
                 $imageNumber++;
-                continue;
             }
-
-            $filename = $this->driveFilename($asset, $imageNumber, $absolutePath);
-            $mimeType = File::mimeType($absolutePath) ?: null;
-            // Read local metadata before uploading; Syncthing may remove the source immediately after upload.
-            $bytes = File::size($absolutePath);
-            $upload->update(['started_at' => now()]);
-            $driveUrl = $this->drive->uploadLocalFile(
-                $absolutePath,
-                $filename,
-                $mimeType,
-                $driveFolder['id'],
-            );
-
-            $updates[$field] = $driveUrl;
-            $deletePaths[] = $absolutePath;
-            $fileInfo[] = [
-                'item' => 'item'.$imageNumber,
-                'field' => $field,
-                'local_url' => $url,
-                'filename' => $filename,
-                'mime_type' => $mimeType,
-                'bytes' => $bytes,
-            ];
-            $uploaded[] = [
-                'item' => 'item'.$imageNumber,
-                'field' => $field,
-                'local_url' => $url,
-                'drive_url' => $driveUrl,
-                'preview_url' => $this->drivePreviewUrl($driveUrl),
-                'filename' => $filename,
-            ];
-            $imageNumber++;
         }
 
-        $candidateCleanup = $this->cleanupRedesignCandidates($asset, $actor, $trigger);
+        $candidateCleanup = $errors === []
+            ? $this->cleanupRedesignCandidates($asset, $actor, $trigger)
+            : ['should_clear' => false, 'deleted' => 0, 'delete_paths' => []];
 
         if ($candidateCleanup['should_clear']) {
             $updates['redesign_candidates'] = null;
@@ -301,7 +316,7 @@ class ApprovedAssetDriveExportService
         if ($updates === []) {
             $upload->update([
                 'status' => 'failed',
-                'error' => 'Khong tim thay file co the upload hoac copy.',
+                'error' => $errors === [] ? 'Khong tim thay file co the upload hoac copy.' : mb_substr(implode(' | ', $errors), 0, 2000),
                 'completed_at' => now(),
             ]);
 
@@ -310,7 +325,7 @@ class ApprovedAssetDriveExportService
 
         $updates['drive_uploaded_at'] = now();
 
-        DB::transaction(function () use ($asset, $upload, $updates, $fileInfo, $uploaded, $driveFolder): void {
+        DB::transaction(function () use ($asset, $upload, $updates, $fileInfo, $uploaded, $errors, $driveFolder): void {
             $lockedUpload = ProductDriveUpload::query()->lockForUpdate()->findOrFail($upload->id);
             if ($lockedUpload->status !== 'processing') {
                 throw new \RuntimeException('Luot upload da het han hoac duoc worker khac nhan; khong ghi de link Drive.');
@@ -318,12 +333,12 @@ class ApprovedAssetDriveExportService
 
             $asset->update($updates);
             $lockedUpload->update([
-                'status' => 'completed',
+                'status' => $errors === [] ? 'completed' : 'failed',
                 'file_info' => $fileInfo,
                 'drive_files' => $uploaded,
                 'drive_folder_id' => $driveFolder['id'],
                 'drive_folder_link' => $driveFolder['link'],
-                'error' => null,
+                'error' => $errors === [] ? null : mb_substr(implode(' | ', $errors), 0, 2000),
                 'completed_at' => now(),
             ]);
         });
