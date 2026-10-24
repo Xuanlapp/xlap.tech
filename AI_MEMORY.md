@@ -15031,3 +15031,19 @@ Khong doi.
 - Added `.design/status-filter-url/DESIGN_BRIEF.md` and `tests/Feature/StatusFilterUrlTest.php`.
 - Validation: URL-state + prior sync regression tests (7 tests / 19 assertions), PHP lint, `php artisan view:cache`, and `git diff --check` passed. No layout changes; rendered browser review unavailable. Better Design map/review tools unavailable (HTTP 402 quota).
 - Deploy impact: PHP-only deploy. Queue impact: none. Graphiti memory unavailable in configured tools.
+### 2026-10-24 - Prevent stale listing workers from restoring reset metadata
+
+- Project: XLAP Web Platform. Root cause: an in-flight listing provider request could finish after Super Admin moved an item back to unapproved, then write the stale output or error/status into the reset record.
+- Changed `app/Repositories/Product/ProductDesignAssetRepository.php`: metadata persistence now locks and validates the same approved `processing` attempt (attempt count + start timestamp); completed/waiting/failed status updates now use guarded SQL conditions, so canceled/unapproved attempts cannot resurrect metadata or status.
+- Added `tests/Feature/DataSkuSearchUnapproveTest.php` to verify reset clears listing error/output, preserves source image, and rejects stale worker output.
+- Validation: reset regression, Ceramic output, and SKU sync tests (8 tests / 24 assertions), PHP lint, `git diff --check` passed.
+- Deploy impact: PHP deploy only; no migration. Queue impact: no queue topology change; deploy/restart listing workers to load the guard. Graphiti unavailable in configured tools.
+- Follow-up on 2026-10-24: verified and covered the bulk **Chua duyet toan bo** path in `tests/Feature/DataSkuSearchUnapproveTest.php`. It clears listing output/error for all matching approved assets across users, resets attempts, preserves unrelated SKU data. Focused tests: 2 tests / 17 assertions passed.
+### 2026-10-24 - Filter listing metadata retries by user ID
+
+- Project: XLAP Web Platform. Root cause: bulk retry actions had no owner scope, so retry-all could enqueue failed approved assets across all users.
+- Changed `app/Livewire/Pages/Marketplace/ListingMetadataStatus.php` to validate/persist `user_id` in URL state and apply that filter server-side to selected and retry-all actions; retained staff/admin authorization. Updated `resources/views/livewire/pages/marketplace/listing-metadata-status.blade.php` with a user selector showing names and IDs and scoped retry labels.
+- Added `.design/listing-metadata-retry-user-filter/DESIGN_BRIEF.md` and `tests/Feature/ListingMetadataRetryUserFilterTest.php`, covering that retry-all queues the chosen user's asset only.
+- Validation: focused feature test (1 test / 3 assertions), PHP lint, `php artisan view:cache`, and `git diff --check` passed. Rendered screenshots/review unavailable; Better Design tools returned HTTP 402 quota exhausted. Graphiti unavailable.
+- Deploy impact: PHP + Blade deployment; no migration. Queue impact: retry query scope only; no queue topology change.
+- Follow-up: verify the selector and responsive layout in authenticated browser after deployment.

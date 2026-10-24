@@ -62,16 +62,25 @@
         @endif
 
         @if (auth()->user()->is_admin || auth()->user()->isManager())
-            <div class="mt-4 flex items-center gap-3">
-                <button type="button" wire:click="retrySelected" wire:confirm="Dua cac item da chon ve hang doi?" wire:loading.attr="disabled" class="rounded-md bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-800 disabled:opacity-50">
+            <div class="mt-4 flex flex-wrap items-end gap-3">
+                <div>
+                    <label for="retry-user-id" class="block text-xs font-medium text-slate-600">Lọc retry theo user</label>
+                    <select id="retry-user-id" wire:model.live="userId" class="mt-1 rounded-md border-slate-300 bg-white text-sm text-slate-900">
+                        <option value="">Tất cả user</option>
+                        @foreach ($retryUsers as $retryUser)
+                            <option value="{{ $retryUser->id }}">{{ $retryUser->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <button type="button" wire:click="retrySelected" wire:confirm="Dua cac item da chon cua user dang loc ve hang doi?" wire:loading.attr="disabled" class="rounded-md bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-800 disabled:opacity-50">
                     Retry selected
                 </button>
                 @if (auth()->user()->is_admin)
-                    <button type="button" wire:click="retryAllFailed" wire:confirm="Dua {{ $statusCounts['failed'] }} item loi ve hang doi? Worker se xu ly dan." wire:loading.attr="disabled" class="rounded-md bg-slate-900 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">
-                        Retry all failed ({{ $statusCounts['failed'] }})
+                    <button type="button" wire:click="retryAllFailed" wire:confirm="Dua cac item loi cua user dang loc ve hang doi? Worker se xu ly dan." wire:loading.attr="disabled" class="rounded-md bg-slate-900 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">
+                        Retry all failed{{ $retryUserName ? ' for '.$retryUserName : '' }} ({{ $retryFailedCount }})
                     </button>
                 @endif
-                <span class="text-xs text-slate-500">Retry selected chi ap dung cho trang nay.</span>
+                <span class="text-xs text-slate-500">Retry selected chỉ chạy các item đã tích; bộ lọc user áp dụng cho cả hai nút.</span>
             </div>
         @endif
 

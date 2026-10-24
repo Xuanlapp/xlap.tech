@@ -469,51 +469,35 @@ class ProductDesignAssetRepository
 
     public function updateListingMetadata(ProductDesignAsset $asset, array $fields): ProductDesignAsset
     {
-        $allowedFields = [
-            'title',
-            'description',
-            'bullet_point_1',
-            'bullet_point_2',
-            'bullet_point_3',
-            'bullet_point_4',
-            'bullet_point_5',
-            'generic_keyword',
-            'item_highlight',
-            'sku_pattern',
-            'tags',
-        ];
+        $allowedFields = ['title', 'description', 'bullet_point_1', 'bullet_point_2', 'bullet_point_3', 'bullet_point_4', 'bullet_point_5', 'generic_keyword', 'item_highlight', 'sku_pattern', 'tags'];
+        $sanitized = collect($fields)->only($allowedFields)->mapWithKeys(function (mixed $value, string $field): array {
+            if (! is_string($value)) return [$field => $value];
+            if ($field === 'title') return [$field => $this->normalizeListingTitle($value)];
+            $value = $this->removeBlockedListingSymbols($value);
+            $limit = match ($field) {
+                'description' => 2000,
+                'bullet_point_1', 'bullet_point_2', 'bullet_point_3', 'bullet_point_4', 'bullet_point_5' => 699,
+                'generic_keyword' => 249,
+                'item_highlight' => 125,
+                default => null,
+            };
+            return [$field => $limit ? mb_substr($value, 0, $limit) : $value];
+        })->all();
 
-        $sanitized = collect($fields)
-            ->only($allowedFields)
-            ->mapWithKeys(function (mixed $value, string $field): array {
-                if (! is_string($value)) {
-                    return [$field => $value];
-                }
-
-                if ($field === 'title') {
-                    return [$field => $this->normalizeListingTitle($value)];
-                }
-
-                $value = $this->removeBlockedListingSymbols($value);
-
-                $limit = match ($field) {
-                    'description' => 2000,
-                    'bullet_point_1', 'bullet_point_2', 'bullet_point_3', 'bullet_point_4', 'bullet_point_5' => 699,
-                    'generic_keyword' => 249,
-                    'item_highlight' => 125,
-                    default => null,
-                };
-
-                return [$field => $limit ? mb_substr($value, 0, $limit) : $value];
-            })
-            ->all();
-
-        $asset->update($sanitized);
-
-        return $asset->refresh();
+        return DB::transaction(function () use ($asset, $sanitized): ProductDesignAsset {
+            $current = ProductDesignAsset::query()->whereKey($asset->id)->lockForUpdate()->first();
+            $sameAttempt = $current
+                && $current->is_approved
+                && $current->marketplace_listing_status === 'processing'
+                && (int) $current->marketplace_listing_attempts === (int) $asset->marketplace_listing_attempts
+                && $current->marketplace_listing_started_at?->equalTo($asset->marketplace_listing_started_at);
+            if (! $sameAttempt) {
+                throw new RuntimeException('Listing generation was canceled because this item was unapproved or retried.');
+            }
+            $current->update($sanitized);
+            return $current->refresh();
+        }, 3);
     }
-
-
     private function removeBlockedListingSymbols(string $value): string
     {
         $value = str_replace(["\u{20AC}"], '', $value);
@@ -577,7 +561,7 @@ class ProductDesignAssetRepository
     public function markListingCompleted(ProductDesignAsset $asset, string $marketplace): ProductDesignAsset
     {
         retry(3, function () use ($asset, $marketplace): void {
-            $asset->update([
+            $this->listingAttemptQuery($asset)->update([
                 'marketplace_listing_status' => 'completed',
                 'marketplace_listing_marketplace' => $marketplace,
                 'marketplace_listing_completed_at' => now(),
@@ -591,7 +575,7 @@ class ProductDesignAssetRepository
     public function markListingWaiting(ProductDesignAsset $asset, string $message): ProductDesignAsset
     {
         retry(3, function () use ($asset, $message): void {
-            $asset->update([
+            $this->listingAttemptQuery($asset)->update([
                 'marketplace_listing_status' => 'waiting',
                 'marketplace_listing_started_at' => null,
                 'marketplace_listing_completed_at' => now(),
@@ -601,10 +585,11 @@ class ProductDesignAssetRepository
 
         return $asset->refresh();
     }
+
     public function markListingFailed(ProductDesignAsset $asset, string $message): ProductDesignAsset
     {
         retry(3, function () use ($asset, $message): void {
-            $asset->update([
+            $this->listingAttemptQuery($asset)->update([
                 'marketplace_listing_status' => 'failed',
                 'marketplace_listing_completed_at' => now(),
                 'marketplace_listing_error' => mb_substr($message, 0, 2000),
@@ -614,11 +599,20 @@ class ProductDesignAssetRepository
         return $asset->refresh();
     }
 
-    /**
-     * Replace custom PSD mockups from mockup1 onward.
-     *
-     * @param array<int, string> $mockups
-     */
+    private function listingAttemptQuery(ProductDesignAsset $asset): Builder
+    {
+        $query = ProductDesignAsset::query()->whereKey($asset->id)->where('is_approved', true);
+
+        if ($asset->marketplace_listing_status === 'processing') {
+            $query->where('marketplace_listing_status', 'processing')
+                ->where('marketplace_listing_attempts', $asset->marketplace_listing_attempts)
+                ->where('marketplace_listing_started_at', $asset->marketplace_listing_started_at);
+        }
+
+        return $query;
+    }
+
+    /** Replace custom PSD mockups from mockup1 onward. */
     public function replacePsdMockups(ProductDesignAsset $asset, array $mockups): ProductDesignAsset
     {
         $updates = collect(range(1, 11))

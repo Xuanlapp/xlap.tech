@@ -4,6 +4,7 @@ namespace App\Livewire\Pages\Marketplace;
 
 use App\Livewire\Concerns\ReportsUserActionErrors;
 use App\Models\ProductDesignAsset;
+use App\Models\User;
 use App\Services\Marketplace\MarketplaceListingMetadataService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -26,6 +27,9 @@ class ListingMetadataStatus extends Component
 
     #[Session(key: 'listing-metadata.search')]
     public string $search = '';
+
+    #[Url(as: 'user_id', history: true, except: '')]
+    public string $userId = '';
 
     public ?string $retryMessage = null;
 
@@ -58,6 +62,16 @@ class ListingMetadataStatus extends Component
         $this->resetPage();
     }
 
+    public function updatedUserId(string $userId): void
+    {
+        abort_unless(auth()->user()->is_admin || auth()->user()->isManager(), 403);
+
+        $this->userId = $userId !== '' && ctype_digit($userId) && User::query()->whereKey((int) $userId)->exists()
+            ? (string) (int) $userId
+            : '';
+        $this->resetPage();
+    }
+
     public function retryListing(int $assetId): void
     {
         $this->retryMessage = null;
@@ -83,13 +97,14 @@ class ListingMetadataStatus extends Component
 
         $this->retryMessage = null;
         $this->retryError = null;
+        $this->userId = $this->normalizeUserId($this->userId);
         $ids = array_keys(array_filter($this->selectedAssets));
         $queued = 0;
 
         foreach ($ids as $assetId) {
             try {
                 app(MarketplaceListingMetadataService::class)->queueRetryApprovedAsset(
-                    $this->baseQuery()->whereKey((int) $assetId)->firstOrFail()->id,
+                    $this->retryQuery()->whereKey((int) $assetId)->firstOrFail()->id,
                 );
                 $queued++;
             } catch (Throwable $exception) {
@@ -113,8 +128,9 @@ class ListingMetadataStatus extends Component
         $queued = 0;
         $failed = 0;
         $service = app(MarketplaceListingMetadataService::class);
+        $this->userId = $this->normalizeUserId($this->userId);
 
-        $this->applyFailedMetadataFilter(ProductDesignAsset::query()->where('is_approved', true))
+        $this->applyFailedMetadataFilter($this->retryQuery())
             ->select('id')
             ->chunkById(100, function ($assets) use ($service, &$queued, &$failed): void {
                 foreach ($assets as $asset) {
@@ -146,6 +162,15 @@ class ListingMetadataStatus extends Component
                 ->paginate(15),
             'statusCounts' => $this->statusCounts(),
             'statusOptions' => self::STATUS_OPTIONS,
+            'retryFailedCount' => (auth()->user()->is_admin || auth()->user()->isManager())
+                ? $this->applyFailedMetadataFilter($this->retryQuery())->count()
+                : 0,
+            'retryUserName' => $this->userId !== ''
+                ? User::query()->whereKey((int) $this->userId)->value('name')
+                : null,
+            'retryUsers' => (auth()->user()->is_admin || auth()->user()->isManager())
+                ? User::query()->orderBy('name')->get(['id', 'name'])
+                : collect(),
         ])->layout('layouts.app');
     }
 
@@ -155,6 +180,7 @@ class ListingMetadataStatus extends Component
             ->with(['user:id,name,email,can_generate_amazon_listing,can_generate_etsy_listing', 'product:id,name,slug'])
             ->where('is_approved', true)
             ->when(! auth()->user()->is_admin && ! auth()->user()->isManager(), fn (Builder $query) => $query->where('user_id', auth()->id()))
+            ->when((auth()->user()->is_admin || auth()->user()->isManager()) && $this->userId !== '', fn (Builder $query) => $query->where('user_id', (int) $this->userId))
             ->when($this->normalizedSearch() !== null, function (Builder $query): void {
                 $search = $this->normalizedSearch();
 
@@ -174,6 +200,22 @@ class ListingMetadataStatus extends Component
                 });
             })
             ->when($this->status !== 'all', fn (Builder $query) => $this->applyStatusFilter($query, $this->status));
+    }
+
+    private function retryQuery(): Builder
+    {
+        abort_unless(auth()->user()->is_admin || auth()->user()->isManager(), 403);
+
+        return ProductDesignAsset::query()
+            ->where('is_approved', true)
+            ->when($this->userId !== '', fn (Builder $query) => $query->where('user_id', (int) $this->userId));
+    }
+
+    private function normalizeUserId(string $userId): string
+    {
+        return $userId !== '' && ctype_digit($userId) && User::query()->whereKey((int) $userId)->exists()
+            ? (string) (int) $userId
+            : '';
     }
 
     private function applyStatusFilter(Builder $query, string $status): Builder
