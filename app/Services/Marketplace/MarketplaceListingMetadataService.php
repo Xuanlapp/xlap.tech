@@ -690,16 +690,27 @@ PROMPT;
 
     private function generateAmazonMetadata(ProductDesignAsset $asset): ProductDesignAsset
     {
-        $payload = $this->jsonPayload(
-            $this->generateAmazonListingText($asset),
-        );
+        $isCeramic = $asset->product?->slug === 'ceramic';
+        $listingText = $this->generateAmazonListingText($asset);
+        $payload = $this->jsonPayload($listingText);
         $this->validateAmazonPayload($payload);
-        if ($asset->product?->slug === 'ceramic') {
-            $this->validateCeramicAmazonPayload($payload);
+        $titleLimit = $isCeramic ? 75 : 74;
+        if (mb_strlen(trim($payload['title'])) > $titleLimit) {
+            throw new RuntimeException("Amazon listing title exceeds {$titleLimit} characters; refusing to save a truncated word.");
+        }
+        if ($isCeramic) {
+            try {
+                $this->validateCeramicAmazonPayload($payload);
+            } catch (RuntimeException $exception) {
+                $listingText = $this->generateAmazonListingText($asset, $this->ceramicRepairInstructions($exception, $payload));
+                $payload = $this->jsonPayload($listingText);
+                $this->validateAmazonPayload($payload);
+                $this->validateCeramicAmazonPayload($payload);
+            }
         }
 
         $updatedAsset = $this->assets->updateListingMetadata($asset, [
-            'title' => $this->stringValue($payload, 'title', $asset->product?->slug === 'ceramic' ? 75 : 74),
+            'title' => $this->titleValue($payload['title'], $asset->product?->slug === 'ceramic' ? 75 : 74),
             'description' => $this->stringValue($payload, 'description', 2000),
             'bullet_point_1' => $this->stringValue($payload, 'bullet_point_1', 699),
             'bullet_point_2' => $this->stringValue($payload, 'bullet_point_2', 699),
@@ -717,17 +728,20 @@ PROMPT;
     }
 
 
-    private function generateAmazonListingText(ProductDesignAsset $asset): string
+    private function generateAmazonListingText(ProductDesignAsset $asset, ?string $repairInstructions = null): string
     {
         $prompt = $this->prompt($this->defaultPromptFor($asset->product, 'amazon'), $asset);
 
-        if ($asset->product?->slug === 'ceramic') {
-            $prompt .= "\n\n".$this->prompt(self::AMAZON_CERAMIC_PROMPT_TEMPLATE, $asset);
-        }
-
         $rules = $asset->product?->slug === 'ceramic' ? self::AMAZON_CERAMIC_OUTPUT_RULES : '';
+        $keywordRules = "Use the product's actual keyword value as the idea keyword. Include it naturally where relevant and use it to derive accurate search terms; do not substitute hardcoded product keywords.";
 
-        return $this->generateListingText($asset, $prompt."\n\n".$rules."\n\n".self::AMAZON_REQUIRED_SCHEMA);
+        return $this->generateListingText($asset, $prompt."\n\n".$keywordRules."\n\n".$rules."\n\n".self::AMAZON_REQUIRED_SCHEMA.($repairInstructions ? "\n\n".$repairInstructions : ''));
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function ceramicRepairInstructions(RuntimeException $exception, array $payload): string
+    {
+        return "The previous JSON failed mandatory character-count checks. Return a complete replacement JSON object, not a partial edit. Correct every listed field, count spaces, and verify lengths before responding. Do not shorten the requested copy. If facts are insufficient, describe only verified product facts without inventing features.\nValidation errors: {$exception->getMessage()}\nPrevious JSON: ".json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
     }
 
     private function isProviderPausedForAsset(ProductDesignAsset $asset): bool
@@ -1221,6 +1235,19 @@ PROMPT;
     /**
      * @param  array<string, mixed>  $payload
      */
+    private function titleValue(string $title, int $maxLength): string
+    {
+        $title = trim($title);
+        if (mb_strlen($title) <= $maxLength) {
+            return $title;
+        }
+
+        $cut = mb_substr($title, 0, $maxLength);
+        $lastSpace = mb_strrpos($cut, ' ');
+
+        return $lastSpace === false ? '' : rtrim(mb_substr($cut, 0, $lastSpace), " \t\n\r\0\x0B,;:-");
+    }
+
     private function stringValue(array $payload, string $key, ?int $maxLength = null): ?string
     {
         $value = $payload[$key] ?? null;

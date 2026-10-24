@@ -15047,3 +15047,27 @@ Khong doi.
 - Validation: focused feature test (1 test / 3 assertions), PHP lint, `php artisan view:cache`, and `git diff --check` passed. Rendered screenshots/review unavailable; Better Design tools returned HTTP 402 quota exhausted. Graphiti unavailable.
 - Deploy impact: PHP + Blade deployment; no migration. Queue impact: retry query scope only; no queue topology change.
 - Follow-up: verify the selector and responsive layout in authenticated browser after deployment.
+
+### 2026-10-24 - Repair invalid Ceramic listing output
+
+- Project: XLAP Web Platform. Root cause: Ceramic validator rejected short AI output but the chat-completions request had no explicit output-token budget and no correction pass; the item was left waiting/failed with invalid lengths.
+- Changed `app/Services/Ai/ApiKeyImageGenerator.php` to request up to 8192 output tokens; `app/Services/Marketplace/MarketplaceListingMetadataService.php` retries one Ceramic generation with field-specific validation errors and prior output when counts/icons are invalid, then validates again before persistence. Added repair-instruction test in `tests/Unit/MarketplaceCeramicListingOutputTest.php`.
+- Validation: Ceramic output tests (3 tests / 5 assertions), provider error tests (2 / 10), PHP lint, and `git diff --check` passed.
+- Deploy impact: PHP deploy only, no migration. Queue impact: one additional provider call only when first Ceramic result fails validation; items that fail both attempts follow existing retry/failure handling. Restart listing worker/daemon during deploy.
+- Follow-up: verify one live Ceramic listing; provider/model compatibility with `max_tokens` must be confirmed on the configured endpoint. Better Design tools unavailable (HTTP 402); Graphiti unavailable.
+
+### 2026-10-24 - Preserve complete title words and honor DB listing prompt
+
+- Project: XLAP Web Platform. Root cause: `stringValue` clipped title at a raw character offset, persisting partial final words such as `Dec`; Ceramic generation also appended an additional source-coded copywriting template after the database prompt.
+- Changed `app/Services/Marketplace/MarketplaceListingMetadataService.php` to trim titles at a whole-word boundary and retain the DB prompt as the primary copywriting prompt. Dynamic product/competitor/keyword context, an explicit item-keyword instruction, field schema, and mandatory Ceramic validation rules remain appended.
+- Added whole-word title clipping coverage in `tests/Unit/MarketplaceCeramicListingOutputTest.php`.
+- Validation: Ceramic output tests (4 tests / 9 assertions), provider error tests (2 / 10), PHP lint, and `git diff --check` passed.
+- Deploy impact: PHP deploy, no migration. Queue impact: no topology change; the previously added conditional Ceramic correction pass remains. Restart listing workers. Graphiti unavailable.
+
+### 2026-10-24 - Reduce Suncatcher status polling load
+
+- Project: XLAP Web Platform. Local evidence: Suncatcher and SuncatcherTwo parent panels polled every 5 seconds, recalculated counts/pagination, then looped through active workflows; each workflow card already has its own conditional 10-second poll. Local Laravel log also contains repeated compiled-view rename `Access is denied` errors and test-environment SQLite missing-session-table errors; these are local/environment errors, not proof of production database or server saturation.
+- Changed both status panels to refresh only while visible every 15 seconds and removed the duplicate parent scan/dispatch loop. Per-card active workflow polling and manual/event-driven refreshes remain.
+- Added `.design/suncatcher-polling-performance/DESIGN_BRIEF.md` and `tests/Feature/SuncatcherPollingPerformanceTest.php`.
+- Validation: polling + stale automation tests passed (2 tests / 10 assertions), PHP lint, `php artisan view:cache`, `npm run build`, `git diff --check` passed. No authenticated visual screenshot or production APM available. Better Design tools returned HTTP 402; Graphiti unavailable.
+- Deploy impact: PHP/Blade deploy only, no migration. Queue impact: no topology or job changes. Follow-up: compare authenticated production Livewire request rate and server/database CPU before/after; inspect actual production logs for current bottleneck.

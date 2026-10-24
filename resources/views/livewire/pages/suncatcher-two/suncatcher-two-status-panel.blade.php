@@ -1,5 +1,5 @@
 <div
-    wire:poll.5s="pollRunningAssets"
+    wire:poll.visible.15s="refreshAssets"
     x-data="{
         activeTab: @js($status),
         setTab(tab) {

@@ -2,11 +2,9 @@
 
 namespace App\Livewire\Pages\Suncatcher;
 
-use App\Models\DataSuncatcher;
 use App\Services\Suncatcher\SuncatcherService;
 use App\Services\Suncatcher\PsdMockupTemplateService;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Facades\Schema;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -99,11 +97,6 @@ class SuncatcherStatusPanel extends Component
         //
     }
 
-    public function pollRunningAssets(): void
-    {
-        $this->refreshRunningCardsFromDatabase();
-    }
-
     #[On('psd-mockup-template-updated')]
     public function refreshPsdTemplate(): void
     {
@@ -157,49 +150,4 @@ class SuncatcherStatusPanel extends Component
         return "suncatcher_{$this->status}_page";
     }
 
-    private function refreshRunningCardsFromDatabase(): void
-    {
-        if (! Schema::hasTable('data_ornament_amazon')) {
-            return;
-        }
-
-        $this->statusCounts = app(SuncatcherService::class)->statusCountsForUser(auth()->user());
-
-        $assets = app(SuncatcherService::class)->paginatedAssetsForUser(
-            auth()->user(),
-            $this->perPage,
-            $this->status,
-            $this->pageName(),
-        );
-
-        $assetIds = $assets->getCollection()
-            ->pluck('id')
-            ->filter(fn ($id): bool => is_numeric($id))
-            ->map(fn ($id): int => (int) $id)
-            ->values();
-
-        if ($assetIds->isEmpty()) {
-            return;
-        }
-
-        $runningAssetIds = DataSuncatcher::query()
-            ->where('product_slug', 'suncatcher')
-            ->whereIn('product_design_asset_id', $assetIds->all())
-            ->whereIn('workflow_status', ['running', 'waiting'])
-            ->pluck('product_design_asset_id')
-            ->map(fn ($id): int => (int) $id)
-            ->all();
-
-        $service = app(SuncatcherService::class);
-
-        foreach ($runningAssetIds as $assetId) {
-            $automation = $service->automationForUser(auth()->user(), $assetId);
-
-            if (! $automation || ! in_array(($automation->workflow_status ?? null), ['running', 'waiting'], true)) {
-                continue;
-            }
-
-            $this->dispatch("suncatcher-product-design-updated.{$assetId}")->to(ProductDesignCard::class);
-        }
-    }
 }

@@ -49,4 +49,28 @@ class MarketplaceCeramicListingOutputTest extends TestCase
             $this->assertStringContainsString('title=69', $exception->getMessage());
         }
     }
+    public function test_repair_instructions_include_validation_errors_and_previous_output(): void
+    {
+        $service = (new ReflectionClass(MarketplaceListingMetadataService::class))->newInstanceWithoutConstructor();
+        $method = new ReflectionMethod($service, 'ceramicRepairInstructions');
+        $payload = ['bullet_point_1' => 'short text'];
+        $message = $method->invoke($service, new RuntimeException('bullet_point_1=10 (expected 460-480)'), $payload);
+
+        $this->assertStringContainsString('bullet_point_1=10', $message);
+        $this->assertStringContainsString('short text', $message);
+        $this->assertStringContainsString('complete replacement JSON', $message);
+    }
+
+    public function test_title_truncation_removes_the_partial_final_word(): void
+    {
+        $service = (new ReflectionClass(MarketplaceListingMetadataService::class))->newInstanceWithoutConstructor();
+        $titleValue = new ReflectionMethod($service, 'titleValue');
+        $title = 'Personalized Guinea Pig Memorial Glass Christmas Ornament, Custom Tree Decoration';
+        $result = $titleValue->invoke($service, $title, 74);
+
+        $this->assertLessThanOrEqual(74, mb_strlen($result));
+        $this->assertDoesNotMatchRegularExpression('/\bDec$/', $result);
+        $this->assertStringNotContainsString('Decoration', $result);
+    }
+
 }

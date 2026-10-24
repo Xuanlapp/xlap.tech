@@ -186,6 +186,7 @@ class ApiKeyImageGenerator
             'model' => $this->textModel($providerKey, $model),
             'messages' => $messages,
             'temperature' => 0.4,
+            'max_tokens' => 8192,
         ];
 
         if ($json && $providerKey === 'v98store') {
