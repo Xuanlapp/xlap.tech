@@ -51,6 +51,8 @@ PROMPT;
 CERAMIC AMAZON OUTPUT RULES (MANDATORY): Count spaces as characters. Return only the exact JSON schema below, no markdown, count labels, or extra text. Title 70-75 characters; item_highlight 1-124; each bullet 460-480 and starts with one suitable icon plus a space; generic_keyword 230-240, semicolon-separated and in supplied keyword priority order; description 1800-1900, never above 2000. Recheck every count. Never invent features to reach a count. Photo/picture claims or keywords are prohibited unless product details explicitly confirm customer photo personalization. Do not add unsupported material, personalization, packaging, dimensions, accessories, guarantees, or trademarked terms.
 PROMPT;
 
+    private const CERAMIC_OUTPUT_REPAIR_ATTEMPTS = 2;
+
     private const AMAZON_CERAMIC_PROMPT_TEMPLATE = <<<'PROMPT'
 Act as a professional Amazon US listing copywriter. Write accurate, natural English copy for this personalized ceramic Christmas ornament. Use the supplied product details, idea keyword, and priority keywords. Do not claim personalization methods, included accessories, size, packaging, or features unless product details confirm them.
 
@@ -699,14 +701,13 @@ PROMPT;
             throw new RuntimeException("Amazon listing title exceeds {$titleLimit} characters; refusing to save a truncated word.");
         }
         if ($isCeramic) {
-            try {
-                $this->validateCeramicAmazonPayload($payload);
-            } catch (RuntimeException $exception) {
-                $listingText = $this->generateAmazonListingText($asset, $this->ceramicRepairInstructions($exception, $payload));
-                $payload = $this->jsonPayload($listingText);
-                $this->validateAmazonPayload($payload);
-                $this->validateCeramicAmazonPayload($payload);
-            }
+            $payload = $this->repairCeramicPayload($payload, function (RuntimeException $exception, array $previous) use ($asset): array {
+                $listingText = $this->generateAmazonListingText($asset, $this->ceramicRepairInstructions($exception, $previous));
+                $repairedPayload = $this->jsonPayload($listingText);
+                $this->validateAmazonPayload($repairedPayload);
+
+                return $repairedPayload;
+            });
         }
 
         $updatedAsset = $this->assets->updateListingMetadata($asset, [
@@ -742,6 +743,27 @@ PROMPT;
     private function ceramicRepairInstructions(RuntimeException $exception, array $payload): string
     {
         return "The previous JSON failed mandatory character-count checks. Return a complete replacement JSON object, not a partial edit. Correct every listed field, count spaces, and verify lengths before responding. Do not shorten the requested copy. If facts are insufficient, describe only verified product facts without inventing features.\nValidation errors: {$exception->getMessage()}\nPrevious JSON: ".json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+    }
+
+    /** @param array<string, mixed> $payload
+     *  @param callable(RuntimeException, array<string, mixed>): array<string, mixed> $regenerate
+     *  @return array<string, mixed>
+     */
+    private function repairCeramicPayload(array $payload, callable $regenerate): array
+    {
+        for ($attempt = 0; ; $attempt++) {
+            try {
+                $this->validateCeramicAmazonPayload($payload);
+
+                return $payload;
+            } catch (RuntimeException $exception) {
+                if ($attempt >= self::CERAMIC_OUTPUT_REPAIR_ATTEMPTS) {
+                    throw $exception;
+                }
+
+                $payload = $regenerate($exception, $payload);
+            }
+        }
     }
 
     private function isProviderPausedForAsset(ProductDesignAsset $asset): bool

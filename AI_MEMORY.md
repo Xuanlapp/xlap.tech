@@ -1,3 +1,11 @@
+### 2026-10-24 - Bound Ceramic listing output repairs
+
+- XLAP Web Platform: fixed Ceramic Amazon listings failing character-count validation after a single AI correction.
+- Root cause: `generateAmazonMetadata` asked the provider for one replacement only; another invalid output immediately failed the item. Added up to two bounded correction calls after the initial output, validating each result and retaining the final validation error. No content truncation or relaxed limits.
+- Changed `app/Services/Marketplace/MarketplaceListingMetadataService.php`; added success-after-second-repair and bounded-stop tests in `tests/Unit/MarketplaceCeramicListingOutputTest.php`.
+- Validation: PHP lint passed; focused unit tests passed (6 tests, 13 assertions). No UI, database, migration, or frontend build changes.
+- Deploy/queue impact: deploy PHP service and restart long-running queue workers so they load it. Each invalid generation may now trigger at most two additional provider calls; quota/charges can increase for malformed outputs. Existing failed items are not automatically requeued; retry them after deployment and provider quota is available.
+- Graphiti memory unavailable in configured tools; no episode written there.
 # AI MEMORY
 
 ### 2026-10-24 - Guard pagination page-jump while loading

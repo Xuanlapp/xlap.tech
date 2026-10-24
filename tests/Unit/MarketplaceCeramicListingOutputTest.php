@@ -61,6 +61,59 @@ class MarketplaceCeramicListingOutputTest extends TestCase
         $this->assertStringContainsString('complete replacement JSON', $message);
     }
 
+    public function test_it_retries_ceramic_output_repairs_until_all_character_counts_pass(): void
+    {
+        $service = (new ReflectionClass(MarketplaceListingMetadataService::class))->newInstanceWithoutConstructor();
+        $repair = new ReflectionMethod($service, 'repairCeramicPayload');
+        $invalidPayload = [
+            'title' => str_repeat('T', 70),
+            'item_highlight' => str_repeat('H', 20),
+            'generic_keyword' => str_repeat('k', 230),
+            'description' => str_repeat('D', 1800),
+        ];
+        foreach (range(1, 5) as $number) {
+            $invalidPayload["bullet_point_{$number}"] = '! '.str_repeat('B', 366);
+        }
+        $validPayload = $invalidPayload;
+        foreach (range(1, 5) as $number) {
+            $validPayload["bullet_point_{$number}"] = '! '.str_repeat('B', 458);
+        }
+        $calls = 0;
+        $result = $repair->invoke($service, $invalidPayload, function () use (&$calls, $invalidPayload, $validPayload): array {
+            $calls++;
+
+            return $calls === 1 ? $invalidPayload : $validPayload;
+        });
+        $this->assertSame(2, $calls);
+        $this->assertSame($validPayload, $result);
+    }
+
+    public function test_it_stops_after_the_configured_ceramic_repair_limit(): void
+    {
+        $service = (new ReflectionClass(MarketplaceListingMetadataService::class))->newInstanceWithoutConstructor();
+        $repair = new ReflectionMethod($service, 'repairCeramicPayload');
+        $payload = [
+            'title' => str_repeat('T', 70),
+            'item_highlight' => str_repeat('H', 20),
+            'generic_keyword' => str_repeat('k', 230),
+            'description' => str_repeat('D', 1800),
+        ];
+        foreach (range(1, 5) as $number) {
+            $payload["bullet_point_{$number}"] = '! '.str_repeat('B', 366);
+        }
+        $calls = 0;
+        try {
+            $repair->invoke($service, $payload, function (RuntimeException $exception, array $previous) use (&$calls): array {
+                $calls++;
+
+                return $previous;
+            });
+            $this->fail('Expected invalid output to stop after the repair limit.');
+        } catch (RuntimeException $exception) {
+            $this->assertStringContainsString('bullet_point_1=368', $exception->getMessage());
+            $this->assertSame(2, $calls);
+        }
+    }
     public function test_title_truncation_removes_the_partial_final_word(): void
     {
         $service = (new ReflectionClass(MarketplaceListingMetadataService::class))->newInstanceWithoutConstructor();
