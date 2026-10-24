@@ -1,5 +1,33 @@
 # AI MEMORY
 
+### 2026-10-24 - Guard pagination page-jump while loading
+
+- XLAP Web Platform: investigated user-reported 500 after repeated pagination interaction. Local workspace has no application log (`storage/logs` contains only `.gitignore`), so production exception/root cause is not confirmed.
+- Found the shared page-jump input and submit button were not disabled while `gotoPage` was in flight. Added targeted `wire:loading.attr="disabled" wire:target="gotoPage"` to both controls; arrows and numbered controls already disable during Livewire requests.
+- Updated `tests/Feature/UiComponentTest.php` to assert the guard; 3 tests / 17 assertions pass. `php artisan view:cache` passes.
+- Limitation: this prevents duplicate page-jump requests but cannot prove it is the cause of the server HTTP 500. Need matching production `laravel.log` exception/time to diagnose further. No queue, database, or migration changes.
+- Better Design and Graphiti unavailable in current tool environment; no visual change requiring screenshot.
+
+
+### 2026-10-24 - Right-align shared pagination
+
+- XLAP Web Platform: user requested the compact pagination controls align to the right, matching the supplied status toolbar screenshot.
+- Changed `resources/views/components/offorest/pagination.blade.php`: wrapper now uses automatic left margin instead of centered margins. All shared pagination consumers inherit right alignment; width remains content-sized and mobile-constrained.
+- Updated `.design/pagination-controls/DESIGN_BRIEF.md`. Page-name, Livewire state, and scrolling unchanged.
+- Validation: Blade cache, focused UI tests (3 tests, 15 assertions), and frontend build passed in preceding turn. No additional runtime validation needed for this CSS utility adjustment.
+- Deploy impact: Blade/Tailwind change; no migration or queue impact. Screenshot review unavailable; Graphiti and Better Design remain unavailable in configured tools.
+
+
+### 2026-10-24 - Compact shared pagination surface
+
+- XLAP Web Platform: user asked to make the pagination bar/card compact based on screenshot; screenshot showed a full-width outlined container around centered controls.
+- Root cause: several status-panel pagination calls added border/shadow classes and forced `sm:min-w-[26rem]`; admin credits also added full-width card styling. Shared component root was block-width by default.
+- Changed `resources/views/components/offorest/pagination.blade.php` to size its wrapper to content and center it. Removed card/min-width styling from paginated status panels and API credits view; retained spacing and page navigation behavior.
+- Updated `.design/pagination-controls/DESIGN_BRIEF.md`. No route, data, authorization, queue, or pagination-state changes.
+- Validation: `php artisan test --filter=UiComponentTest` passed (3 tests, 15 assertions); `php artisan view:cache` and `npm run build` passed. Screenshot evidence unavailable for after-state; visual result remains unverified. Better Design tools unavailable (HTTP 402 quota exhausted). Graphiti tool unavailable in configured MCP resources; episode not written.
+- Deploy impact: Blade/Tailwind view changes; deploy rebuilt frontend assets as needed. No migrations or queue impact.
+
+
 ### 2026-10-22 - Correct text/script provider error context
 
 - XLAP Web Platform: verified Suncatcher and SuncatcherTwo Generate Script use ApiKeyImageGenerator::generateText, not image generation. Read-only comparison: Link_doi_thu/dashboard.js wfGenerateScript calls _wfCallTextAPI.
@@ -14943,3 +14971,49 @@ Khong doi.
 - Added regression coverage in tests/Feature/ApprovedAssetDrivePartialFailureTest.php. Validation: 3 focused tests, 19 assertions passed; PHP lint passed for changed PHP files.
 - Deploy impact: PHP deploy only; restart/reload xlap-drive-upload-daemon. No migration. Queue impact: eligible partial exports complete with warning instead of retry loops; non-404 source errors still fail.
 - Follow-up: deploy and retry one affected item; verify completed status and warning in Drive logs. Graphiti MCP unavailable in this session.
+
+
+### 2026-10-24 - Add bounds guide layer order controls
+
+- Project: XLAP Web Platform.
+- Root cause: the bounds guide image was always rendered above the editable image canvas, hiding image detail when zoomed.
+- Changed: resources/views/livewire/modals/image/review-image.blade.php adds persistent Above/Below layer controls for the guide preview only; saved crop/output geometry is unchanged.
+- Validation: php artisan view:cache, npm run build, focused image/bounds tests (2 tests, 12 assertions), PHP/Blade compilation passed. Screenshot review unavailable; Better Design review tools returned quota exhausted.
+- Deploy impact: deploy Blade view and assets. Queue impact: none.
+- Follow-up: verify authenticated desktop/mobile bounds editor visually after deploy. Graphiti MCP unavailable in this environment.
+
+
+### 2026-10-24 - Add per-card bounds preview controls
+
+- Project: XLAP Web Platform.
+- Root cause: Glass/Ceramic bounds overlay opacity and visibility were shared across all Create Master cards; layer order was not controllable per item.
+- Changed: resources/views/livewire/pages/glass/product-design-card.blade.php and resources/views/livewire/pages/ceramic/product-design-card.blade.php add per-asset opacity and guide/image layer order preferences. Global bounds toggle remains; removed its misleading global opacity slider.
+- Validation: php artisan view:cache, npm run build, focused UI/bounds tests (5 tests, 27 assertions) passed. Browser screenshot review unavailable.
+- Deploy impact: deploy Blade templates/assets. Queue impact: none.
+- Follow-up: verify in authenticated Glass/Ceramic cards at desktop/mobile. Graphiti MCP unavailable.
+
+
+### 2026-10-24 - Move bounds tuning into preview
+
+- Project: XLAP Web Platform. Root cause: layer/opacity controls were requested in the image preview, not alongside each listing card.
+- Changed `resources/views/livewire/modals/image/review-image.blade.php`: layer order and opacity are controlled in the bounds preview; preferences persist by product (`ceramic`/`glass`); opacity updates the preview and existing card guide display. Card markup has no new tuning buttons or controls.
+- Changed `resources/views/livewire/pages/ceramic/ceramic-status-panel.blade.php` and `resources/views/livewire/pages/glass/glass-status-panel.blade.php`: removed toolbar opacity slider; retained show/hide bounds toggle. Pagination styling changes preserved.
+- Validation: `php artisan view:cache`, `npm run build`, `php artisan test --filter=UiComponentTest` (3 tests / 15 assertions). Screenshot/browser review unavailable; Better Design tools returned HTTP 402 quota exhausted.
+- Deploy impact: Blade/asset deploy. Queue impact: none. Follow-up: visually verify bounds preview at desktop/mobile. Graphiti unavailable in configured tools.
+### 2026-10-24 - Stabilize Marketplace Export checkbox selection
+
+- Project: XLAP Web Platform. Root cause: export row checkboxes mixed live array binding with a server-side toggle; the page checkbox toggled stale server state, then a custom script independently unchecked DOM boxes.
+- Changed `app/Livewire/Pages/Marketplace/MarketplaceExports.php` and `resources/views/livewire/pages/marketplace/marketplace-exports.blade.php`: use idempotent set-selected/set-deselected actions driven by each checkbox's actual checked value; remove direct DOM mutation. Filters, visible-page selection, pagination, and export path remain intact.
+- Added `tests/Feature/MarketplaceExportSelectionTest.php`; repeated select then deselect stays deterministic. Updated `.design/marketplace-export-selection/DESIGN_BRIEF.md`.
+- Validation: PHP lint, `php artisan view:cache`, focused selection test (1 test / 2 assertions), `UiComponentTest` (3 tests / 17 assertions), `npm run build` passed. Browser screenshot verification unavailable; interface remains visually unverified. Better Design MCP returned quota exhausted (HTTP 402).
+- Deploy impact: PHP/Blade deploy. Queue impact: none. Follow-up: verify rapid clicks and select-all on authenticated export screen. Graphiti memory unavailable.
+- Follow-up from the supplied browser screenshot: row checkboxes in the unexported/exported tabs had lost their checked-state binding when replacing `wire:model.live`. Restored `@checked(in_array(..., $selectedIds, true))` for every status, so visible rows now match the count and export selection. `php artisan view:cache` and focused selection/UI tests passed; browser retest after deployment remains needed.
+### 2026-10-24 - Separate Ceramic Amazon listing prompt and enforce requested output
+
+- Project: XLAP Web Platform.
+- Root cause: Ceramic reused the Glass Amazon prompt; listing output was length-truncated on save without checking the requested character ranges, so invalid content could be marked complete.
+- Changed: `app/Services/Marketplace/MarketplaceListingMetadataService.php` adds a Ceramic-specific prompt with supplied keyword ordering and unsupported-photo/trademark safeguards; validates exact fields, title/highlight/bullets/generic keyword/description lengths and bullet icons before persistence; malformed lengths follow existing bounded retry path. Ceramic title stores up to 75 chars.
+- Added: `database/migrations/2026_10_24_000001_use_ceramic_amazon_listing_prompt.php` updates only a recognized legacy default Ceramic prompt; custom prompts remain untouched. Added `tests/Unit/MarketplaceCeramicListingOutputTest.php`.
+- Validation: PHP lint for changed PHP files, 2 focused tests, and Blade cache passed. No listing provider call made.
+- Deploy impact: deploy service + migration and restart listing daemon so running workers load changes; no schema or queue changes. Migration only updates prompt configuration data.
+- Follow-up: run migration and test one real Ceramic item; its product facts must confirm personalization/photo claims. Graphiti memory tools unavailable.

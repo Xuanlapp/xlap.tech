@@ -88,7 +88,19 @@
                 boundsRotation: 0,
                 boundsOffsetX: 0,
                 boundsOffsetY: 0,
-                boundsGuideOpacity: Number(localStorage.getItem('glass-master-bounds-opacity') || '0.72'),
+                boundsPreferencePrefix: @js($productSlug . '-master-bounds'),
+                boundsGuideOpacity: Number(localStorage.getItem(@js($productSlug . '-master-bounds-opacity')) || '0.72'),
+                boundsGuideOnTop: localStorage.getItem(@js($productSlug . '-master-bounds-layer')) !== 'behind',
+                setBoundsGuideLayer(onTop) {
+                    this.boundsGuideOnTop = onTop;
+                    localStorage.setItem(`${this.boundsPreferencePrefix}-layer`, onTop ? 'front' : 'behind');
+                },
+                setBoundsGuideOpacity(opacity) {
+                    this.boundsGuideOpacity = Number(opacity);
+                    this.drawBoundsCanvas();
+                    localStorage.setItem(`${this.boundsPreferencePrefix}-opacity`, this.boundsGuideOpacity);
+                    window.dispatchEvent(new CustomEvent(@js($productSlug . '-master-bounds-changed'), { detail: { opacity: this.boundsGuideOpacity } }));
+                },
                 boundsCropSize: 0,
                 boundsImage: null,
                 boundsGuideImage: null,
@@ -559,7 +571,7 @@
                                                 x-ref="boundsCanvas"
                                                 x-bind:width="boundsCanvasWidth"
                                                 x-bind:height="boundsCanvasHeight"
-                                                class="relative z-[1] block max-h-full max-w-full cursor-move select-none bg-transparent"
+                                                x-bind:class="boundsGuideOnTop ? 'relative z-[1] block max-h-full max-w-full cursor-move select-none bg-transparent' : 'relative z-[10] block max-h-full max-w-full cursor-move select-none bg-transparent'"
                                                 x-bind:style="`aspect-ratio:${boundsCanvasWidth}/${boundsCanvasHeight};touch-action:none`"
                                                 aria-label="Bounds editor canvas"
                                                 x-on:pointerdown="startBoundsDrag($event)"
@@ -574,8 +586,7 @@
                                                     alt=""
                                                     aria-hidden="true"
                                                     class="pointer-events-none absolute inset-0 h-full w-full object-contain"
-                                                    style="z-index: 10"
-                                                    x-bind:style="`opacity: ${boundsGuideOpacity}`"
+                                                    x-bind:style="`z-index: ${boundsGuideOnTop ? 20 : 1}; opacity: ${boundsGuideOpacity}`"
                                                 >
                                             @endif
                                             <div x-show="boundsLoading" class="pointer-events-none absolute inset-0 flex items-center justify-center bg-slate-950/35">
@@ -701,6 +712,13 @@
                                             <span class="text-xs font-semibold text-slate-500">Arrow keys: move</span>
                                         </div>
                                         <div class="space-y-3">
+                                            <fieldset>
+                                                <legend class="mb-1 text-xs font-semibold text-slate-600">Lớp bounds</legend>
+                                                <div class="flex gap-2">
+                                                    <button type="button" x-on:click="setBoundsGuideLayer(true)" x-bind:aria-pressed="boundsGuideOnTop" x-bind:class="boundsGuideOnTop ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300 bg-white text-slate-700'" class="min-h-10 flex-1 rounded-lg border px-3 py-2 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600">Trên ảnh</button>
+                                                    <button type="button" x-on:click="setBoundsGuideLayer(false)" x-bind:aria-pressed="! boundsGuideOnTop" x-bind:class="! boundsGuideOnTop ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300 bg-white text-slate-700'" class="min-h-10 flex-1 rounded-lg border px-3 py-2 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600">Dưới ảnh</button>
+                                                </div>
+                                            </fieldset>
                                             <label class="block">
                                                 <div class="mb-1 flex items-center justify-between text-xs font-semibold text-slate-600"><span>Zoom</span><span x-text="`${Math.round((boundsScale / boundsBaseScale) * 100)}%`"></span></div>
                                                 <input type="range" :min="boundsBaseScale * 0.3" :max="boundsBaseScale * 1.8" :step="boundsBaseScale * 0.001" x-model.number="boundsScale" x-on:input="updateBoundsScale()" class="w-full">
@@ -714,8 +732,8 @@
                                                 </div>
                                             </div>
                                             <label class="block">
-                                                <div class="mb-1 flex items-center justify-between text-xs font-semibold text-slate-600"><span>Guide opacity</span><span x-text="`${Math.round(boundsGuideOpacity * 100)}%`"></span></div>
-                                                <input type="range" min="0" max="1" step="0.01" x-model.number="boundsGuideOpacity" x-on:input="drawBoundsCanvas()" class="w-full">
+                                                <div class="mb-1 flex items-center justify-between text-xs font-semibold text-slate-600"><span>Chỉnh độ mờ bounds</span><span x-text="`${Math.round(boundsGuideOpacity * 100)}%`"></span></div>
+                                                <input type="range" min="0" max="1" step="0.01" x-bind:value="boundsGuideOpacity" x-on:input="setBoundsGuideOpacity($event.target.value)" class="w-full" aria-label="Độ mờ bounds">
                                             </label>
                                             <div class="flex items-center justify-between text-xs text-slate-600"><span>Arrow keys</span><span class="font-semibold">1px / keypress</span><span class="ml-auto">Wheel: 1%</span></div>
                                         </div>

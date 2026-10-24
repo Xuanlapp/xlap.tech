@@ -47,6 +47,20 @@ Return ONLY one valid JSON object with exactly these keys and string values:
 Do not omit, rename, add, or return null for any required key. Do not return Markdown fences or explanatory text.
 PROMPT;
 
+    private const AMAZON_CERAMIC_OUTPUT_RULES = <<<'PROMPT'
+CERAMIC AMAZON OUTPUT RULES (MANDATORY): Count spaces as characters. Return only the exact JSON schema below, no markdown, count labels, or extra text. Title 70-75 characters; item_highlight 1-124; each bullet 460-480 and starts with one suitable icon plus a space; generic_keyword 230-240, semicolon-separated and in supplied keyword priority order; description 1800-1900, never above 2000. Recheck every count. Never invent features to reach a count. Photo/picture claims or keywords are prohibited unless product details explicitly confirm customer photo personalization. Do not add unsupported material, personalization, packaging, dimensions, accessories, guarantees, or trademarked terms.
+PROMPT;
+
+    private const AMAZON_CERAMIC_PROMPT_TEMPLATE = <<<'PROMPT'
+Act as a professional Amazon US listing copywriter. Write accurate, natural English copy for this personalized ceramic Christmas ornament. Use the supplied product details, idea keyword, and priority keywords. Do not claim personalization methods, included accessories, size, packaging, or features unless product details confirm them.
+
+Optimize for relevant Amazon search intent without keyword stuffing or unsupported conversion claims. Avoid competitor brands, trademarks, copyrighted characters/designs, prohibited terms, and claims such as best, guaranteed, official, or #1. Use photo/picture keywords only when the supplied product details explicitly confirm customer photo personalization; otherwise omit them from every field, including generic keywords.
+
+Use accurate keywords in this priority order, selecting only relevant phrases and stopping before the 240-character generic-keyword limit:
+personalized ornaments; custom ornaments; personalized ornaments 2026; christmas ornaments personalized; photo christmas ornaments; custom christmas ornaments 2026; customized ornaments; customizable ornaments; ceramic personalized christmas ornaments; christmas ornaments custom; personalized baby ornaments 2026; personalized ceramic christmas ornaments; personalized picture ornaments; custom ornament with picture; photo ornament custom; ornament customizable; ornament personalized; custom christmas decor; customized picture christmas ornaments
+
+Return only valid JSON with exactly these string fields: title, item_highlight, description, bullet_point_1, bullet_point_2, bullet_point_3, bullet_point_4, bullet_point_5, generic_keyword. Follow all character limits in the mandatory Ceramic output rules. Bullet 1 directly describes the ceramic ornament and verified personalization. Other bullets cover distinct verified features, use, gifting, and keepsake value. Description should explain product, verified personalization, use, recipient, and occasions in warm factual US English. Never invent facts to meet character targets.
+PROMPT;
     private const AMAZON_GLASS_PROMPT_TEMPLATE = <<<'PROMPT'
 Act as a professional English Amazon listing writer. Write for the actual glass Christmas ornament shown by this item and its theme. Use the item's product information and idea keyword as context. Never assume the customer can provide their own image or that this ornament is made from an uploaded image.
 
@@ -680,9 +694,12 @@ PROMPT;
             $this->generateAmazonListingText($asset),
         );
         $this->validateAmazonPayload($payload);
+        if ($asset->product?->slug === 'ceramic') {
+            $this->validateCeramicAmazonPayload($payload);
+        }
 
         $updatedAsset = $this->assets->updateListingMetadata($asset, [
-            'title' => $this->stringValue($payload, 'title', 74),
+            'title' => $this->stringValue($payload, 'title', $asset->product?->slug === 'ceramic' ? 75 : 74),
             'description' => $this->stringValue($payload, 'description', 2000),
             'bullet_point_1' => $this->stringValue($payload, 'bullet_point_1', 699),
             'bullet_point_2' => $this->stringValue($payload, 'bullet_point_2', 699),
@@ -704,7 +721,13 @@ PROMPT;
     {
         $prompt = $this->prompt($this->defaultPromptFor($asset->product, 'amazon'), $asset);
 
-        return $this->generateListingText($asset, $prompt."\n\n".self::AMAZON_REQUIRED_SCHEMA);
+        if ($asset->product?->slug === 'ceramic') {
+            $prompt .= "\n\n".$this->prompt(self::AMAZON_CERAMIC_PROMPT_TEMPLATE, $asset);
+        }
+
+        $rules = $asset->product?->slug === 'ceramic' ? self::AMAZON_CERAMIC_OUTPUT_RULES : '';
+
+        return $this->generateListingText($asset, $prompt."\n\n".$rules."\n\n".self::AMAZON_REQUIRED_SCHEMA);
     }
 
     private function isProviderPausedForAsset(ProductDesignAsset $asset): bool
@@ -973,7 +996,7 @@ PROMPT;
     {
         return match (true) {
             $asset->product?->slug === 'glass' => self::AMAZON_GLASS_PROMPT_TEMPLATE,
-            $asset->product?->slug === 'ceramic' => self::AMAZON_GLASS_PROMPT_TEMPLATE,
+            $asset->product?->slug === 'ceramic' => self::AMAZON_CERAMIC_PROMPT_TEMPLATE,
             in_array($asset->product?->slug, ['sticker', 'decal'], true) => self::AMAZON_STICKER_PROMPT_TEMPLATE,
             default => self::AMAZON_PROMPT_TEMPLATE,
         };
@@ -997,7 +1020,7 @@ PROMPT;
         $slug = $product?->slug;
         return match (true) {
             $slug === 'glass' => self::AMAZON_GLASS_PROMPT_TEMPLATE,
-            $slug === 'ceramic' => self::AMAZON_GLASS_PROMPT_TEMPLATE,
+            $slug === 'ceramic' => self::AMAZON_CERAMIC_PROMPT_TEMPLATE,
             in_array($slug, ['sticker', 'decal'], true) => self::AMAZON_STICKER_PROMPT_TEMPLATE,
             default => self::AMAZON_PROMPT_TEMPLATE,
         };
@@ -1118,6 +1141,38 @@ PROMPT;
     }
 
     /** @param array<string, mixed> $payload */
+    private function validateCeramicAmazonPayload(array $payload): void
+    {
+        $limits = [
+            'title' => [70, 75],
+            'item_highlight' => [1, 124],
+            'bullet_point_1' => [460, 480],
+            'bullet_point_2' => [460, 480],
+            'bullet_point_3' => [460, 480],
+            'bullet_point_4' => [460, 480],
+            'bullet_point_5' => [460, 480],
+            'generic_keyword' => [230, 240],
+            'description' => [1800, 1900],
+        ];
+        $invalid = [];
+
+        foreach ($limits as $field => [$minimum, $maximum]) {
+            $length = mb_strlen(trim($payload[$field]));
+            if ($length < $minimum || $length > $maximum) {
+                $invalid[] = "{$field}={$length} (expected {$minimum}-{$maximum})";
+            }
+        }
+
+        foreach (range(1, 5) as $number) {
+            if (! preg_match('/^[^\p{L}\p{N}\s]\s/u', trim($payload["bullet_point_{$number}"]))) {
+                $invalid[] = "bullet_point_{$number} must start with an icon and a space";
+            }
+        }
+
+        if ($invalid !== []) {
+            throw new RuntimeException('Ceramic Amazon listing character count validation failed: '.implode('; ', $invalid));
+        }
+    }
     private function validateEtsyPayload(array $payload): void
     {
         $required = self::ETSY_REQUIRED_FIELDS;
@@ -1133,7 +1188,8 @@ PROMPT;
     {
         $message = strtolower($exception->getMessage());
 
-        return str_contains($message, 'json schema')
+        return str_contains($message, 'character count')
+            || str_contains($message, 'json schema')
             || str_contains($message, 'json listing')
             || str_contains($message, 'missing:')
             || str_contains($message, 'extra:')

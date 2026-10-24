@@ -45,7 +45,7 @@
         <x-offorest.pagination
             :paginator="$assets"
             :page-name="$pageName"
-            class="border-t-0 p-0 sm:w-auto sm:min-w-[26rem]"
+            class="border-0 p-0"
         />
     </div>
 
@@ -70,7 +70,7 @@
         @endforelse
     </div>
 
-    <x-offorest.pagination :paginator="$assets" :page-name="$pageName" class="mt-6 rounded-lg border border-slate-200 shadow-sm" />
+    <x-offorest.pagination :paginator="$assets" :page-name="$pageName" class="mt-4" />
 </div>
 
 

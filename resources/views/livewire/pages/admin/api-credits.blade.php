@@ -236,7 +236,7 @@
             </div>
         </div>
 
-        <x-offorest.pagination :paginator="$credits" class="mt-4 rounded-lg border border-slate-200 bg-white shadow-sm" />
+        <x-offorest.pagination :paginator="$credits" class="mt-4" />
     </div>
 
     <livewire:modals.admin.api-credit-form />

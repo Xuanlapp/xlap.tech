@@ -34,11 +34,9 @@
             <div
                 x-data="{
                     showMasterBounds: localStorage.getItem('glass-show-master-bounds') === '1',
-                    masterBoundsOpacity: Number(localStorage.getItem('glass-master-bounds-opacity') || '0.72'),
                     init() {
                         window.addEventListener('glass-master-bounds-changed', (event) => {
                             this.showMasterBounds = Boolean(event.detail?.visible);
-                            if (event.detail?.opacity !== undefined) this.masterBoundsOpacity = Number(event.detail.opacity);
                         });
                     },
                     toggleMasterBounds() {
@@ -60,24 +58,6 @@
                     <span class="h-2.5 w-2.5 rounded-full border-2 border-cyan-500"></span>
                     <span x-text="showMasterBounds ? 'Ẩn bounds' : 'Hiện bounds'" ></span>
                 </button>
-                <label
-                    x-show="showMasterBounds"
-                    x-cloak
-                    class="inline-flex h-9 items-center gap-2 rounded-md border border-slate-200 bg-white px-2 dark:border-slate-700 dark:bg-slate-800"
-                    title="Điều chỉnh độ đậm của khung bounds"
-                >
-                    <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-300">Đậm</span>
-                    <input
-                        type="range"
-                        min="0.1"
-                        max="1"
-                        step="0.05"
-                        x-model.number="masterBoundsOpacity"
-                        x-on:input="localStorage.setItem('glass-master-bounds-opacity', masterBoundsOpacity); window.dispatchEvent(new CustomEvent('glass-master-bounds-changed', { detail: { visible: showMasterBounds, opacity: masterBoundsOpacity } }))"
-                        class="h-1.5 w-20 accent-cyan-500"
-                        aria-label="Độ đậm bounds"
-                    >
-                </label>
             </div>
             @endif
         </div>
@@ -85,7 +65,7 @@
         <x-offorest.pagination
             :paginator="$assets"
             :page-name="$pageName"
-            class="border-t-0 p-0 sm:w-auto sm:min-w-[26rem]"
+            class="border-0 p-0"
         />
     </div>
 
@@ -106,5 +86,5 @@
 
     </div>
 
-    <x-offorest.pagination :paginator="$assets" :page-name="$pageName" class="mt-6 rounded-lg border border-slate-200 shadow-sm" />
+    <x-offorest.pagination :paginator="$assets" :page-name="$pageName" class="mt-4" />
 </div>

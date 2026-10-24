@@ -194,7 +194,7 @@
                             <input
                                 type="checkbox"
                                 wire:key="marketplace-export-select-all-{{ $status }}-{{ $assets->currentPage() }}"
-                                wire:click="toggleVisibleSelection"
+                                x-on:change="$wire.setVisibleSelection($event.target.checked)"
                                 @checked($allVisibleSelected)
                                 class="h-4 w-4 rounded border-slate-400 text-indigo-600 focus:ring-indigo-500"
                             >
@@ -241,17 +241,10 @@
                                     type="checkbox"
                                     wire:key="marketplace-export-checkbox-{{ $status }}-{{ $asset->id }}"
                                     value="{{ $asset->id }}"
-                                    @if ($canExportAsset) data-marketplace-export-checkbox @endif
                                     @disabled(! $canExportAsset)
                                     title="{{ $canExportAsset ? '' : 'Manager chi duoc export item cua minh' }}"
-                                    @if ($status === 'exported')
-                                        wire:model.live="selectedExported"
-                                    @elseif ($status === 'unexported')
-                                        wire:model.live="selectedUnexported"
-                                    @else
-                                        wire:click="toggleAssetSelection({{ $asset->id }})"
-                                        @checked(in_array((string) $asset->id, $selectedIds, true))
-                                    @endif
+                                    x-on:change="$wire.setAssetSelection({{ $asset->id }}, $event.target.checked)"
+                                    @checked(in_array((string) $asset->id, $selectedIds, true))
                                     class="h-4 w-4 rounded border-slate-400 text-indigo-600 focus:ring-indigo-500"
                                 >
                             </td>
@@ -324,14 +317,6 @@
 
     <script>
         document.addEventListener('livewire:init', () => {
-            Livewire.on('marketplace-export-selection-cleared', () => {
-                document
-                    .querySelectorAll('[data-marketplace-export-checkbox]')
-                    .forEach((checkbox) => {
-                        checkbox.checked = false;
-                    });
-            });
-
             Livewire.on('marketplace-export-to-sheet-finished', () => {
                 window.location.reload();
             });

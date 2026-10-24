@@ -160,33 +160,25 @@ class MarketplaceExports extends Component
         $this->resetPage();
     }
 
-    public function toggleVisibleSelection(): void
+    public function setVisibleSelection(bool $checked): void
     {
         $visibleIds = $this->visibleIds();
         $selected = $this->selectedIds();
 
-
-        if ($visibleIds->diff($selected)->isEmpty()) {
-            $this->setSelectedIds($selected->diff($visibleIds)->values()->all());
-
-            return;
-        }
-
-        $this->setSelectedIds($selected->merge($visibleIds)->unique()->values()->all());
+        $this->setSelectedIds($checked
+            ? $selected->merge($visibleIds)->unique()->values()->all()
+            : $selected->diff($visibleIds)->values()->all());
     }
 
-    public function toggleAssetSelection(int $assetId): void
+    public function setAssetSelection(int $assetId, bool $checked): void
     {
         $id = (string) $assetId;
         $selected = $this->selectedIds();
 
-        $this->setSelectedIds(
-            $selected->contains($id)
-                ? $selected->reject(fn (string $selectedId): bool => $selectedId === $id)->values()->all()
-                : $selected->push($id)->unique()->values()->all()
-        );
+        $this->setSelectedIds($checked
+            ? $selected->push($id)->unique()->values()->all()
+            : $selected->reject(fn (string $selectedId): bool => $selectedId === $id)->values()->all());
     }
-
 
     public function openExportToSheet(): void
     {
@@ -225,7 +217,6 @@ class MarketplaceExports extends Component
             'marketplace_export_filename' => $filename,
         ]);
         $this->setSelectedIds([]);
-        $this->dispatch('marketplace-export-selection-cleared');
 
         return $this->downloadCsvRows($rows, $filename);
     }
@@ -265,7 +256,6 @@ class MarketplaceExports extends Component
 
         $this->message = "Da export {$assets->count()} item. Amazon: {$exportedAmazonAssets->count()}, Etsy: {$exportedEtsyAssets->count()}.";
         $this->setSelectedIds([]);
-        $this->dispatch('marketplace-export-selection-cleared');
 
         if ($exportedAmazonAssets->isNotEmpty() && $exportedEtsyAssets->isNotEmpty()) {
             return $this->downloadMixedZip($exportedAmazonAssets, $exportedEtsyAssets, $filename);

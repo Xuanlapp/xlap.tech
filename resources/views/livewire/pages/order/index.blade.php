@@ -67,7 +67,7 @@
                         </table>
                     </div>
                     <div class="border-t border-slate-200 px-5 py-4">
-                        {{ $items->links(data: ['scrollTo' => false]) }}
+                        {{ $items->links('vendor.pagination.idea-etsy', data: ['scrollTo' => false]) }}
                     </div>
                 @endif
             </div>
@@ -82,7 +82,7 @@
                     <div class="px-5 py-12 text-center text-sm font-medium text-slate-400">Chua co order nao trong history.</div>
                 @else
                     <div class="overflow-x-auto"><table class="w-full min-w-[900px] text-left text-sm"><thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th class="px-5 py-3">Select</th><th class="px-5 py-3">Order ID</th>@if (auth()->user()?->is_admin)<th class="px-5 py-3">User</th>@endif<th class="px-5 py-3">Qty</th><th class="px-5 py-3">Size</th><th class="px-5 py-3">Preview</th><th class="px-5 py-3">Images</th><th class="px-5 py-3">Order Product ID</th></tr></thead><tbody class="divide-y divide-slate-100">@foreach ($historyOrders as $historyOrder)@php($historyData = $historyOrder->report_data ?? [])<tr wire:key="history-order-{{ $historyOrder->id }}" class="hover:bg-orange-50/40"><td class="px-5 py-3"><input type="checkbox" wire:model.live="selectedHistoryOrderIds" value="{{ $historyOrder->id }}" class="rounded border-slate-300"></td><td class="px-5 py-3 font-black text-slate-950">{{ $historyOrder->order_id }}</td>@if (auth()->user()?->is_admin)<td class="px-5 py-3 text-slate-700"><span class="block font-semibold">{{ $historyOrder->user?->name ?? 'Deleted user' }}</span><span class="block text-xs text-slate-500">{{ $historyOrder->user?->email }}</span></td>@endif<td class="px-5 py-3">{{ $historyData['quantity'] ?? '-' }}</td><td class="px-5 py-3">{{ $historyData['size'] ?? '-' }}</td><td class="px-5 py-3">@if ($historyOrder->image_preview_url)<button type="button" x-on:click="$dispatch('review-image', { src: @js($historyOrder->image_preview_url), original: @js(($historyOrder->images_link ?? [])[0] ?? ''), title: @js('Order ' . $historyOrder->order_id), imageOnly: true })"><img src="{{ $historyOrder->image_preview_url }}" alt="Order preview" loading="lazy" class="h-12 w-12 rounded border object-cover"></button>@else-@endif</td><td class="px-5 py-3"><span class="rounded-full bg-blue-50 px-2 py-1 text-xs font-bold text-blue-700">{{ count($historyOrder->images_link ?? []) }} images</span></td><td class="px-5 py-3 font-black text-slate-950">{{ $historyData['product_id'] ?? '-' }}</td></tr>@endforeach</tbody></table></div>
-                    <div class="border-t border-slate-200 px-5 py-4">{{ $historyOrders->links(data: ['scrollTo' => false]) }}</div>
+                    <div class="border-t border-slate-200 px-5 py-4">{{ $historyOrders->links('vendor.pagination.idea-etsy', data: ['scrollTo' => false]) }}</div>
                 @endif
             </div>
         </div>
@@ -99,7 +99,7 @@
                     <div class="px-5 py-12 text-center text-sm font-medium text-slate-400">Chua co Order Product. Admin hay import file Excel/CSV.</div>
                 @else
                     <div class="overflow-x-auto"><table class="w-full min-w-[720px] text-left text-sm"><thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th class="px-5 py-3">ID</th><th class="px-5 py-3">FBM/FBA</th><th class="px-5 py-3">Order Product ID</th><th class="px-5 py-3">Product Name</th></tr></thead><tbody class="divide-y divide-slate-100">@foreach ($orderProducts as $orderProduct)<tr wire:key="order-product-{{ $orderProduct->id }}" class="hover:bg-orange-50/40"><td class="px-5 py-3 font-semibold text-slate-700">{{ $orderProduct->source_id }}</td><td class="px-5 py-3"><span class="rounded-full px-2 py-1 text-[11px] font-bold {{ $orderProduct->fulfillment_type === 'FBA' ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700' }}">{{ $orderProduct->fulfillment_type }}</span></td><td class="px-5 py-3 font-black text-slate-950">{{ $orderProduct->order_product_id }}</td><td class="px-5 py-3 text-slate-700">{{ $orderProduct->product_name }}</td></tr>@endforeach</tbody></table></div>
-                    <div class="border-t border-slate-200 px-5 py-4">{{ $orderProducts->links(data: ['scrollTo' => false]) }}</div>
+                    <div class="border-t border-slate-200 px-5 py-4">{{ $orderProducts->links('vendor.pagination.idea-etsy', data: ['scrollTo' => false]) }}</div>
                 @endif
             </div>
         </div>
