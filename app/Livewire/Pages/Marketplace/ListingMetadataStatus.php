@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
 use Livewire\Attributes\Session;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -20,7 +21,7 @@ class ListingMetadataStatus extends Component
 
     private const STATUS_OPTIONS = ['all', 'waiting', 'processing', 'completed', 'failed'];
 
-    #[Session(key: 'listing-metadata.status')]
+    #[Url(as: 'status', history: true, except: 'all')]
     public string $status = 'all';
 
     #[Session(key: 'listing-metadata.search')]
@@ -32,6 +33,13 @@ class ListingMetadataStatus extends Component
 
     /** @var array<int, bool> */
     public array $selectedAssets = [];
+
+    public function mount(): void
+    {
+        if (! in_array($this->status, self::STATUS_OPTIONS, true)) {
+            $this->status = 'all';
+        }
+    }
 
     public function updatedStatus(string $status): void
     {

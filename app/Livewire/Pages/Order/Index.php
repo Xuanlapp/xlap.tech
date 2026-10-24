@@ -664,9 +664,7 @@ class Index extends Component
             $image = $row['image_link'];
             if ($sku === '' && $image === '') continue;
             if ($sku === '' || ! filter_var($image, FILTER_VALIDATE_URL) || ! str_contains(strtolower((string) parse_url($image, PHP_URL_HOST)), 'drive.google.com')) continue;
-            $item = SkuOrderItem::query()->where('user_id', $user->id)->where('sku', $sku)->first();
-            if ($item) $item->update(['product_id' => $product->id, 'image_link' => $image, 'source' => 'manual_import', 'product_design_asset_id' => null]);
-            else SkuOrderItem::query()->create(['user_id' => $user->id, 'product_id' => $product->id, 'sku' => $sku, 'image_link' => $image, 'source' => 'manual_import', 'product_design_asset_id' => null]);
+            app(SkuOrderItemService::class)->importManualItem((int) $user->id, (int) $product->id, $sku, $image);
             $count++;
         }
         $this->message = "Da import/cap nhat {$count} Order Item cho {$user->name}.";

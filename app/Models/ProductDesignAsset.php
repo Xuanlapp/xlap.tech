@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\DB;
 use App\Services\Order\SkuOrderItemService;
 
 class ProductDesignAsset extends Model
@@ -78,7 +79,12 @@ class ProductDesignAsset extends Model
     protected static function booted(): void
     {
         static::saved(function (self $asset): void {
-            app(SkuOrderItemService::class)->syncForAsset($asset);
+            DB::afterCommit(function () use ($asset): void {
+                $freshAsset = $asset->fresh();
+                if ($freshAsset) {
+                    app(SkuOrderItemService::class)->syncForAsset($freshAsset);
+                }
+            });
         });
     }
 

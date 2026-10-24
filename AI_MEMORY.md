@@ -15017,3 +15017,17 @@ Khong doi.
 - Validation: PHP lint for changed PHP files, 2 focused tests, and Blade cache passed. No listing provider call made.
 - Deploy impact: deploy service + migration and restart listing daemon so running workers load changes; no schema or queue changes. Migration only updates prompt configuration data.
 - Follow-up: run migration and test one real Ceramic item; its product facts must confirm personalization/photo claims. Graphiti memory tools unavailable.
+### 2026-10-24 - Retry sku_order_items deadlocks
+
+- Project: XLAP Web Platform. Root cause: concurrent asset-sync and manual-import writes lock `sku_order_items` through different paths; asset observer could also sync before its parent transaction committed.
+- Changed `app/Models/ProductDesignAsset.php` to defer synchronization until commit; `app/Services/Order/SkuOrderItemService.php` serializes writes on the owning user row and retries transient deadlocks up to five times. `app/Livewire/Pages/Order/Index.php` now sends manual CSV imports through the same service and lock order.
+- Added manual-import idempotency/update coverage in `tests/Feature/SkuOrderItemSyncTest.php`.
+- Validation: focused sync test (5 tests / 15 assertions), PHP lint for changed PHP files, and `git diff --check` passed.
+- Deploy impact: PHP deploy only; no migration. Queue impact: none; asset sync runs after the enclosing database transaction commits. Graphiti memory unavailable in configured tools.
+### 2026-10-24 - Persist listing and upload status in URL
+
+- Project: XLAP Web Platform. Root cause: Listing Metadata and Drive Uploads stored the selected status in Livewire session state, so the selected tile was not represented in the URL and could not be shared/restored from a link.
+- Changed `app/Livewire/Pages/Marketplace/ListingMetadataStatus.php` and `app/Livewire/Pages/Drive/DriveUploads.php`: status now uses Livewire URL state (`?status=...`), browser history tracks status changes, default `all` is omitted, invalid values fall back to `all`; search session state and existing filters remain unchanged.
+- Added `.design/status-filter-url/DESIGN_BRIEF.md` and `tests/Feature/StatusFilterUrlTest.php`.
+- Validation: URL-state + prior sync regression tests (7 tests / 19 assertions), PHP lint, `php artisan view:cache`, and `git diff --check` passed. No layout changes; rendered browser review unavailable. Better Design map/review tools unavailable (HTTP 402 quota).
+- Deploy impact: PHP-only deploy. Queue impact: none. Graphiti memory unavailable in configured tools.

@@ -4,6 +4,7 @@ namespace App\Services\Order;
 
 use App\Models\ProductDesignAsset;
 use App\Models\SkuOrderItem;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -21,12 +22,17 @@ class SkuOrderItemService
         $driveMasterUrl = trim((string) $asset->redesign);
 
         if (! $asset->is_approved || $sku === '' || ! $this->isGoogleDriveUrl($driveMasterUrl)) {
-            SkuOrderItem::query()->where('product_design_asset_id', $asset->id)->delete();
+            return DB::transaction(function () use ($asset): ?SkuOrderItem {
+                User::query()->whereKey($asset->user_id)->lockForUpdate()->first();
+                SkuOrderItem::query()->where('product_design_asset_id', $asset->id)->delete();
 
-            return null;
+                return null;
+            }, 5);
         }
 
         return DB::transaction(function () use ($asset, $sku, $driveMasterUrl): ?SkuOrderItem {
+            User::query()->whereKey($asset->user_id)->lockForUpdate()->first();
+
             $byAsset = SkuOrderItem::query()->where('product_design_asset_id', $asset->id)->lockForUpdate()->first();
             $bySku = SkuOrderItem::query()->where('user_id', $asset->user_id)->where('sku', $sku)->lockForUpdate()->first();
 
@@ -57,9 +63,25 @@ class SkuOrderItemService
             $item->save();
 
             return $item->refresh();
-        });
+        }, 5);
     }
-
+    public function importManualItem(int $userId, int $productId, string $sku, string $imageLink): void
+    {
+        DB::transaction(function () use ($userId, $productId, $sku, $imageLink): void {
+            User::query()->whereKey($userId)->lockForUpdate()->firstOrFail();
+            $item = SkuOrderItem::query()->where('user_id', $userId)->where('sku', $sku)->lockForUpdate()->first();
+            $item ??= new SkuOrderItem();
+            $item->fill([
+                'user_id' => $userId,
+                'product_id' => $productId,
+                'sku' => $sku,
+                'image_link' => $imageLink,
+                'source' => 'manual_import',
+                'product_design_asset_id' => null,
+            ]);
+            $item->save();
+        }, 5);
+    }
     private function isGoogleDriveUrl(string $url): bool
     {
         return str_contains(strtolower((string) parse_url($url, PHP_URL_HOST)), 'drive.google.com');

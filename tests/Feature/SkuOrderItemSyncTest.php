@@ -81,6 +81,24 @@ class SkuOrderItemSyncTest extends TestCase
         $this->assertSame($asset->redesign, $manual->image_link);
     }
 
+    public function test_manual_import_updates_existing_sku_without_duplicate(): void
+    {
+        $user = User::factory()->create();
+        $product = Product::where('slug', 'glass')->firstOrFail();
+        $existing = SkuOrderItem::create([
+            'user_id' => $user->id,
+            'product_id' => $product->id,
+            'sku' => 'MANUAL-1',
+            'image_link' => 'https://drive.google.com/file/d/old/view',
+            'source' => 'manual_import',
+        ]);
+
+        app(SkuOrderItemService::class)->importManualItem($user->id, $product->id, 'MANUAL-1', 'https://drive.google.com/file/d/new/view');
+
+        $this->assertSame(1, SkuOrderItem::where('user_id', $user->id)->where('sku', 'MANUAL-1')->count());
+        $this->assertSame('https://drive.google.com/file/d/new/view', $existing->refresh()->image_link);
+        $this->assertNull($existing->product_design_asset_id);
+    }
     private function createApprovedAsset(User $user, Product $product, int $itemNumber, string $sku): ProductDesignAsset
     {
         return ProductDesignAsset::create([

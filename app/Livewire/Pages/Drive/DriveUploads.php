@@ -9,6 +9,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Throwable;
 use Livewire\Attributes\Session;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -18,7 +19,7 @@ class DriveUploads extends Component
 
     private const STATUS_OPTIONS = ['all', 'waiting', 'processing', 'completed', 'failed'];
 
-    #[Session(key: 'drive-uploads.status')]
+    #[Url(as: 'status', history: true, except: 'all')]
     public string $status = 'all';
 
     #[Session(key: 'drive-uploads.search')]
@@ -29,6 +30,13 @@ class DriveUploads extends Component
     public ?string $retryMessage = null;
 
     public ?string $retryError = null;
+
+    public function mount(): void
+    {
+        if (! in_array($this->status, self::STATUS_OPTIONS, true)) {
+            $this->status = 'all';
+        }
+    }
 
     public function updatedStatus(string $status): void
     {
