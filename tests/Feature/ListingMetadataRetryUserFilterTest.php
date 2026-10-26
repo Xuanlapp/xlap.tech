@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\ProductDesignAsset;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -22,6 +23,8 @@ class ListingMetadataRetryUserFilterTest extends TestCase
         $product = Product::where('slug', 'ornament-amazon-2')->firstOrFail();
         $ownedAsset = $this->failedAsset($owner, $product, 1);
         $otherAsset = $this->failedAsset($otherOwner, $product, 2);
+        Cache::put('provider-pause:cheapkeyai:user:'.$owner->id, ['reason' => 'quota'], now()->addHours(6));
+        Cache::put('provider-pause:cheapkeyai:user:'.$otherOwner->id, ['reason' => 'quota'], now()->addHours(6));
 
         $this->actingAs($admin);
         Livewire::test(ListingMetadataStatus::class)
@@ -31,6 +34,8 @@ class ListingMetadataRetryUserFilterTest extends TestCase
 
         $this->assertSame('waiting', $ownedAsset->refresh()->marketplace_listing_status);
         $this->assertSame('failed', $otherAsset->refresh()->marketplace_listing_status);
+        $this->assertFalse(Cache::has('provider-pause:cheapkeyai:user:'.$owner->id));
+        $this->assertTrue(Cache::has('provider-pause:cheapkeyai:user:'.$otherOwner->id));
     }
 
     private function failedAsset(User $user, Product $product, int $itemNumber): ProductDesignAsset

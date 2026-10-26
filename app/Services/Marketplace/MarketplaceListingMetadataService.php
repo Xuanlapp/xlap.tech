@@ -373,6 +373,11 @@ PROMPT;
             throw new RuntimeException('Item nay dang tao listing metadata.');
         }
 
+        $providerKey = $this->listingProviderKey($asset);
+        if (in_array($providerKey, ['cheapkeyai', 'v98store'], true)) {
+            Cache::forget('provider-pause:'.$providerKey.':user:'.$asset->user_id);
+        }
+
         $asset->update([
             'marketplace_listing_status' => 'waiting',
             'marketplace_listing_completed_at' => null,
