@@ -133,17 +133,13 @@
                                 @endif</label>
                         @endif
 
-                        <div class="relative z-50" x-data="{ open: false }" x-cloak x-show="@js(count($providerOptions) === 0)" x-on:click.outside="open = false">
-                            <button type="button" x-on:click="open = ! open" class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 transition hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700" title="Them API SuncatcherTwo">
+                        <div class="relative z-50" x-data="{ open: false }" x-cloak x-on:click.outside="open = false">
+                            <button type="button" x-on:click="open = ! open" class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 transition hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700" title="Quản lý API key" aria-label="Quản lý API key">
                                 <span class="text-lg font-bold leading-none">+</span>
                             </button>
                             <div x-cloak x-show="open" x-transition class="absolute left-0 top-full z-[100] mt-2 w-48 rounded-lg border border-slate-200 bg-white p-1 shadow-xl">
-                                @if (! array_key_exists('v98store', $providerOptions))
-                                    <button type="button" x-on:click="open = false" wire:click="$dispatch('openModal', { component: 'modals.ai.change-v98-store-key', arguments: { functionKey: 'suncatcher-two' } })" class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs font-bold text-slate-700 hover:bg-slate-100"><span class="text-base leading-none">+</span> API v98</button>
-                                @endif
-                                @if (! array_key_exists('cheapkeyai', $providerOptions))
-                                    <button type="button" x-on:click="open = false" wire:click="$dispatch('openModal', { component: 'modals.ai.change-cheap-key-ai-key', arguments: { functionKey: 'suncatcher-two' } })" class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs font-bold text-slate-700 hover:bg-slate-100"><span class="text-base leading-none">+</span> API CheapKeyAI</button>
-                                @endif
+                                    <button type="button" x-on:click="open = false" wire:click="$dispatch('openModal', { component: 'modals.ai.change-v98-store-key', arguments: { functionKey: 'suncatcher-two' } })" class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs font-bold text-slate-700 hover:bg-slate-100"><span class="text-base leading-none">+</span> {{ array_key_exists('v98store', $providerOptions) ? 'Đổi API v98' : 'Thêm API v98' }}</button>
+                                    <button type="button" x-on:click="open = false" wire:click="$dispatch('openModal', { component: 'modals.ai.change-cheap-key-ai-key', arguments: { functionKey: 'suncatcher-two' } })" class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs font-bold text-slate-700 hover:bg-slate-100"><span class="text-base leading-none">+</span> {{ array_key_exists('cheapkeyai', $providerOptions) ? 'Đổi API CheapKeyAI' : 'Thêm API CheapKeyAI' }}</button>
                                 @if (array_key_exists('v98store', $providerOptions) && array_key_exists('cheapkeyai', $providerOptions))
                                     <div class="px-3 py-2 text-xs font-semibold text-slate-400">Da co du API</div>
                                 @endif

@@ -48,7 +48,7 @@ Do not omit, rename, add, or return null for any required key. Do not return Mar
 PROMPT;
 
     private const AMAZON_CERAMIC_OUTPUT_RULES = <<<'PROMPT'
-CERAMIC AMAZON OUTPUT RULES (MANDATORY): Count spaces as characters. Return only the exact JSON schema below, no markdown, count labels, or extra text. Title 70-75 characters; item_highlight 1-124; each bullet 460-480 and starts with one suitable icon plus a space; generic_keyword 230-240, semicolon-separated and in supplied keyword priority order; description 1800-1900, never above 2000. Recheck every count. Never invent features to reach a count. Photo/picture claims or keywords are prohibited unless product details explicitly confirm customer photo personalization. Do not add unsupported material, personalization, packaging, dimensions, accessories, guarantees, or trademarked terms.
+CERAMIC AMAZON OUTPUT RULES (MANDATORY): Count spaces as characters. Return only the exact JSON schema below, no markdown, count labels, or extra text. Title at most 75 characters; item_highlight at most 124; each bullet at most 480 characters and starts with one suitable icon plus a space; generic_keyword at most 240 characters, semicolon-separated and in supplied keyword priority order; description at most 2000 characters. Shorter valid copy is acceptable. Recheck maximums. Never invent features or pad text to reach a target. Photo/picture claims or keywords are prohibited unless product details explicitly confirm customer photo personalization. Do not add unsupported material, personalization, packaging, dimensions, accessories, guarantees, or trademarked terms.
 PROMPT;
 
     private const CERAMIC_OUTPUT_REPAIR_ATTEMPTS = 2;
@@ -61,7 +61,7 @@ Optimize for relevant Amazon search intent without keyword stuffing or unsupport
 Use accurate keywords in this priority order, selecting only relevant phrases and stopping before the 240-character generic-keyword limit:
 personalized ornaments; custom ornaments; personalized ornaments 2026; christmas ornaments personalized; photo christmas ornaments; custom christmas ornaments 2026; customized ornaments; customizable ornaments; ceramic personalized christmas ornaments; christmas ornaments custom; personalized baby ornaments 2026; personalized ceramic christmas ornaments; personalized picture ornaments; custom ornament with picture; photo ornament custom; ornament customizable; ornament personalized; custom christmas decor; customized picture christmas ornaments
 
-Return only valid JSON with exactly these string fields: title, item_highlight, description, bullet_point_1, bullet_point_2, bullet_point_3, bullet_point_4, bullet_point_5, generic_keyword. Follow all character limits in the mandatory Ceramic output rules. Bullet 1 directly describes the ceramic ornament and verified personalization. Other bullets cover distinct verified features, use, gifting, and keepsake value. Description should explain product, verified personalization, use, recipient, and occasions in warm factual US English. Never invent facts to meet character targets.
+Return only valid JSON with exactly these string fields: title, item_highlight, description, bullet_point_1, bullet_point_2, bullet_point_3, bullet_point_4, bullet_point_5, generic_keyword. Follow all maximum character limits in the mandatory Ceramic output rules; shorter copy is acceptable. Bullet 1 directly describes the ceramic ornament and verified personalization. Other bullets cover distinct verified features, use, gifting, and keepsake value. Description should explain product, verified personalization, use, recipient, and occasions in warm factual US English. Never invent facts to meet character targets.
 PROMPT;
     private const AMAZON_GLASS_PROMPT_TEMPLATE = <<<'PROMPT'
 Act as a professional English Amazon listing writer. Write for the actual glass Christmas ornament shown by this item and its theme. Use the item's product information and idea keyword as context. Never assume the customer can provide their own image or that this ornament is made from an uploaded image.
@@ -695,19 +695,17 @@ PROMPT;
         $isCeramic = $asset->product?->slug === 'ceramic';
         $listingText = $this->generateAmazonListingText($asset);
         $payload = $this->jsonPayload($listingText);
-        $this->validateAmazonPayload($payload);
-        $titleLimit = $isCeramic ? 75 : 74;
-        if (mb_strlen(trim($payload['title'])) > $titleLimit) {
-            throw new RuntimeException("Amazon listing title exceeds {$titleLimit} characters; refusing to save a truncated word.");
-        }
         if ($isCeramic) {
             $payload = $this->repairCeramicPayload($payload, function (RuntimeException $exception, array $previous) use ($asset): array {
                 $listingText = $this->generateAmazonListingText($asset, $this->ceramicRepairInstructions($exception, $previous));
-                $repairedPayload = $this->jsonPayload($listingText);
-                $this->validateAmazonPayload($repairedPayload);
 
-                return $repairedPayload;
+                return $this->jsonPayload($listingText);
             });
+        } else {
+            $this->validateAmazonPayload($payload);
+            if (mb_strlen(trim($payload['title'])) > 74) {
+                throw new RuntimeException('Amazon listing title exceeds 74 characters; refusing to save a truncated word.');
+            }
         }
 
         $updatedAsset = $this->assets->updateListingMetadata($asset, [
@@ -742,7 +740,7 @@ PROMPT;
     /** @param array<string, mixed> $payload */
     private function ceramicRepairInstructions(RuntimeException $exception, array $payload): string
     {
-        return "The previous JSON failed mandatory character-count checks. Return a complete replacement JSON object, not a partial edit. Correct every listed field, count spaces, and verify lengths before responding. Do not shorten the requested copy. If facts are insufficient, describe only verified product facts without inventing features.\nValidation errors: {$exception->getMessage()}\nPrevious JSON: ".json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+        return "The previous JSON failed the mandatory schema, title, or character-count checks. Return a complete replacement JSON object with exactly the required keys, not a partial edit. Correct every listed error, count spaces, and verify every length before responding. Concise valid copy is acceptable. If facts are insufficient, describe only verified product facts without padding or inventing features.\nValidation errors: {$exception->getMessage()}\nPrevious JSON: ".json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
     }
 
     /** @param array<string, mixed> $payload
@@ -753,7 +751,7 @@ PROMPT;
     {
         for ($attempt = 0; ; $attempt++) {
             try {
-                $this->validateCeramicAmazonPayload($payload);
+                $this->validateCeramicAmazonOutput($payload);
 
                 return $payload;
             } catch (RuntimeException $exception) {
@@ -764,6 +762,18 @@ PROMPT;
                 $payload = $regenerate($exception, $payload);
             }
         }
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function validateCeramicAmazonOutput(array $payload): void
+    {
+        $this->validateAmazonPayload($payload);
+
+        if (mb_strlen(trim($payload['title'])) > 75) {
+            throw new RuntimeException('Amazon listing title exceeds 75 characters; refusing to save a truncated word.');
+        }
+
+        $this->validateCeramicAmazonPayload($payload);
     }
 
     private function isProviderPausedForAsset(ProductDesignAsset $asset): bool
@@ -1180,22 +1190,22 @@ PROMPT;
     private function validateCeramicAmazonPayload(array $payload): void
     {
         $limits = [
-            'title' => [70, 75],
+            'title' => [1, 75],
             'item_highlight' => [1, 124],
-            'bullet_point_1' => [460, 480],
-            'bullet_point_2' => [460, 480],
-            'bullet_point_3' => [460, 480],
-            'bullet_point_4' => [460, 480],
-            'bullet_point_5' => [460, 480],
-            'generic_keyword' => [230, 240],
-            'description' => [1800, 1900],
+            'bullet_point_1' => [1, 480],
+            'bullet_point_2' => [1, 480],
+            'bullet_point_3' => [1, 480],
+            'bullet_point_4' => [1, 480],
+            'bullet_point_5' => [1, 480],
+            'generic_keyword' => [1, 240],
+            'description' => [1, 2000],
         ];
         $invalid = [];
 
         foreach ($limits as $field => [$minimum, $maximum]) {
             $length = mb_strlen(trim($payload[$field]));
             if ($length < $minimum || $length > $maximum) {
-                $invalid[] = "{$field}={$length} (expected {$minimum}-{$maximum})";
+                $invalid[] = "{$field}={$length} (maximum {$maximum}; minimum 1)";
             }
         }
 

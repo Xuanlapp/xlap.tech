@@ -33,10 +33,10 @@ class MarketplaceCeramicListingOutputTest extends TestCase
         $service = (new ReflectionClass(MarketplaceListingMetadataService::class))->newInstanceWithoutConstructor();
         $validate = new ReflectionMethod($service, 'validateCeramicAmazonPayload');
         $payload = [
-            'title' => str_repeat('T', 69),
+            'title' => str_repeat('T', 70),
             'item_highlight' => str_repeat('H', 124),
             'generic_keyword' => str_repeat('k', 230),
-            'description' => str_repeat('D', 1800),
+            'description' => str_repeat('D', 2001),
         ];
         foreach (range(1, 5) as $number) {
             $payload["bullet_point_{$number}"] = '✨ '.str_repeat('B', 458);
@@ -44,10 +44,27 @@ class MarketplaceCeramicListingOutputTest extends TestCase
 
         try {
             $validate->invoke($service, $payload);
-            $this->fail('Expected character-count validation to reject the title.');
+            $this->fail('Expected validation to reject a field exceeding its maximum.');
         } catch (RuntimeException $exception) {
-            $this->assertStringContainsString('title=69', $exception->getMessage());
+            $this->assertStringContainsString('description=2001', $exception->getMessage());
         }
+    }
+    public function test_it_accepts_ceramic_copy_shorter_than_the_former_minimums(): void
+    {
+        $service = (new ReflectionClass(MarketplaceListingMetadataService::class))->newInstanceWithoutConstructor();
+        $validate = new ReflectionMethod($service, 'validateCeramicAmazonPayload');
+        $payload = [
+            'title' => str_repeat('T', 40),
+            'item_highlight' => 'Short highlight',
+            'generic_keyword' => 'ceramic ornament',
+            'description' => 'A short, factual product description.',
+        ];
+        foreach (range(1, 5) as $number) {
+            $payload["bullet_point_{$number}"] = '! Short, factual bullet.';
+        }
+
+        $validate->invoke($service, $payload);
+        $this->assertTrue(true);
     }
     public function test_repair_instructions_include_validation_errors_and_previous_output(): void
     {
@@ -72,7 +89,7 @@ class MarketplaceCeramicListingOutputTest extends TestCase
             'description' => str_repeat('D', 1800),
         ];
         foreach (range(1, 5) as $number) {
-            $invalidPayload["bullet_point_{$number}"] = '! '.str_repeat('B', 366);
+            $invalidPayload["bullet_point_{$number}"] = '! '.str_repeat('B', 480);
         }
         $validPayload = $invalidPayload;
         foreach (range(1, 5) as $number) {
@@ -99,7 +116,7 @@ class MarketplaceCeramicListingOutputTest extends TestCase
             'description' => str_repeat('D', 1800),
         ];
         foreach (range(1, 5) as $number) {
-            $payload["bullet_point_{$number}"] = '! '.str_repeat('B', 366);
+            $payload["bullet_point_{$number}"] = '! '.str_repeat('B', 480);
         }
         $calls = 0;
         try {
@@ -110,8 +127,55 @@ class MarketplaceCeramicListingOutputTest extends TestCase
             });
             $this->fail('Expected invalid output to stop after the repair limit.');
         } catch (RuntimeException $exception) {
-            $this->assertStringContainsString('bullet_point_1=368', $exception->getMessage());
+            $this->assertStringContainsString('bullet_point_1=482', $exception->getMessage());
             $this->assertSame(2, $calls);
+        }
+    }
+    public function test_it_repairs_unexpected_schema_keys(): void
+    {
+        $service = (new ReflectionClass(MarketplaceListingMetadataService::class))->newInstanceWithoutConstructor();
+        $repair = new ReflectionMethod($service, 'repairCeramicPayload');
+        $payload = [
+            'title' => str_repeat('T', 71),
+            'item_highlight' => str_repeat('H', 20),
+            'generic_keyword' => str_repeat('k', 230),
+            'description' => str_repeat('D', 1800),
+            'unexpected_key' => 'extra',
+        ];
+        foreach (range(1, 5) as $number) {
+            $payload["bullet_point_{$number}"] = '! '.str_repeat('B', 458);
+        }
+        $corrected = $payload;
+        unset($corrected['unexpected_key']);
+        $calls = 0;
+        $result = $repair->invoke($service, $payload, function (RuntimeException $exception) use (&$calls, $corrected): array {
+            $calls++;
+            $this->assertStringContainsString('Extra: unexpected_key', $exception->getMessage());
+
+            return $corrected;
+        });
+        $this->assertSame($corrected, $result);
+        $this->assertSame(1, $calls);
+    }
+
+    public function test_it_repairs_overlong_titles_instead_of_failing_before_repair(): void
+    {
+        $service = (new ReflectionClass(MarketplaceListingMetadataService::class))->newInstanceWithoutConstructor();
+        $validate = new ReflectionMethod($service, 'validateCeramicAmazonOutput');
+        $payload = [
+            'title' => str_repeat('T', 76),
+            'item_highlight' => str_repeat('H', 20),
+            'generic_keyword' => str_repeat('k', 230),
+            'description' => str_repeat('D', 1800),
+        ];
+        foreach (range(1, 5) as $number) {
+            $payload["bullet_point_{$number}"] = '! '.str_repeat('B', 458);
+        }
+        try {
+            $validate->invoke($service, $payload);
+            $this->fail('Expected the Ceramic title limit to reject 76 characters.');
+        } catch (RuntimeException $exception) {
+            $this->assertStringContainsString('title exceeds 75 characters', $exception->getMessage());
         }
     }
     public function test_title_truncation_removes_the_partial_final_word(): void

@@ -101,17 +101,13 @@
                                         <span class="inline-flex h-7 items-center rounded-md bg-amber-50 px-2 text-xs font-bold text-amber-700 dark:bg-amber-500/15 dark:text-amber-300" title="{{ $cheapKeyAiBalance['message'] ?? 'Balance unavailable' }}">N/A</span>
                                     @endif
                                 @endif</label>
-                    <div x-data="{ open: false }" x-cloak x-show="@js(count($providerOptions) === 0)" class="relative z-20">
-                        <button type="button" x-on:click="open = !open" x-on:keydown.escape.window="open = false" class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 transition hover:border-cyan-300 hover:bg-cyan-50 hover:text-cyan-700" title="Them API" aria-label="Them API">
+                    <div x-data="{ open: false }" x-cloak class="relative z-20">
+                        <button type="button" x-on:click="open = !open" x-on:keydown.escape.window="open = false" class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 transition hover:border-cyan-300 hover:bg-cyan-50 hover:text-cyan-700" title="Quản lý API key" aria-label="Quản lý API key">
                             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="M12 5v14M5 12h14" /></svg>
                         </button>
                         <div x-cloak x-show="open" x-transition.origin.top.right x-on:click.outside="open = false" class="absolute right-0 top-full mt-2 w-52 rounded-lg border border-slate-200 bg-white p-1 shadow-2xl">
-                            @if (! array_key_exists('v98store', $providerOptions))
-                                <button type="button" x-on:click="open = false" wire:click="$dispatch('openModal', { component: 'modals.ai.change-v98-store-key', arguments: { functionKey: 'glass' } })" class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs font-bold text-slate-700 hover:bg-slate-100"><span class="text-base leading-none">+</span> API v98</button>
-                            @endif
-                            @if (! array_key_exists('cheapkeyai', $providerOptions))
-                                <button type="button" x-on:click="open = false" wire:click="$dispatch('openModal', { component: 'modals.ai.change-cheap-key-ai-key', arguments: { functionKey: 'glass' } })" class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs font-bold text-slate-700 hover:bg-slate-100"><span class="text-base leading-none">+</span> API CheapKeyAI</button>
-                            @endif
+                            <button type="button" x-on:click="open = false" wire:click="$dispatch('openModal', { component: 'modals.ai.change-v98-store-key', arguments: { functionKey: 'glass' } })" class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs font-bold text-slate-700 hover:bg-slate-100"><span class="text-base leading-none">+</span> {{ array_key_exists('v98store', $providerOptions) ? 'Đổi API v98' : 'Thêm API v98' }}</button>
+                            <button type="button" x-on:click="open = false" wire:click="$dispatch('openModal', { component: 'modals.ai.change-cheap-key-ai-key', arguments: { functionKey: 'glass' } })" class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs font-bold text-slate-700 hover:bg-slate-100"><span class="text-base leading-none">+</span> {{ array_key_exists('cheapkeyai', $providerOptions) ? 'Đổi API CheapKeyAI' : 'Thêm API CheapKeyAI' }}</button>
                         </div>
                     </div>
                     @if (($selectedAiProvider ?? null) === 'v98store' || ($selectedAiProvider ?? null) === 'cheapkeyai')
