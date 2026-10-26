@@ -27,3 +27,17 @@
 - Updated `app/Services/Marketplace/MarketplaceListingMetadataService.php`: appended mandatory Ceramic rules now explicitly override conflicting saved prompt length targets; minimum is non-empty only, maxima remain title 75, highlight 124, bullets 480, generic keywords 240, description 2000. Preserved the required icon prefix and exact nine-field schema.
 - Added production-length regression coverage in `tests/Unit/MarketplaceCeramicListingOutputTest.php`. Validation: 11 tests / 45 assertions; `php artisan view:cache`; targeted `git diff --check` passed.
 - Deploy PHP code and restart long-running listing-metadata workers. No DB migration or queue format changes. Retry one item after deploy, inspect prompt overrides for outdated length rules; Graphiti unavailable.
+
+### 2026-10-26 - Guard missing Ceramic generic keywords
+
+- XLAP Web Platform: Ceramic listing attempt 7 omitted or returned a blank `generic_keyword` despite the saved prompt and required schema.
+- Updated `app/Services/Marketplace/MarketplaceListingMetadataService.php` to fill only missing/blank Ceramic generic keywords with the factual fallback `ceramic christmas ornament` before validation, including after a repair response. Existing non-empty AI keywords remain unchanged; no behavior changes for other product types.
+- Added fallback regression tests in `tests/Unit/MarketplaceCeramicListingOutputTest.php`. PHP lint and focused tests passed (12 tests / 48 assertions).
+- Deploy PHP and restart listing metadata workers before retrying. No migration or queue format changes. Graphiti unavailable.
+
+### 2026-10-26 - Verify Ceramic missing-key fallback end to end
+
+- XLAP Web Platform: the reported attempt 8 still showed the pre-fallback Amazon JSON-schema error. In current source, the Ceramic path inserts `generic_keyword` before `validateAmazonPayload`, so this exact error cannot occur if that code is running and the asset slug is `ceramic`.
+- Extended `tests/Unit/MarketplaceCeramicListingOutputTest.php` to pass a payload with no generic-keyword key through fallback and the actual Ceramic validator.
+- Validation: focused suite 12 tests / 48 assertions; PHP lint and targeted diff check passed.
+- Next: deploy the PHP service and restart any persistent listing metadata daemon; verify the server source contains `ensureCeramicGenericKeyword` and the asset product slug is `ceramic`. No migration. Graphiti unavailable.

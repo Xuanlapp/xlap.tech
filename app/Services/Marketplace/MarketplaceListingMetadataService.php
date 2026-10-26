@@ -701,10 +701,11 @@ PROMPT;
         $listingText = $this->generateAmazonListingText($asset);
         $payload = $this->normalizeAmazonPayload($this->jsonPayload($listingText), $isCeramic);
         if ($isCeramic) {
+            $payload = $this->ensureCeramicGenericKeyword($payload);
             $payload = $this->repairCeramicPayload($payload, function (RuntimeException $exception, array $previous) use ($asset): array {
                 $listingText = $this->generateAmazonListingText($asset, $this->ceramicRepairInstructions($exception, $previous));
 
-                return $this->normalizeAmazonPayload($this->jsonPayload($listingText), true);
+                return $this->ensureCeramicGenericKeyword($this->normalizeAmazonPayload($this->jsonPayload($listingText), true));
             });
         } else {
             $this->validateAmazonPayload($payload);
@@ -1255,6 +1256,18 @@ PROMPT;
         return $lastSpace === false
             ? ''
             : rtrim(mb_substr($cut, 0, $lastSpace), " \t\n\r\0\x0B,;:-");
+    }
+
+    /** @param array<string, mixed> $payload
+     *  @return array<string, mixed>
+     */
+    private function ensureCeramicGenericKeyword(array $payload): array
+    {
+        if (! is_string($payload['generic_keyword'] ?? null) || trim($payload['generic_keyword']) === '') {
+            $payload['generic_keyword'] = 'ceramic christmas ornament';
+        }
+
+        return $payload;
     }
 
     /** @param array<string, mixed> $payload */

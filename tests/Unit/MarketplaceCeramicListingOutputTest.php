@@ -66,6 +66,36 @@ class MarketplaceCeramicListingOutputTest extends TestCase
         $validate->invoke($service, $payload);
         $this->assertTrue(true);
     }
+    public function test_it_fills_missing_or_blank_ceramic_generic_keywords_with_a_safe_fallback(): void
+    {
+        $service = (new ReflectionClass(MarketplaceListingMetadataService::class))->newInstanceWithoutConstructor();
+        $ensureKeyword = new ReflectionMethod($service, 'ensureCeramicGenericKeyword');
+
+        $this->assertSame(
+            'ceramic christmas ornament',
+            $ensureKeyword->invoke($service, ['title' => 'Ceramic ornament'])['generic_keyword'],
+        );
+        $this->assertSame(
+            'ceramic christmas ornament',
+            $ensureKeyword->invoke($service, ['generic_keyword' => '   '])['generic_keyword'],
+        );
+        $this->assertSame(
+            'ceramic holiday ornament',
+            $ensureKeyword->invoke($service, ['generic_keyword' => 'ceramic holiday ornament'])['generic_keyword'],
+        );
+
+        $payload = [
+            'title' => 'Ceramic Christmas Ornament',
+            'item_highlight' => 'A factual product highlight.',
+            'description' => 'A concise description using verified product details.',
+        ];
+        foreach (range(1, 5) as $number) {
+            $payload["bullet_point_{$number}"] = '! Factual product detail.';
+        }
+        $normalized = $ensureKeyword->invoke($service, $payload);
+        (new ReflectionMethod($service, 'validateCeramicAmazonPayload'))->invoke($service, $normalized);
+    }
+
     public function test_it_accepts_the_short_ceramic_output_lengths_reported_in_production(): void
     {
         $service = (new ReflectionClass(MarketplaceListingMetadataService::class))->newInstanceWithoutConstructor();
