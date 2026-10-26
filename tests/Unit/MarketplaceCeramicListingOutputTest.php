@@ -66,6 +66,24 @@ class MarketplaceCeramicListingOutputTest extends TestCase
         $validate->invoke($service, $payload);
         $this->assertTrue(true);
     }
+    public function test_it_accepts_the_short_ceramic_output_lengths_reported_in_production(): void
+    {
+        $service = (new ReflectionClass(MarketplaceListingMetadataService::class))->newInstanceWithoutConstructor();
+        $validate = new ReflectionMethod($service, 'validateCeramicAmazonPayload');
+        $payload = [
+            'title' => str_repeat('T', 69),
+            'item_highlight' => 'A factual ceramic ornament highlight.',
+            'generic_keyword' => str_repeat('k', 228),
+            'description' => str_repeat('D', 542),
+        ];
+        foreach ([96, 100, 100, 77, 75] as $index => $length) {
+            $payload['bullet_point_'.($index + 1)] = "! ".str_repeat('B', $length - 2);
+        }
+
+        $validate->invoke($service, $payload);
+        $this->assertTrue(true);
+    }
+
     public function test_repair_instructions_include_validation_errors_and_previous_output(): void
     {
         $service = (new ReflectionClass(MarketplaceListingMetadataService::class))->newInstanceWithoutConstructor();

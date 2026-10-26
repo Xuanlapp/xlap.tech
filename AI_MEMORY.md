@@ -20,3 +20,10 @@
 - Changed `app/Services/Marketplace/MarketplaceListingMetadataService.php`: shorter nonempty Ceramic fields remain valid; overlong Amazon title, bullets, highlight, description, and generic keywords are trimmed within product-specific maxima at word/keyword boundaries. Extra provider keys are discarded; missing/empty required keys remain invalid. Amazon behavior updated; Etsy unchanged.
 - Added normalization coverage to `tests/Unit/MarketplaceCeramicListingOutputTest.php`. PHP lint passed; 10 tests / 44 assertions passed; `git diff --check` passed.
 - Deploy impact: deploy PHP and restart queue workers. No migration. Existing failed rows need manual retry; none retried here. No queue topology changes. Graphiti memory unavailable.
+
+### 2026-10-26 - Align Ceramic prompt with non-empty-only validator
+
+- XLAP Web Platform: production Ceramic log rejected concise output because the deployed validator expected title 70-75, bullets 460-480, keywords 230-240, and description 1800-1900 characters. The current workspace validator accepts any non-empty value under maxima; the saved generic prompt explicitly said not to pad, creating the mismatch.
+- Updated `app/Services/Marketplace/MarketplaceListingMetadataService.php`: appended mandatory Ceramic rules now explicitly override conflicting saved prompt length targets; minimum is non-empty only, maxima remain title 75, highlight 124, bullets 480, generic keywords 240, description 2000. Preserved the required icon prefix and exact nine-field schema.
+- Added production-length regression coverage in `tests/Unit/MarketplaceCeramicListingOutputTest.php`. Validation: 11 tests / 45 assertions; `php artisan view:cache`; targeted `git diff --check` passed.
+- Deploy PHP code and restart long-running listing-metadata workers. No DB migration or queue format changes. Retry one item after deploy, inspect prompt overrides for outdated length rules; Graphiti unavailable.
