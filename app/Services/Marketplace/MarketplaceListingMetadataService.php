@@ -701,11 +701,11 @@ PROMPT;
         $listingText = $this->generateAmazonListingText($asset);
         $payload = $this->normalizeAmazonPayload($this->jsonPayload($listingText), $isCeramic);
         if ($isCeramic) {
-            $payload = $this->ensureCeramicGenericKeyword($payload);
+            $payload = $this->ensureCeramicGenericKeyword($payload, $this->keywordPhrase($asset));
             $payload = $this->repairCeramicPayload($payload, function (RuntimeException $exception, array $previous) use ($asset): array {
                 $listingText = $this->generateAmazonListingText($asset, $this->ceramicRepairInstructions($exception, $previous));
 
-                return $this->ensureCeramicGenericKeyword($this->normalizeAmazonPayload($this->jsonPayload($listingText), true));
+                return $this->ensureCeramicGenericKeyword($this->normalizeAmazonPayload($this->jsonPayload($listingText), true), $this->keywordPhrase($asset));
             });
         } else {
             $this->validateAmazonPayload($payload);
@@ -735,7 +735,8 @@ PROMPT;
         $prompt = $this->prompt($this->defaultPromptFor($asset->product, 'amazon'), $asset);
 
         $rules = $asset->product?->slug === 'ceramic' ? self::AMAZON_CERAMIC_OUTPUT_RULES : '';
-        $keywordRules = "Use the product's actual keyword value as the idea keyword. Include it naturally where relevant and use it to derive accurate search terms; do not substitute hardcoded product keywords.";
+        $keywords = $this->keywordPhrase($asset);
+        $keywordRules = "SKU KEYWORDS (inserted automatically by code; separate from the editable prompt):\nKEYWORDS: {$keywords}\nUse these SKU-specific keywords where accurate; do not replace them with generic hardcoded keywords.";
 
         return $this->generateListingText($asset, $prompt."\n\n".$keywordRules."\n\n".$rules."\n\n".self::AMAZON_REQUIRED_SCHEMA.($repairInstructions ? "\n\n".$repairInstructions : ''));
     }
@@ -1261,10 +1262,12 @@ PROMPT;
     /** @param array<string, mixed> $payload
      *  @return array<string, mixed>
      */
-    private function ensureCeramicGenericKeyword(array $payload): array
+    private function ensureCeramicGenericKeyword(array $payload, string $skuKeywords): array
     {
         if (! is_string($payload['generic_keyword'] ?? null) || trim($payload['generic_keyword']) === '') {
-            $payload['generic_keyword'] = 'ceramic christmas ornament';
+            $payload['generic_keyword'] = trim($skuKeywords) !== '' && trim($skuKeywords) !== 'N/A'
+                ? $this->truncateAtWordBoundary(trim($skuKeywords), 240)
+                : 'ceramic christmas ornament';
         }
 
         return $payload;
@@ -1273,26 +1276,25 @@ PROMPT;
     /** @param array<string, mixed> $payload */
     private function validateCeramicAmazonPayload(array $payload): void
     {
-        $limits = [
-            'title' => [1, 75],
-            'item_highlight' => [1, 124],
-            'bullet_point_1' => [1, 480],
-            'bullet_point_2' => [1, 480],
-            'bullet_point_3' => [1, 480],
-            'bullet_point_4' => [1, 480],
-            'bullet_point_5' => [1, 480],
-            'generic_keyword' => [1, 240],
-            'description' => [1, 2000],
+        $maximums = [
+            'title' => 75,
+            'item_highlight' => 124,
+            'bullet_point_1' => 480,
+            'bullet_point_2' => 480,
+            'bullet_point_3' => 480,
+            'bullet_point_4' => 480,
+            'bullet_point_5' => 480,
+            'generic_keyword' => 240,
+            'description' => 2000,
         ];
         $invalid = [];
 
-        foreach ($limits as $field => [$minimum, $maximum]) {
+        foreach ($maximums as $field => $maximum) {
             $length = mb_strlen(trim($payload[$field]));
-            if ($length < $minimum || $length > $maximum) {
-                $invalid[] = "{$field}={$length} (maximum {$maximum}; minimum 1)";
+            if ($length > $maximum) {
+                $invalid[] = "{$field}={$length} (maximum {$maximum})";
             }
         }
-
         foreach (range(1, 5) as $number) {
             if (! preg_match('/^[^\p{L}\p{N}\s]\s/u', trim($payload["bullet_point_{$number}"]))) {
                 $invalid[] = "bullet_point_{$number} must start with an icon and a space";

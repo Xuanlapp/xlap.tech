@@ -41,3 +41,9 @@
 - Extended `tests/Unit/MarketplaceCeramicListingOutputTest.php` to pass a payload with no generic-keyword key through fallback and the actual Ceramic validator.
 - Validation: focused suite 12 tests / 48 assertions; PHP lint and targeted diff check passed.
 - Next: deploy the PHP service and restart any persistent listing metadata daemon; verify the server source contains `ensureCeramicGenericKeyword` and the asset product slug is `ceramic`. No migration. Graphiti unavailable.
+
+
+### 2026-10-26 - Ceramic keyword injection and maximum-only lengths
+- XLAP Web Platform: listing prompts now append a KEYWORDS: block from SKU data after the saved prompt; missing Ceramic generic_keyword uses SKU keywords.
+- Ceramic length validation checks upper bounds only: title 75, highlight 124, bullets 480, generic_keyword 240, description 2000. Required schema still rejects missing/blank fields; bullet icon rule remains.
+- Changed MarketplaceListingMetadataService.php and MarketplaceCeramicListingOutputTest.php. Focused tests: 12 / 48 assertions passed; PHP lint passed. No migration or queue schema changes. Deploy service code and restart long-lived metadata workers; server must receive this max-only validator before retry. Graphiti unavailable.

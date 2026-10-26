@@ -66,22 +66,23 @@ class MarketplaceCeramicListingOutputTest extends TestCase
         $validate->invoke($service, $payload);
         $this->assertTrue(true);
     }
-    public function test_it_fills_missing_or_blank_ceramic_generic_keywords_with_a_safe_fallback(): void
+    public function test_it_uses_the_sku_keywords_when_the_ceramic_generic_keyword_is_missing_or_blank(): void
     {
         $service = (new ReflectionClass(MarketplaceListingMetadataService::class))->newInstanceWithoutConstructor();
         $ensureKeyword = new ReflectionMethod($service, 'ensureCeramicGenericKeyword');
+        $skuKeywords = 'Alabama state map Christmas ornament';
 
         $this->assertSame(
-            'ceramic christmas ornament',
-            $ensureKeyword->invoke($service, ['title' => 'Ceramic ornament'])['generic_keyword'],
+            $skuKeywords,
+            $ensureKeyword->invoke($service, ['title' => 'Ceramic ornament'], $skuKeywords)['generic_keyword'],
         );
         $this->assertSame(
-            'ceramic christmas ornament',
-            $ensureKeyword->invoke($service, ['generic_keyword' => '   '])['generic_keyword'],
+            $skuKeywords,
+            $ensureKeyword->invoke($service, ['generic_keyword' => '   '], $skuKeywords)['generic_keyword'],
         );
         $this->assertSame(
             'ceramic holiday ornament',
-            $ensureKeyword->invoke($service, ['generic_keyword' => 'ceramic holiday ornament'])['generic_keyword'],
+            $ensureKeyword->invoke($service, ['generic_keyword' => 'ceramic holiday ornament'], $skuKeywords)['generic_keyword'],
         );
 
         $payload = [
@@ -92,7 +93,7 @@ class MarketplaceCeramicListingOutputTest extends TestCase
         foreach (range(1, 5) as $number) {
             $payload["bullet_point_{$number}"] = '! Factual product detail.';
         }
-        $normalized = $ensureKeyword->invoke($service, $payload);
+        $normalized = $ensureKeyword->invoke($service, $payload, $skuKeywords);
         (new ReflectionMethod($service, 'validateCeramicAmazonPayload'))->invoke($service, $normalized);
     }
 
