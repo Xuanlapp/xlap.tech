@@ -47,3 +47,17 @@
 - XLAP Web Platform: listing prompts now append a KEYWORDS: block from SKU data after the saved prompt; missing Ceramic generic_keyword uses SKU keywords.
 - Ceramic length validation checks upper bounds only: title 75, highlight 124, bullets 480, generic_keyword 240, description 2000. Required schema still rejects missing/blank fields; bullet icon rule remains.
 - Changed MarketplaceListingMetadataService.php and MarketplaceCeramicListingOutputTest.php. Focused tests: 12 / 48 assertions passed; PHP lint passed. No migration or queue schema changes. Deploy service code and restart long-lived metadata workers; server must receive this max-only validator before retry. Graphiti unavailable.
+
+### 2026-10-26 - Allow Ceramic bullet icons without a space
+- Ceramic bullet validation now requires an icon as the first character; whitespace after it is optional. Updated mandatory prompt wording and regression test for both ★ A and ★A forms.
+- Changed MarketplaceListingMetadataService.php and MarketplaceCeramicListingOutputTest.php. No migration or queue format change; deploy PHP and restart long-lived workers before retry. Graphiti unavailable.
+
+### 2026-10-26 - Add Page filter to listing metadata retries
+- XLAP Web Platform: added a URL-backed Page/product filter beside the retry-user filter. Available Pages narrow to the selected user's active product grants; with all users selected, all active Pages are available.
+- Applied selected user and Page to listing rows, failed retry counts, selected retries, and retry-all; normalize Page selection before queueing.
+- Changed ListingMetadataStatus.php, listing-metadata-status.blade.php, ListingMetadataRetryUserFilterTest.php, and listing-metadata-retry-user-filter/DESIGN_BRIEF.md. Focused tests, Blade cache, and Vite build passed. No migration. Screenshot and Graphiti review unavailable.
+
+### 2026-10-26 - Exclude Support products from listing metadata retries
+- Root cause: Page filter exposed all active products and unfiltered bulk retry still included Support assets.
+- Changed ListingMetadataStatus.php to use the navigation Page slug allowlist for the dropdown and all retry queries; added Support exclusion regression coverage in ListingMetadataRetryUserFilterTest.php.
+- Validation: focused test (4 tests, 15 assertions), Blade cache, and Vite build passed. No schema/migration changes. Deploy PHP and restart queue workers to load behavior; existing queued jobs unchanged. Screenshot review and Graphiti memory unavailable.

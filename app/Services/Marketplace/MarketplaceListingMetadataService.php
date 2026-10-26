@@ -48,7 +48,7 @@ Do not omit, rename, add, or return null for any required key. Do not return Mar
 PROMPT;
 
     private const AMAZON_CERAMIC_OUTPUT_RULES = <<<'PROMPT'
-CERAMIC AMAZON OUTPUT RULES (MANDATORY; THESE OVERRIDE CONFLICTING LENGTH RULES IN THE SAVED PROMPT): Return all nine required fields as non-empty strings in the exact JSON schema appended below. Count spaces as characters. Maximums: title 75; item_highlight 124; each bullet 480; generic_keyword 240; description 2000. There are NO minimum character counts beyond non-empty values: do not target 70-75, 460-480, 230-240, or 1800-1900. Short, accurate copy is valid. Each bullet must start with one suitable icon followed by a space. Keep generic_keyword accurate and semicolon-separated. Never invent features, add irrelevant keywords, or pad text to reach a target. Do not include photo/picture claims or keywords unless customer photo personalization is explicitly verified. Do not add unsupported material, personalization, packaging, dimensions, accessories, guarantees, or trademarked terms.
+CERAMIC AMAZON OUTPUT RULES (MANDATORY; THESE OVERRIDE CONFLICTING LENGTH RULES IN THE SAVED PROMPT): Return all nine required fields as non-empty strings in the exact JSON schema appended below. Count spaces as characters. Maximums: title 75; item_highlight 124; each bullet 480; generic_keyword 240; description 2000. There are NO minimum character counts beyond non-empty values: do not target 70-75, 460-480, 230-240, or 1800-1900. Short, accurate copy is valid. Each bullet must start with one suitable icon; a space after the icon is optional. Keep generic_keyword accurate and semicolon-separated. Never invent features, add irrelevant keywords, or pad text to reach a target. Do not include photo/picture claims or keywords unless customer photo personalization is explicitly verified. Do not add unsupported material, personalization, packaging, dimensions, accessories, guarantees, or trademarked terms.
 PROMPT;
 
     private const CERAMIC_OUTPUT_REPAIR_ATTEMPTS = 2;
@@ -1296,8 +1296,8 @@ PROMPT;
             }
         }
         foreach (range(1, 5) as $number) {
-            if (! preg_match('/^[^\p{L}\p{N}\s]\s/u', trim($payload["bullet_point_{$number}"]))) {
-                $invalid[] = "bullet_point_{$number} must start with an icon and a space";
+            if (! preg_match('/^[^\p{L}\p{N}\s]/u', trim($payload["bullet_point_{$number}"]))) {
+                $invalid[] = "bullet_point_{$number} must start with an icon";
             }
         }
 

@@ -260,6 +260,23 @@ class MarketplaceCeramicListingOutputTest extends TestCase
         $this->assertStringNotContainsString('Decoration', $result['title']);
         $this->assertStringEndsWith('ornament', $result['generic_keyword']);
     }
+    public function test_ceramic_bullets_accept_an_icon_with_or_without_a_following_space(): void
+    {
+        $service = (new ReflectionClass(MarketplaceListingMetadataService::class))->newInstanceWithoutConstructor();
+        $validate = new ReflectionMethod($service, 'validateCeramicAmazonPayload');
+        $payload = [
+            'title' => 'Ceramic ornament',
+            'item_highlight' => 'Factual highlight',
+            'generic_keyword' => 'item specific keyword',
+            'description' => 'Factual description',
+        ];
+        foreach (range(1, 5) as $number) {
+            $payload["bullet_point_{$number}"] = $number % 2 === 0 ? '★A factual detail.' : '★ A factual detail.';
+        }
+
+        $validate->invoke($service, $payload);
+        $this->assertTrue(true);
+    }
     public function test_title_truncation_removes_the_partial_final_word(): void
     {
         $service = (new ReflectionClass(MarketplaceListingMetadataService::class))->newInstanceWithoutConstructor();

@@ -1,10 +1,10 @@
 # Listing metadata retry by user
 
 ## Goal
-Allow staff to scope bulk retry actions to one owner using the database `user_id`.
+Allow staff to scope bulk retry actions by owner (`user_id`) and authorized product Page (`product_id`).
 
 ## Current Problems
-- Bulk retry actions have no owner filter; retry-all can enqueue failures across all users.
+- Bulk retry actions need owner and Page scopes; retry-all must not enqueue unrelated users or products.
 
 ## Preserved Behavior
 - Retry selected still retries only checked failed rows.
@@ -24,6 +24,8 @@ Allow staff to scope bulk retry actions to one owner using the database `user_id
 - Filter wraps above retry actions on narrow screens; controls remain keyboard accessible.
 
 ## Acceptance Criteria
-- Selected user ID is visible in the selector and query string.
-- Retry selected and retry all failed cannot enqueue another user's assets when a user is selected.
+- Selected user ID and Page ID are visible in selectors and query string.
+- Retry selected and retry all failed cannot enqueue another user's assets or another Page when filters are selected.
 - Non-staff users cannot set the cross-user filter or invoke bulk retry.
+
+- The Page selector and both retry queries exclude every product outside the navigation Page group, including Support products.
