@@ -694,18 +694,15 @@ PROMPT;
     {
         $isCeramic = $asset->product?->slug === 'ceramic';
         $listingText = $this->generateAmazonListingText($asset);
-        $payload = $this->jsonPayload($listingText);
+        $payload = $this->normalizeAmazonPayload($this->jsonPayload($listingText), $isCeramic);
         if ($isCeramic) {
             $payload = $this->repairCeramicPayload($payload, function (RuntimeException $exception, array $previous) use ($asset): array {
                 $listingText = $this->generateAmazonListingText($asset, $this->ceramicRepairInstructions($exception, $previous));
 
-                return $this->jsonPayload($listingText);
+                return $this->normalizeAmazonPayload($this->jsonPayload($listingText), true);
             });
         } else {
             $this->validateAmazonPayload($payload);
-            if (mb_strlen(trim($payload['title'])) > 74) {
-                throw new RuntimeException('Amazon listing title exceeds 74 characters; refusing to save a truncated word.');
-            }
         }
 
         $updatedAsset = $this->assets->updateListingMetadata($asset, [
@@ -1184,6 +1181,75 @@ PROMPT;
         if ($missing !== [] || $extra !== [] || $invalid !== []) {
             throw new RuntimeException('Amazon listing metadata JSON schema khong hop le. Missing: '.implode(', ', $missing).'; Extra: '.implode(', ', $extra).'; Invalid: '.implode(', ', $invalid));
         }
+    }
+
+    /** @param array<string, mixed> $payload
+     *  @return array<string, mixed>
+     */
+    private function normalizeAmazonPayload(array $payload, bool $isCeramic): array
+    {
+        $payload = array_intersect_key($payload, array_fill_keys(self::AMAZON_REQUIRED_FIELDS, true));
+        $limits = [
+            'title' => $isCeramic ? 75 : 74,
+            'item_highlight' => 124,
+            'description' => 2000,
+            'generic_keyword' => $isCeramic ? 240 : 249,
+        ];
+
+        foreach (range(1, 5) as $number) {
+            $limits["bullet_point_{$number}"] = $isCeramic ? 480 : 699;
+        }
+
+        foreach ($limits as $field => $maximum) {
+            if (! is_string($payload[$field] ?? null)) {
+                continue;
+            }
+
+            $value = trim(preg_replace('/\\s+/u', ' ', $payload[$field]) ?? $payload[$field]);
+            $payload[$field] = $field === 'generic_keyword'
+                ? $this->truncateKeywordList($value, $maximum)
+                : $this->truncateAtWordBoundary($value, $maximum);
+        }
+
+        return $payload;
+    }
+
+    private function truncateKeywordList(string $keywords, int $maximum): string
+    {
+        $result = '';
+        foreach (explode(';', $keywords) as $keyword) {
+            $keyword = trim($keyword);
+            if ($keyword === '') {
+                continue;
+            }
+
+            $candidate = $result === '' ? $keyword : $result.'; '.$keyword;
+            if (mb_strlen($candidate) > $maximum) {
+                if ($result === '') {
+                    return $this->truncateAtWordBoundary($keyword, $maximum);
+                }
+
+                break;
+            }
+
+            $result = $candidate;
+        }
+
+        return $result;
+    }
+
+    private function truncateAtWordBoundary(string $value, int $maximum): string
+    {
+        if (mb_strlen($value) <= $maximum) {
+            return $value;
+        }
+
+        $cut = mb_substr($value, 0, $maximum + 1);
+        $lastSpace = mb_strrpos($cut, ' ');
+
+        return $lastSpace === false
+            ? ''
+            : rtrim(mb_substr($cut, 0, $lastSpace), " \t\n\r\0\x0B,;:-");
     }
 
     /** @param array<string, mixed> $payload */

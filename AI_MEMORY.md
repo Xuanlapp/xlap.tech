@@ -13,3 +13,10 @@
 - Changed `resources/views/livewire/pages/glass/list-glass.blade.php` and `resources/views/livewire/pages/sticker/list-sticker.blade.php`: API key menu remains available; configured providers show “Đổi API”, missing providers show “Thêm API”. Both reuse existing provider-specific credential modals and save flow.
 - Updated `.design/glass-api-key-management/DESIGN_BRIEF.md`. No service/component behavior, database schema, authorization, or credential storage logic changed.
 - Validation: `php artisan view:cache`, `php artisan test --filter=SavedProductApiCredentialTest` (1 test / 17 assertions), `npm run build`, and targeted `git diff --check` passed. Screenshot review unavailable; visual result unverified. Better Design MCP unavailable (HTTP 402 quota).
+
+### 2026-10-26 - Normalize overlong Amazon listing output
+
+- XLAP Web Platform: Ceramic Amazon listing logs showed long titles/fields failing limits, short copy rejected in earlier code, and model-added JSON keys causing schema failures.
+- Changed `app/Services/Marketplace/MarketplaceListingMetadataService.php`: shorter nonempty Ceramic fields remain valid; overlong Amazon title, bullets, highlight, description, and generic keywords are trimmed within product-specific maxima at word/keyword boundaries. Extra provider keys are discarded; missing/empty required keys remain invalid. Amazon behavior updated; Etsy unchanged.
+- Added normalization coverage to `tests/Unit/MarketplaceCeramicListingOutputTest.php`. PHP lint passed; 10 tests / 44 assertions passed; `git diff --check` passed.
+- Deploy impact: deploy PHP and restart queue workers. No migration. Existing failed rows need manual retry; none retried here. No queue topology changes. Graphiti memory unavailable.

@@ -178,6 +178,39 @@ class MarketplaceCeramicListingOutputTest extends TestCase
             $this->assertStringContainsString('title exceeds 75 characters', $exception->getMessage());
         }
     }
+    public function test_it_trims_overlong_ceramic_fields_without_partial_words_and_drops_extra_keys(): void
+    {
+        $service = (new ReflectionClass(MarketplaceListingMetadataService::class))->newInstanceWithoutConstructor();
+        $normalize = new ReflectionMethod($service, 'normalizeAmazonPayload');
+        $validateSchema = new ReflectionMethod($service, 'validateAmazonPayload');
+        $validateCeramic = new ReflectionMethod($service, 'validateCeramicAmazonPayload');
+        $payload = [
+            'title' => 'Personalized Christmas Ceramic Ornament For Family Garden Holiday Keepsake Decoration',
+            'item_highlight' => str_repeat('Short highlight phrase ', 10),
+            'generic_keyword' => implode('; ', array_fill(0, 30, 'ceramic ornament')),
+            'description' => str_repeat('Verified product detail sentence. ', 100),
+            'safety_check' => 'pass',
+        ];
+        foreach (range(1, 5) as $number) {
+            $payload["bullet_point_{$number}"] = '! '.str_repeat('Verified feature sentence. ', 30);
+        }
+
+        $result = $normalize->invoke($service, $payload, true);
+        $validateSchema->invoke($service, $result);
+        $validateCeramic->invoke($service, $result);
+
+        $this->assertArrayNotHasKey('safety_check', $result);
+        $this->assertLessThanOrEqual(75, mb_strlen($result['title']));
+        $this->assertLessThanOrEqual(124, mb_strlen($result['item_highlight']));
+        $this->assertLessThanOrEqual(240, mb_strlen($result['generic_keyword']));
+        $this->assertLessThanOrEqual(2000, mb_strlen($result['description']));
+        foreach (range(1, 5) as $number) {
+            $this->assertLessThanOrEqual(480, mb_strlen($result["bullet_point_{$number}"]));
+            $this->assertMatchesRegularExpression('/^[^\p{L}\p{N}\s]\s/u', $result["bullet_point_{$number}"]);
+        }
+        $this->assertStringNotContainsString('Decoration', $result['title']);
+        $this->assertStringEndsWith('ornament', $result['generic_keyword']);
+    }
     public function test_title_truncation_removes_the_partial_final_word(): void
     {
         $service = (new ReflectionClass(MarketplaceListingMetadataService::class))->newInstanceWithoutConstructor();
