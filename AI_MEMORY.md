@@ -61,3 +61,27 @@
 - Root cause: Page filter exposed all active products and unfiltered bulk retry still included Support assets.
 - Changed ListingMetadataStatus.php to use the navigation Page slug allowlist for the dropdown and all retry queries; added Support exclusion regression coverage in ListingMetadataRetryUserFilterTest.php.
 - Validation: focused test (4 tests, 15 assertions), Blade cache, and Vite build passed. No schema/migration changes. Deploy PHP and restart queue workers to load behavior; existing queued jobs unchanged. Screenshot review and Graphiti memory unavailable.
+
+### 2026-10-26 - Enable assigned-Page retries for regular users
+- XLAP Web Platform: repaired ListingMetadataStatus.php syntax damage and enabled regular users to retry selected or all failed listing rows for their own account, limited to active Page products assigned through product_user. Staff filters retain user selection; Support products remain excluded.
+- Changed app/Livewire/Pages/Marketplace/ListingMetadataStatus.php, resources/views/livewire/pages/marketplace/listing-metadata-status.blade.php, tests/Feature/ListingMetadataRetryUserFilterTest.php, and .design/listing-metadata-retry-user-filter/DESIGN_BRIEF.md. Selected retries use one scoped query instead of one lookup per checkbox; action buttons show progress and prevent duplicate clicks.
+- Validation: focused tests 5/5 (26 assertions), PHP lint, Blade cache, Vite build, and git diff --check passed on code/brief files; AI_MEMORY.md retains mixed line endings. No database schema changes; deploy PHP/Blade/assets. No worker behavior change; existing queued work is unaffected. Screenshot/DOM review and Graphiti episode unavailable.
+
+
+### 2026-10-27 - Retire lifestyle asset columns
+
+- XLAP Web Platform: removed runtime use of `lifestyle1–3`; mockups remain in `mockup1–11`, including selectable PSD output. Existing lifestyle URLs migrate into free mockup slots before columns drop; migration aborts if no slot can preserve a URL.
+
+- Changed model, asset repository, approval services, card preview preparation, Drive queue/cleanup, Marketplace Excel fields/view, tests, migration, and `.design/remove-lifestyle-columns/DESIGN_BRIEF.md`.
+
+- Validation: focused migration test 1/1 (6 assertions), export tests 2/2 (8 assertions), Blade cache, and PHP lint passed. Broader OfforestProductSchemaTest has pre-existing unrelated fixture/route/provider failures; no deploy run. Deploy PHP/Blade, back up DB, then run migration. No queue contract change. Graphiti memory unavailable in configured MCP resources.
+
+
+
+### 2026-10-27 - Clean saved bounds after Drive export
+
+- XLAP Web Platform: remove all older Ceramic/Glass bounds PNG files for an item after its current redesign link has been persisted to Drive.
+- Root cause: cleanup handled redesign and candidate URLs but did not scan the dedicated bounds-version directory; partial mockup failures could leave unused bounds files behind.
+- Changed app/Services/Product/ApprovedAssetDriveExportService.php to collect PNGs only from the exact product/user/asset bounds directory when redesign is updated; deletion occurs after the DB transaction. Added coverage in tests/Feature/ApprovedAssetDrivePartialFailureTest.php. If redesign upload fails, bound files remain for retry.
+- Validation: PHP lint passed; php artisan test --filter=ApprovedAssetDrivePartialFailureTest passed (3 tests, 25 assertions). No schema/frontend change.
+- Deploy impact: deploy PHP service and restart queue workers. No migration; queue behavior unchanged except post-upload local cleanup. Graphiti unavailable in configured tools.

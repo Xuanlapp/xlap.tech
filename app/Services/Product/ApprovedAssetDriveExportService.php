@@ -36,7 +36,6 @@ class ApprovedAssetDriveExportService
             ->where(function ($query): void {
                 foreach (ProductDriveUploadQueueService::IMAGE_FIELDS as $field) {
                     $query->orWhere($field, 'like', '%/storage/%');
-                $query->orWhere($field, 'like', '%drive.google.com%');
                 }
 
                 $query->orWhereNotNull('redesign_candidates');
@@ -315,6 +314,15 @@ class ApprovedAssetDriveExportService
             ? $this->cleanupRedesignCandidates($asset, $actor, $trigger)
             : ['should_clear' => false, 'deleted' => 0, 'delete_paths' => []];
 
+        $boundDirectoryPrefix = '/storage/generated/'.($asset->product?->slug ?? '').'/bounds/'.$asset->user_id.'/'.$asset->id.'/';
+        $redesignWasUploadedFromBounds = is_string($asset->redesign)
+            && str_starts_with($asset->redesign, $boundDirectoryPrefix)
+            && collect($uploaded)->contains(fn (array $image): bool => ($image['field'] ?? null) === 'redesign'
+                && ($image['local_url'] ?? null) === $asset->redesign);
+        $boundCleanupPaths = $redesignWasUploadedFromBounds
+            ? $this->localBoundImagePaths($asset)
+            : [];
+
         if ($candidateCleanup['should_clear']) {
             $updates['redesign_candidates'] = null;
         }
@@ -349,7 +357,7 @@ class ApprovedAssetDriveExportService
             ]);
         });
 
-        foreach (array_unique([...$deletePaths, ...$candidateCleanup['delete_paths']]) as $path) {
+        foreach (array_unique([...$deletePaths, ...$candidateCleanup['delete_paths'], ...$boundCleanupPaths]) as $path) {
             try {
                 File::delete($path);
             } catch (\Throwable $exception) {
@@ -426,6 +434,25 @@ class ApprovedAssetDriveExportService
             'deleted' => $deleted,
             'delete_paths' => $deletePaths,
         ];
+    }
+
+    /** Return saved bounds images for this exact asset after its redesign was moved to Drive. */
+    private function localBoundImagePaths(ProductDesignAsset $asset): array
+    {
+        $product = $asset->product?->slug;
+        if (! in_array($product, ['ceramic', 'glass'], true)) {
+            return [];
+        }
+
+        $directory = public_path("storage/generated/{$product}/bounds/{$asset->user_id}/{$asset->id}");
+        if (! File::isDirectory($directory)) {
+            return [];
+        }
+
+        return collect(File::files($directory))
+            ->filter(fn (\SplFileInfo $file): bool => strtolower($file->getExtension()) === 'png')
+            ->map(fn (\SplFileInfo $file): string => $file->getPathname())
+            ->all();
     }
 
     private function isLocalStorageUrl(mixed $url): bool

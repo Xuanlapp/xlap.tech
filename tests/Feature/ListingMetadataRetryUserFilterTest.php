@@ -21,6 +21,7 @@ class ListingMetadataRetryUserFilterTest extends TestCase
         $owner = User::factory()->create();
         $otherOwner = User::factory()->create();
         $product = Product::where('slug', 'ornament-amazon-2')->firstOrFail();
+        $owner->products()->sync([$product->id]);
         $ownedAsset = $this->failedAsset($owner, $product, 1);
         $otherAsset = $this->failedAsset($otherOwner, $product, 2);
         Cache::put('provider-pause:cheapkeyai:user:'.$owner->id, ['reason' => 'quota'], now()->addHours(6));
@@ -92,6 +93,41 @@ class ListingMetadataRetryUserFilterTest extends TestCase
 
         $this->assertSame('waiting', $pageAsset->refresh()->marketplace_listing_status);
         $this->assertSame('failed', $supportAsset->refresh()->marketplace_listing_status);
+    }
+
+    public function test_user_can_retry_only_failed_assets_on_assigned_pages(): void
+    {
+        $owner = User::factory()->create();
+        $allowedPage = Product::where('slug', 'ornament-amazon-2')->firstOrFail();
+        $otherPage = Product::where('slug', 'ceramic')->firstOrFail();
+        $owner->products()->sync([$allowedPage->id]);
+        $selectedAsset = $this->failedAsset($owner, $allowedPage, 31);
+        $unassignedAsset = $this->failedAsset($owner, $otherPage, 32);
+
+        $this->actingAs($owner);
+        Livewire::test(ListingMetadataStatus::class)
+            ->assertViewHas('retryProducts', fn ($products) => $products->pluck('id')->all() === [$allowedPage->id])
+            ->assertSee('Chọn Page được phân quyền')
+            ->assertSee('Chạy lại tất cả lỗi')
+            ->assertSee('Retry mục đã chọn')
+            ->set('productId', (string) $otherPage->id)
+            ->assertSet('productId', '')
+            ->set('productId', (string) $allowedPage->id)
+            ->set('selectedAssets', [$selectedAsset->id => true])
+            ->call('retrySelected')
+            ->assertSet('retryMessage', 'Da dua 1 item ve hang doi. Worker se tu xu ly.');
+
+        $this->assertSame('waiting', $selectedAsset->refresh()->marketplace_listing_status);
+        $this->assertSame('failed', $unassignedAsset->refresh()->marketplace_listing_status);
+
+        $again = $this->failedAsset($owner, $allowedPage, 33);
+        Livewire::test(ListingMetadataStatus::class)
+            ->set('productId', (string) $allowedPage->id)
+            ->call('retryAllFailed')
+            ->assertSet('retryMessage', 'Da dua 1 item loi ve hang doi. Worker se tu xu ly.');
+
+        $this->assertSame('waiting', $again->refresh()->marketplace_listing_status);
+        $this->assertSame('failed', $unassignedAsset->refresh()->marketplace_listing_status);
     }
 
     private function failedAsset(User $user, Product $product, int $itemNumber): ProductDesignAsset

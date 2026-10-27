@@ -774,21 +774,17 @@ class OfforestProductSchemaTest extends TestCase
         );
     }
 
-    public function test_sticker_service_generates_redesign_and_final_images(): void
+    public function test_sticker_service_generates_redesign_image(): void
     {
         $user = User::factory()->create();
         $product = Product::where('slug', 'sticker')->firstOrFail();
         $user->products()->attach($product);
-
-        foreach ([1, 2, 3, 4] as $promptNumber) {
-            Prompt::create([
-                'user_id' => $user->id,
-                'product_id' => $product->id,
-                'prompt_number' => $promptNumber,
-                'content' => "Prompt {$promptNumber}",
-            ]);
-        }
-
+        Prompt::create([
+            'user_id' => $user->id,
+            'product_id' => $product->id,
+            'prompt_number' => 1,
+            'content' => 'Prompt 1',
+        ]);
         $asset = ProductDesignAsset::create([
             'user_id' => $user->id,
             'product_id' => $product->id,
@@ -804,40 +800,13 @@ class OfforestProductSchemaTest extends TestCase
                     && $prompt === 'Prompt 1'
                     && $folder === 'generated/sticker/redesign')
                 ->andReturn('/storage/generated/sticker/redesign/master.png');
-
-            $mock->shouldReceive('generate')
-                ->once()
-                ->withArgs(fn (User $user, string $imageUri, string $prompt, string $folder): bool => $imageUri === '/storage/generated/sticker/redesign/master.png'
-                    && $prompt === 'Prompt 2'
-                    && $folder === 'generated/sticker/final')
-                ->andReturn('/storage/generated/sticker/final/lifestyle.png');
-
-            $mock->shouldReceive('generate')
-                ->once()
-                ->withArgs(fn (User $user, string $imageUri, string $prompt, string $folder): bool => $imageUri === '/storage/generated/sticker/redesign/master.png'
-                    && $prompt === 'Prompt 3'
-                    && $folder === 'generated/sticker/final')
-                ->andReturn('/storage/generated/sticker/final/mockup.png');
-
-            $mock->shouldReceive('generate')
-                ->once()
-                ->withArgs(fn (User $user, string $imageUri, string $prompt, string $folder): bool => $imageUri === '/storage/generated/sticker/redesign/master.png'
-                    && $prompt === 'Prompt 4'
-                    && $folder === 'generated/sticker/final')
-                ->andReturn('/storage/generated/sticker/final/lifestyle3.png');
         });
 
-        $service = app(StickerService::class);
-
-        $service->generateRedesign($user, $asset->id);
-        $service->generateFinalImages($user, $asset->id);
+        app(StickerService::class)->generateRedesign($user, $asset->id);
 
         $this->assertDatabaseHas('product_design_assets', [
             'id' => $asset->id,
             'redesign' => '/storage/generated/sticker/redesign/master.png',
-            'lifestyle1' => '/storage/generated/sticker/final/lifestyle.png',
-            'lifestyle2' => '/storage/generated/sticker/final/mockup.png',
-            'lifestyle3' => '/storage/generated/sticker/final/lifestyle3.png',
         ]);
     }
 
@@ -1059,7 +1028,7 @@ class OfforestProductSchemaTest extends TestCase
         ]);
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Can co it nhat mot anh mockup hoac lifestyle truoc khi duyet.');
+        $this->expectExceptionMessage('Can co it nhat mot anh mockup truoc khi duyet.');
 
         app(StickerService::class)->toggleApproval($user, $asset->id);
     }
@@ -1095,24 +1064,6 @@ class OfforestProductSchemaTest extends TestCase
             'product_design_asset_id' => $asset->id,
             'status' => 'waiting',
         ]);
-    }
-
-    public function test_sticker_item_can_be_approved_after_a_lifestyle_image_exists(): void
-    {
-        $user = User::factory()->create();
-        $product = Product::where('slug', 'sticker')->firstOrFail();
-        $asset = ProductDesignAsset::create([
-            'user_id' => $user->id,
-            'product_id' => $product->id,
-            'item_number' => 1,
-            'keyword' => 'cat sticker',
-            'redesign' => '/storage/generated/sticker/redesign/master.png',
-            'lifestyle1' => '/storage/generated/sticker/final/lifestyle.png',
-        ]);
-
-        $approved = app(StickerService::class)->toggleApproval($user, $asset->id);
-
-        $this->assertTrue($approved->is_approved);
     }
 
     public function test_approved_sticker_item_cannot_be_edited(): void

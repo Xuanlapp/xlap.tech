@@ -91,33 +91,6 @@ class ProductDesignCard extends Component
         }
     }
 
-    public function generateFinalImages(): void
-    {
-        try {
-            $asset = app(OrnamentEtsyService::class)->generateFinalImages(auth()->user(), $this->assetId);
-            app(ActivityLogService::class)->record(
-                event: 'ornament_etsy.lifestyle_generated',
-                description: 'User generated Ornament Etsy lifestyle images.',
-                subject: $asset,
-                properties: ['item_number' => $asset->item_number],
-            );
-
-            $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da tao anh lifestyle va mockup.');
-        } catch (RuntimeException $exception) {
-            $this->reportUserActionError($exception, 'ornament_etsy.generate_final_images', ['asset_id' => $this->assetId]);
-            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
-        } catch (Throwable $exception) {
-            $this->reportUserActionError($exception, 'ornament_etsy.generate_final_images', ['asset_id' => $this->assetId]);
-            Log::error('Ornament Etsy final image generation failed unexpectedly.', [
-                'asset_id' => $this->assetId,
-                'message' => $exception->getMessage(),
-            ]);
-
-            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: 'Loi he thong khi tao anh lifestyle. Hay xem log de biet chi tiet.');
-        } finally {
-            $this->dispatch('ornament-etsy-generation-finished');
-        }
-    }
 
     public function generatePsdMockups(): void
     {
@@ -296,9 +269,6 @@ class ProductDesignCard extends Component
             ->all();
 
         $asset->setAttribute('redesign_gallery', $redesignGallery);
-        $asset->setAttribute('lifestyle1_preview_url', $imagePreview->previewUrl($asset->lifestyle1));
-        $asset->setAttribute('lifestyle2_preview_url', $imagePreview->previewUrl($asset->lifestyle2));
-        $asset->setAttribute('lifestyle3_preview_url', $imagePreview->previewUrl($asset->lifestyle3));
 
         for ($slot = 1; $slot <= 11; $slot++) {
             $asset->setAttribute("mockup{$slot}_preview_url", $imagePreview->previewUrl($asset->{"mockup{$slot}"}));

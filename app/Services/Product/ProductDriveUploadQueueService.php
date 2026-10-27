@@ -9,9 +9,6 @@ class ProductDriveUploadQueueService
 {
     public const IMAGE_FIELDS = [
         'redesign',
-        'lifestyle1',
-        'lifestyle2',
-        'lifestyle3',
         'mockup1',
         'mockup2',
         'mockup3',

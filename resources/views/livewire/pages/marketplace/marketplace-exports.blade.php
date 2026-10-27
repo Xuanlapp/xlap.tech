@@ -214,9 +214,6 @@
                         @php
                             $imageFields = collect([
                                 'redesign',
-                                'lifestyle1',
-                                'lifestyle2',
-                                'lifestyle3',
                                 'mockup1',
                                 'mockup2',
                                 'mockup3',

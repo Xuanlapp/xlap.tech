@@ -28,9 +28,6 @@ class MarketplaceExports extends Component
 
     private const IMAGE_FIELDS = [
         'redesign',
-        'lifestyle1',
-        'lifestyle2',
-        'lifestyle3',
         'mockup1',
         'mockup2',
         'mockup3',
@@ -62,9 +59,6 @@ class MarketplaceExports extends Component
         'tags',
         'redesign',
         'redesign_candidates',
-        'lifestyle1',
-        'lifestyle2',
-        'lifestyle3',
         'mockup1',
         'mockup2',
         'mockup3',

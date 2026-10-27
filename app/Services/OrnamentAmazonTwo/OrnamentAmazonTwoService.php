@@ -439,47 +439,6 @@ class OrnamentAmazonTwoService
         return $this->assets->updateRedesign($asset, '/storage/'.$path);
     }
 
-    /**
-     * Generate the two final Ornament images from the master redesign.
-     */
-    public function generateFinalImages(User $user, int $assetId, ?string $providerKey = null, ?string $imageModel = null): ProductDesignAsset
-    {
-        $asset = $this->assetForUser($user, $assetId);
-        $this->ensureNotApproved($asset);
-
-        if (! $asset->redesign) {
-            throw new RuntimeException('Can tao anh redesign truoc.');
-        }
-
-        $lifestyle1 = $this->generateImage(
-                user: $user,
-                providerKey: $providerKey,
-                imageUri: $asset->redesign,
-                prompt: $this->promptContent($user),
-                folder: 'generated/ornament-amazon-2/final',
-                imageModel: $imageModel,
-            );
-
-        $lifestyle2 = $this->generateImage(
-                user: $user,
-                providerKey: $providerKey,
-                imageUri: $asset->redesign,
-                prompt: $this->promptContent($user),
-                folder: 'generated/ornament-amazon-2/final',
-                imageModel: $imageModel,
-            );
-
-        $lifestyle3 = $this->generateImage(
-                user: $user,
-                providerKey: $providerKey,
-                imageUri: $asset->redesign,
-                prompt: $this->promptContent($user),
-                folder: 'generated/ornament-amazon-2/final',
-                imageModel: $imageModel,
-            );
-
-        return $this->assets->updateLifestyleImages($asset, $lifestyle1, $lifestyle2, $lifestyle3);
-    }
 
     /**
      * Render custom PSD mockups by replacing the PSD layer named Design with the master image.
@@ -1833,14 +1792,14 @@ class OrnamentAmazonTwoService
     }
 
     /**
-     * Toggle approval after the item has at least one Lifestyle or mockup output.
+     * Toggle approval after the item has at least one mockup output.
      */
     public function toggleApproval(User $user, int $assetId): ProductDesignAsset
     {
         $asset = $this->assetForUser($user, $assetId);
 
         if (! $asset->hasApprovableOutput()) {
-            throw new RuntimeException('Can co it nhat mot anh mockup hoac lifestyle truoc khi duyet.');
+            throw new RuntimeException('Can co it nhat mot anh mockup truoc khi duyet.');
         }
 
         if ($asset->is_approved) {

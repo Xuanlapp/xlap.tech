@@ -359,17 +359,6 @@ class ProductDesignAssetRepository
         return $asset->refresh();
     }
 
-    public function updateLifestyleImages(ProductDesignAsset $asset, string $lifestyle1, string $lifestyle2, string $lifestyle3): ProductDesignAsset
-    {
-        $asset->update([
-            'lifestyle1' => $lifestyle1,
-            'lifestyle2' => $lifestyle2,
-            'lifestyle3' => $lifestyle3,
-        ]);
-
-        return $asset->refresh();
-    }
-
     public function updatePsdMockups(ProductDesignAsset $asset, array $mockups): ProductDesignAsset
     {
         $asset = $this->replacePsdMockups($asset, $mockups);

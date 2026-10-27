@@ -18,6 +18,57 @@ class ApprovedAssetDrivePartialFailureTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_successful_redesign_drive_upload_removes_all_saved_bounds_versions(): void
+    {
+        $user = User::factory()->create(['name' => 'Huy']);
+        $product = Product::where('slug', 'ceramic')->firstOrFail();
+        $asset = ProductDesignAsset::create([
+            'user_id' => $user->id,
+            'product_id' => $product->id,
+            'item_number' => 1,
+            'keyword' => 'bounds cleanup',
+            'is_approved' => true,
+            'approved_at' => now(),
+        ]);
+
+        $boundsDirectory = public_path("storage/generated/ceramic/bounds/{$user->id}/{$asset->id}");
+        File::ensureDirectoryExists($boundsDirectory);
+        $boundPaths = collect(range(1, 3))->map(function (int $version) use ($boundsDirectory): string {
+            $path = "{$boundsDirectory}/bound-{$version}.png";
+            File::put($path, "bounds {$version}");
+
+            return $path;
+        })->all();
+        $mockupPath = public_path("storage/generated/ceramic/mockups/{$asset->id}/mockup-1.png");
+        File::ensureDirectoryExists(dirname($mockupPath));
+        File::put($mockupPath, 'mockup');
+        $asset->update([
+            'redesign' => '/storage/generated/ceramic/bounds/'.$user->id.'/'.$asset->id.'/bound-3.png',
+            'redesign_candidates' => null,
+            'mockup1' => '/storage/generated/ceramic/mockups/'.$asset->id.'/mockup-1.png',
+        ]);
+
+        $this->mock(GoogleDriveService::class, function (MockInterface $mock) use ($asset, $boundPaths, $mockupPath): void {
+            $mock->shouldReceive('createUploadFolder')->once()->andReturn([
+                'id' => 'folder-id',
+                'link' => 'https://drive.google.com/drive/folders/folder-id',
+            ]);
+            $mock->shouldReceive('uploadLocalFile')->twice()->andReturnUsing(
+                fn (string $path): string => $path === $boundPaths[2]
+                    ? 'https://drive.google.com/file/d/redesign/view'
+                    : ($path === $mockupPath ? 'https://drive.google.com/file/d/mockup/view' : throw new \RuntimeException('Unexpected upload path')),
+            );
+        });
+
+        $this->assertSame(2, app(ApprovedAssetDriveExportService::class)->exportAssetById($asset->id));
+
+        foreach ($boundPaths as $path) {
+            $this->assertFileDoesNotExist($path);
+        }
+        $this->assertSame('https://drive.google.com/file/d/redesign/view', $asset->refresh()->redesign);
+        $this->assertFileDoesNotExist($mockupPath);
+    }
+
     public function test_drive_source_failure_does_not_block_local_images_or_duplicate_them_on_retry(): void
     {
         $user = User::factory()->create(['name' => 'Huy']);

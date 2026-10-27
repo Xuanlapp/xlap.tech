@@ -41,9 +41,6 @@ class ProductDesignAsset extends Model
         'marketplace_export_filename',
         'redesign',
         'redesign_candidates',
-        'lifestyle1',
-        'lifestyle2',
-        'lifestyle3',
         'mockup1',
         'mockup2',
         'mockup3',
@@ -94,10 +91,6 @@ class ProductDesignAsset extends Model
     public function hasApprovableOutput(): bool
     {
         if (filled($this->redesign)) {
-            return true;
-        }
-
-        if (filled($this->lifestyle1) || filled($this->lifestyle2) || filled($this->lifestyle3)) {
             return true;
         }
 

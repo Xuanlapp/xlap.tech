@@ -614,47 +614,6 @@ class GlassService
         return $this->assets->removeRedesignCandidate($asset, $this->normalizeImageLink($redesign));
     }
 
-    /**
-     * Generate the two final Glass images from the master redesign.
-     */
-    public function generateFinalImages(User $user, int $assetId, ?string $providerKey = null, ?string $imageModel = null): ProductDesignAsset
-    {
-        $asset = $this->assetForUser($user, $assetId);
-        $this->ensureNotApproved($asset);
-
-        if (! $asset->redesign) {
-            throw new RuntimeException('Can tao anh redesign truoc.');
-        }
-
-        $lifestyle1 = $this->generateImage(
-            user: $user,
-            providerKey: $providerKey,
-            imageUri: $asset->redesign,
-            prompt: $this->promptContent($user, 2),
-            folder: 'generated/glass/final',
-            imageModel: $imageModel,
-        );
-
-        $lifestyle2 = $this->generateImage(
-            user: $user,
-            providerKey: $providerKey,
-            imageUri: $asset->redesign,
-            prompt: $this->promptContent($user, 3),
-            folder: 'generated/glass/final',
-            imageModel: $imageModel,
-        );
-
-        $lifestyle3 = $this->generateImage(
-            user: $user,
-            providerKey: $providerKey,
-            imageUri: $asset->redesign,
-            prompt: $this->promptContent($user, 4),
-            folder: 'generated/glass/final',
-            imageModel: $imageModel,
-        );
-
-        return $this->assets->updateLifestyleImages($asset, $lifestyle1, $lifestyle2, $lifestyle3);
-    }
 
     /** Queue custom PSD mockups for the synced local workstation. */
     public function generatePsdMockups(User $user, int $assetId): ProductDesignAsset
@@ -737,14 +696,14 @@ class GlassService
     }
 
     /**
-     * Toggle approval after the item has at least one Lifestyle or mockup output.
+     * Toggle approval after the item has at least one mockup output.
      */
     public function toggleApproval(User $user, int $assetId): ProductDesignAsset
     {
         $asset = $this->assetForUser($user, $assetId);
 
         if (! $asset->hasApprovableOutput()) {
-            throw new RuntimeException('Can co it nhat mot anh mockup hoac lifestyle truoc khi duyet.');
+            throw new RuntimeException('Can co it nhat mot anh mockup truoc khi duyet.');
         }
 
         $asset = $this->assets->setApproval($asset, ! $asset->is_approved);

@@ -45,9 +45,6 @@ class ProductDesignAssetFileCleanupService
         $urls = [
             $asset->image_link,
             $asset->redesign,
-            $asset->lifestyle1,
-            $asset->lifestyle2,
-            $asset->lifestyle3,
             ...($asset->redesign_candidates ?: []),
         ];
 

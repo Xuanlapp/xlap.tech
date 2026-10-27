@@ -8,7 +8,7 @@ Allow staff to scope bulk retry actions by owner (`user_id`) and authorized prod
 
 ## Preserved Behavior
 - Retry selected still retries only checked failed rows.
-- Retry all failed remains admin-only; retry selected remains admin/manager-only.
+- Admins and managers can retry across the users they are allowed to manage. Regular users can retry only their own failed items on assigned active Pages.
 - Existing status/search filters and per-user visibility remain intact.
 
 ## Hierarchy
@@ -26,6 +26,8 @@ Allow staff to scope bulk retry actions by owner (`user_id`) and authorized prod
 ## Acceptance Criteria
 - Selected user ID and Page ID are visible in selectors and query string.
 - Retry selected and retry all failed cannot enqueue another user's assets or another Page when filters are selected.
-- Non-staff users cannot set the cross-user filter or invoke bulk retry.
+- Regular users can choose among their assigned Pages and invoke both retry actions without accessing other users or unassigned Pages.
 
-- The Page selector and both retry queries exclude every product outside the navigation Page group, including Support products.
+- The Page selector and all retry queries exclude products outside the Page group, including Support products.
+
+- Retry controls disable during requests and show in-progress labels; checkbox state stays deferred to avoid one request per click.

@@ -82,8 +82,6 @@ class ListingMetadataStatus extends Component
 
     public function updatedProductId(string $productId): void
     {
-        abort_unless(auth()->user()->is_admin || auth()->user()->isManager(), 403);
-
         $this->productId = $productId !== '' && ctype_digit($productId)
             && $this->availableRetryProducts()->contains('id', (int) $productId)
                 ? (string) (int) $productId
@@ -112,23 +110,22 @@ class ListingMetadataStatus extends Component
 
     public function retrySelected(): void
     {
-        abort_unless(auth()->user()->is_admin || auth()->user()->isManager(), 403);
 
         $this->retryMessage = null;
         $this->retryError = null;
         $this->userId = $this->normalizeUserId($this->userId);
         $this->productId = $this->normalizeProductId($this->productId);
-        $ids = array_keys(array_filter($this->selectedAssets));
+        $ids = array_map('intval', array_keys(array_filter($this->selectedAssets)));
         $queued = 0;
+        $service = app(MarketplaceListingMetadataService::class);
+        $selected = $this->applyFailedMetadataFilter($this->retryQuery())->whereIn('id', $ids)->get(['id']);
 
-        foreach ($ids as $assetId) {
+        foreach ($selected as $asset) {
             try {
-                app(MarketplaceListingMetadataService::class)->queueRetryApprovedAsset(
-                    $this->retryQuery()->whereKey((int) $assetId)->firstOrFail()->id,
-                );
+                $service->queueRetryApprovedAsset($asset->id);
                 $queued++;
             } catch (Throwable $exception) {
-                $this->reportUserActionError($exception, 'marketplace.queue_retry_listing', ['asset_id' => $assetId]);
+                $this->reportUserActionError($exception, 'marketplace.queue_retry_listing', ['asset_id' => $asset->id]);
             }
         }
 
@@ -141,7 +138,6 @@ class ListingMetadataStatus extends Component
 
     public function retryAllFailed(): void
     {
-        abort_unless(auth()->user()->is_admin, 403);
 
         $this->retryMessage = null;
         $this->retryError = null;
@@ -183,17 +179,14 @@ class ListingMetadataStatus extends Component
                 ->paginate(15),
             'statusCounts' => $this->statusCounts(),
             'statusOptions' => self::STATUS_OPTIONS,
-            'retryFailedCount' => (auth()->user()->is_admin || auth()->user()->isManager())
-                ? $this->applyFailedMetadataFilter($this->retryQuery())->count()
-                : 0,
+            'retryFailedCount' => $this->applyFailedMetadataFilter($this->retryQuery())->count(),
             'retryUserName' => $this->userId !== ''
                 ? User::query()->whereKey((int) $this->userId)->value('name')
                 : null,
             'retryUsers' => (auth()->user()->is_admin || auth()->user()->isManager())
                 ? User::query()->orderBy('name')->get(['id', 'name'])
                 : collect(),
-            'retryProducts' => (auth()->user()->is_admin || auth()->user()->isManager())
-                ? $this->availableRetryProducts() : collect(),
+            'retryProducts' => $this->availableRetryProducts(),
         ])->layout('layouts.app');
     }
 
@@ -202,9 +195,15 @@ class ListingMetadataStatus extends Component
         return ProductDesignAsset::query()
             ->with(['user:id,name,email,can_generate_amazon_listing,can_generate_etsy_listing', 'product:id,name,slug'])
             ->where('is_approved', true)
-            ->when(! auth()->user()->is_admin && ! auth()->user()->isManager(), fn (Builder $query) => $query->where('user_id', auth()->id()))
+            ->when(! auth()->user()->is_admin && ! auth()->user()->isManager(), function (Builder $query): void {
+                $query->where('user_id', auth()->id())
+                    ->whereHas('product', fn (Builder $product) => $product
+                        ->whereIn('slug', self::PAGE_PRODUCT_SLUGS)
+                        ->where('is_active', true)
+                        ->whereHas('users', fn (Builder $users) => $users->whereKey(auth()->id())));
+            })
             ->when((auth()->user()->is_admin || auth()->user()->isManager()) && $this->userId !== '', fn (Builder $query) => $query->where('user_id', (int) $this->userId))
-            ->when((auth()->user()->is_admin || auth()->user()->isManager()) && $this->productId !== '', fn (Builder $query) => $query->where('product_id', (int) $this->productId))
+            ->when($this->productId !== '', fn (Builder $query) => $query->where('product_id', (int) $this->productId))
             ->when($this->normalizedSearch() !== null, function (Builder $query): void {
                 $search = $this->normalizedSearch();
 
@@ -228,23 +227,46 @@ class ListingMetadataStatus extends Component
 
     private function retryQuery(): Builder
     {
-        abort_unless(auth()->user()->is_admin || auth()->user()->isManager(), 403);
-
-        return ProductDesignAsset::query()
+        $actor = auth()->user();
+        $staff = $actor->is_admin || $actor->isManager();
+        $query = ProductDesignAsset::query()
             ->where('is_approved', true)
-            ->whereHas('product', fn (Builder $product) => $product->whereIn('slug', self::PAGE_PRODUCT_SLUGS))
-            ->when($this->userId !== '', fn (Builder $query) => $query->where('user_id', (int) $this->userId))
-            ->when($this->normalizeProductId($this->productId) !== '', fn (Builder $query) => $query->where('product_id', (int) $this->normalizeProductId($this->productId)));
+            ->whereHas('product', fn (Builder $product) => $product->whereIn('slug', self::PAGE_PRODUCT_SLUGS));
+
+        if ($staff && $this->userId !== '') {
+            $retryUser = User::query()->find((int) $this->userId);
+            $query->where('user_id', (int) $this->userId);
+            if ($retryUser && ! $retryUser->isManager()) {
+                $query->whereHas('product', fn (Builder $product) => $product->whereHas(
+                    'users', fn (Builder $users) => $users->whereKey($retryUser->id),
+                ));
+            }
+        } elseif (! $staff) {
+            $query->where('user_id', $actor->id)
+                ->whereHas('product', fn (Builder $product) => $product
+                    ->where('is_active', true)
+                    ->whereHas('users', fn (Builder $users) => $users->whereKey($actor->id)));
+        }
+
+        if ($this->normalizeProductId($this->productId) !== '') {
+            $query->where('product_id', (int) $this->productId);
+        }
+
+        return $query;
     }
 
     private function availableRetryProducts(): \Illuminate\Support\Collection
     {
         $query = Product::query()->where('is_active', true)->whereIn('slug', self::PAGE_PRODUCT_SLUGS);
-        if ($this->userId !== '') {
-            $retryUser = User::query()->find((int) $this->userId);
-            if ($retryUser && ! $retryUser->isManager()) {
-                $query->whereHas('users', fn (Builder $users) => $users->whereKey($retryUser->id));
+        if (auth()->user()->is_admin || auth()->user()->isManager()) {
+            if ($this->userId !== '') {
+                $retryUser = User::query()->find((int) $this->userId);
+                if ($retryUser && ! $retryUser->isManager()) {
+                    $query->whereHas('users', fn (Builder $users) => $users->whereKey($retryUser->id));
+                }
             }
+        } else {
+            $query->whereHas('users', fn (Builder $users) => $users->whereKey(auth()->id()));
         }
 
         return $query->orderBy('name')->get(['id', 'name', 'slug']);
@@ -296,9 +318,15 @@ class ListingMetadataStatus extends Component
     {
         $query = ProductDesignAsset::query()
             ->where('is_approved', true)
-            ->when(! auth()->user()->is_admin && ! auth()->user()->isManager(), fn (Builder $query) => $query->where('user_id', auth()->id()))
+            ->when(! auth()->user()->is_admin && ! auth()->user()->isManager(), function (Builder $query): void {
+                $query->where('user_id', auth()->id())
+                    ->whereHas('product', fn (Builder $product) => $product
+                        ->whereIn('slug', self::PAGE_PRODUCT_SLUGS)
+                        ->where('is_active', true)
+                        ->whereHas('users', fn (Builder $users) => $users->whereKey(auth()->id())));
+            })
             ->when((auth()->user()->is_admin || auth()->user()->isManager()) && $this->userId !== '', fn (Builder $query) => $query->where('user_id', (int) $this->userId))
-            ->when((auth()->user()->is_admin || auth()->user()->isManager()) && $this->productId !== '', fn (Builder $query) => $query->where('product_id', (int) $this->productId));
+            ->when($this->productId !== '', fn (Builder $query) => $query->where('product_id', (int) $this->productId));
 
         return [
             'all' => (clone $query)->count(),

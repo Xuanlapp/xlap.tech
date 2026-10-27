@@ -183,33 +183,6 @@ class ProductDesignCard extends Component
         $this->uploadPersonImage('b', 'personBImageUpload');
     }
 
-    public function generateFinalImages(): void
-    {
-        try {
-            $asset = app(OrnamentAmazonTwoService::class)->generateFinalImages(auth()->user(), $this->assetId, $this->providerKey, $this->imageModel);
-            app(ActivityLogService::class)->record(
-                event: 'ornament.lifestyle_generated',
-                description: 'User generated Ornament lifestyle images.',
-                subject: $asset,
-                properties: ['item_number' => $asset->item_number, 'provider' => $this->providerKey],
-            );
-
-            $this->dispatch('toast', type: 'success', title: 'Successfully saved!', message: 'Da tao anh lifestyle va mockup.');
-        } catch (RuntimeException $exception) {
-            $this->reportUserActionError($exception, 'ornament.generate_final_images', ['asset_id' => $this->assetId]);
-            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: $exception->getMessage());
-        } catch (Throwable $exception) {
-            $this->reportUserActionError($exception, 'ornament.generate_final_images', ['asset_id' => $this->assetId]);
-            Log::error('Ornament final image generation failed unexpectedly.', [
-                'asset_id' => $this->assetId,
-                'message' => $exception->getMessage(),
-            ]);
-
-            $this->dispatch('toast', type: 'error', title: 'Action failed!', message: 'Loi he thong khi tao anh lifestyle. Hay xem log de biet chi tiet.');
-        } finally {
-            $this->dispatch('ornament-amazon-two-generation-finished');
-        }
-    }
 
     public function generatePsdMockups(): void
     {
@@ -743,9 +716,6 @@ class ProductDesignCard extends Component
         $sourceData = is_array($asset->data_item_add) ? $asset->data_item_add : [];
         $asset->setAttribute('source_product_name', is_string($sourceData['product'] ?? null) ? trim((string) $sourceData['product']) : null);
         $asset->setAttribute('source_keyword_phrase', is_string($sourceData['keyword_phrase'] ?? null) ? trim((string) $sourceData['keyword_phrase']) : null);
-        $asset->setAttribute('lifestyle1_preview_url', $imagePreview->previewUrl($asset->lifestyle1));
-        $asset->setAttribute('lifestyle2_preview_url', $imagePreview->previewUrl($asset->lifestyle2));
-        $asset->setAttribute('lifestyle3_preview_url', $imagePreview->previewUrl($asset->lifestyle3));
         $asset->setAttribute('person_a_ref_preview_url', $imagePreview->previewUrl(is_string($b2['person_a_ref'] ?? null) ? $b2['person_a_ref'] : null));
         $asset->setAttribute('person_b_ref_preview_url', $imagePreview->previewUrl(is_string($b2['person_b_ref'] ?? null) ? $b2['person_b_ref'] : null));
         $asset->setAttribute(
