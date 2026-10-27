@@ -306,9 +306,9 @@
 
         @if ($selectedCount > 0)
             <div class="border-t border-slate-200 bg-white px-5 py-3 dark:border-slate-700 dark:bg-slate-900">
-                <span class="inline-flex rounded-full bg-indigo-100 px-3 py-1 text-xs font-bold text-indigo-700">
-                    Da chon {{ $selectedCount }} item {{ $status === 'exported' ? 'da export' : ($status === 'unexported' ? 'chua export' : '') }}
-                </span>
+                <button type="button" wire:click="toggleSelectedFirst" aria-pressed="{{ $selectedFirst ? 'true' : 'false' }}" class="inline-flex rounded-full bg-indigo-100 px-3 py-1 text-xs font-bold text-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
+                    Da chon {{ $selectedCount }} item {{ $status === 'exported' ? 'da export' : ($status === 'unexported' ? 'chua export' : '') }} · {{ $selectedFirst ? 'Bo uu tien' : 'Dua len dau' }}
+                </button>
             </div>
         @endif
 

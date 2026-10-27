@@ -65,6 +65,63 @@ class MarketplaceExportSelectionTest extends TestCase
         $this->assertSame(2, ProductDesignAsset::whereNotNull('marketplace_exported_at')->count());
     }
 
+    public function test_marketplace_filter_does_not_discard_selected_items_from_pattern_export(): void
+    {
+        $user = User::factory()->create(['is_admin' => true]);
+        $this->actingAs($user);
+        $product = Product::where('slug', 'ceramic')->firstOrFail();
+        $assets = collect(['amazon', 'etsy'])->map(fn (string $marketplace, int $index) => ProductDesignAsset::create([
+            'user_id' => $user->id, 'product_id' => $product->id, 'item_number' => $index + 1,
+            'sku' => 'SKU-'.strtoupper($marketplace), 'title' => 'Item', 'is_approved' => true,
+            'redesign' => 'https://drive.google.com/file/d/example/view',
+            'marketplace_listing_marketplace' => $marketplace,
+        ]));
+
+        Livewire::test(MarketplaceExports::class)
+            ->call('setAssetSelection', $assets[0]->id, true)
+            ->call('setAssetSelection', $assets[1]->id, true)
+            ->set('marketplace', 'amazon')
+            ->assertSee('Export Excel Pattern (2)')
+            ->assertDontSee('Vui lòng chọn ít nhất 2 item hợp lệ')
+            ->call('exportPattern')
+            ->assertFileDownloaded();
+
+        $this->assertSame(2, ProductDesignAsset::whereNotNull('marketplace_exported_at')->count());
+    }
+
+    public function test_selected_items_can_be_prioritized_across_pages(): void
+    {
+        $user = User::factory()->create(['is_admin' => true]);
+        $this->actingAs($user);
+        $product = Product::where('slug', 'ceramic')->firstOrFail();
+        $assets = collect(range(1, 7))->map(fn (int $number) => ProductDesignAsset::create([
+            'user_id' => $user->id, 'product_id' => $product->id, 'item_number' => $number,
+            'sku' => 'SKU-'.$number, 'title' => 'Item '.$number, 'is_approved' => true,
+            'redesign' => 'https://drive.google.com/file/d/example/view',
+            'marketplace_listing_marketplace' => 'amazon',
+        ]));
+
+        $component = Livewire::test(MarketplaceExports::class)
+            ->set('perPage', 5)
+            ->set('skuSort', 'asc')
+            ->call('setAssetSelection', $assets[6]->id, true)
+            ->set('search', 'SKU-1')
+            ->set('marketplace', 'amazon')
+            ->set('exactSku', true)
+            ->call('toggleSelectedFirst')
+            ->assertSet('search', 'SKU-1')
+            ->assertSet('marketplace', 'amazon')
+            ->assertSet('selectedFirst', true)
+            ->assertSeeInOrder(['SKU-7', 'SKU-1']);
+
+        $component->call('setVisibleSelection', true)
+            ->assertSet('selectedUnexported', array_map('strval', [$assets[6]->id, $assets[0]->id]))
+            ->call('toggleSelectedFirst')
+            ->assertSet('selectedFirst', false)
+            ->assertSee('SKU-1')
+            ->assertDontSee('SKU-7');
+    }
+
     public function test_sku_sort_toggles_and_orders_before_pagination(): void
     {
         $component = new MarketplaceExports;

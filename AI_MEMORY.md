@@ -95,3 +95,106 @@
 - Root cause: selected-item queries reused the current SKU search, excluding earlier selections from Pattern validation and both downloads. Export Excel used ID order; Pattern used selection order.
 - Updated MarketplaceExports.php to omit only the search constraint when validating/exporting selected assets, and apply active SKU order to Excel and Pattern. Other authorization, owner and marketplace constraints remain. Pattern parent follows the first sorted SKU. Blade now shows the selection count on Pattern.
 - Updated MarketplaceExportSelectionTest.php and .design/marketplace-export-sku-sort/DESIGN_BRIEF.md. Focused tests passed (4 tests, 24 assertions); Blade cache passed. Build run separately. No migrations or queue changes. Deploy PHP/Blade and frontend assets. Graphiti unavailable; visual screenshots unavailable; Better Design quota exhausted.
+
+### 2026-10-27 - Export selected items first
+- Added a toggle to the selected-count control to prioritize selected assets before pagination. Activation clears SKU search and marketplace filter so previously selected items can appear; status and owner remain unchanged. SKU order stays within each group; exports remain unchanged.
+- Changed app/Livewire/Pages/Marketplace/MarketplaceExports.php, resources/views/livewire/pages/marketplace/marketplace-exports.blade.php, tests/Feature/MarketplaceExportSelectionTest.php, and .design/marketplace-export-selected-first/DESIGN_BRIEF.md.
+- Focused tests passed (5 tests, 31 assertions), Blade cache passed, frontend build run. No database or queue changes; deploy PHP, Blade and frontend assets. Screenshots unavailable; Better Design quota exhausted; Graphiti unavailable.
+
+### 2026-10-27 - Export filter URL state
+- Replaced session persistence for export status and marketplace with Livewire URL state, including All and history navigation; invalid incoming values use defaults. Other filters and selection behavior unchanged.
+- Changed app/Livewire/Pages/Marketplace/MarketplaceExports.php, tests/Feature/StatusFilterUrlTest.php and .design/marketplace-export-filter-url/DESIGN_BRIEF.md.
+- Tests: StatusFilterUrlTest 3/10 and MarketplaceExportSelectionTest 5/31 passed; Blade cache passed; frontend build run. Deploy PHP and frontend assets; no database or queue impact. Browser visual/URL verification unavailable; Better Design quota exhausted; Graphiti unavailable.
+
+### 2026-10-27 - Preserve search when prioritizing selections
+- Root cause: selected-first toggle cleared search and marketplace to expose selections. Replaced with a grouped search-or-selected condition inside existing authorization and filter scopes; both inputs stay unchanged, and normal search returns when disabled.
+- Updated app/Livewire/Pages/Marketplace/MarketplaceExports.php, tests/Feature/MarketplaceExportSelectionTest.php, and .design/marketplace-export-selected-first/DESIGN_BRIEF.md. Selection test: 5 tests / 32 assertions; URL test: 3 / 10; view cache and build passed.
+- Deploy PHP/Blade assets; no queue/database changes. Visual review unavailable, Better Design quota exhausted, Graphiti unavailable.
+
+### 2026-10-27 - Preserve export selection across marketplace filters
+- Root cause found in code: selected-item validation and exports retained the active marketplace filter; selected IDs from another marketplace remained counted but failed validation or were omitted. The provided page does not identify the selected SKUs, so its exact underlying selection cannot be independently confirmed.
+- Updated app/Livewire/Pages/Marketplace/MarketplaceExports.php to ignore marketplace and search filters only for selected-item validation and exports, preserving eligibility, owner and authorization checks. Updated tests/Feature/MarketplaceExportSelectionTest.php with mixed-marketplace Pattern regression coverage.
+- Validation: MarketplaceExportSelectionTest 6 tests / 36 assertions, StatusFilterUrlTest 3 tests / 10 assertions passed. PHP deploy required; no queue, database or frontend changes. Graphiti unavailable.
+
+### 2026-10-27 - Trial order screenshot OCR
+- Added a trial Order to images dialog to SKU Order Items: paste/upload screenshot, run local Tesseract OCR, display editable extracted Order ID, Ship to, product text and full raw text. No automatic order saving or AI provider calls.
+- Changed app/Livewire/Pages/Order/Index.php, resources/views/livewire/pages/order/index.blade.php, tests/Feature/OrderImageOcrTest.php, and .design/order-image-ocr/DESIGN_BRIEF.md. Parser test passed (1 test / 3 assertions); PHP lint, Blade cache and frontend build passed.
+- Tesseract is not installed locally; real-image OCR and visual review unverified. Production requires Tesseract executable in PATH and English data. OCR output and multi-product parsing require review; no queue or DB changes. Graphiti unavailable, Better Design quota exhausted.
+
+### 2026-10-27 - Rename Order page component
+- Renamed app/Livewire/Pages/Order/Index.php to app/Livewire/Pages/Order/OrderPage.php and its class to OrderPage; updated routes/web.php and tests/Feature/OrderImageOcrTest.php. Existing Blade view path unchanged; user-requested PHP rename only.
+- Validation: PHP lint passed; OrderImageOcrTest passed (1 test / 3 assertions); route:list resolves offorest.order to OrderPage. Deploy renamed PHP file and route changes; rebuild route cache if used. No database or queue impact. Graphiti unavailable.
+
+### 2026-10-27 - Order image paste modal repair
+- Likely root cause: Livewire DOM updates can remove the native dialog open state after upload. Added wire:ignore.self to preserve dialog state, image preview, paste/drag/file upload and automatic OCR with results-card loading and errors. No image URL field.
+- Changed app/Livewire/Pages/Order/OrderPage.php, resources/views/livewire/pages/order/index.blade.php, tests/Feature/OrderImageOcrTest.php and .design/order-image-ocr/DESIGN_BRIEF.md. PHP lint, 2 focused tests / 5 assertions, Blade cache and frontend build passed.
+- Real browser paste, screenshots and OCR remain unverified; local Tesseract absent and Better Design quota exhausted. Graphiti unavailable. Deploy PHP/Blade/assets; server requires Tesseract with English data; no DB or queue changes.
+
+### 2026-10-27 - Order 1 item text extraction
+- Replaced order image OCR trial with Order 1 item: paste Amazon order details, extract Order ID, shipping address, first product name, SKU and customization text into editable fields. No AI, Tesseract, image uploads, automatic order creation or persistence.
+- Changed app/Livewire/Pages/Order/OrderPage.php, resources/views/livewire/pages/order/index.blade.php, tests/Feature/OrderTextTest.php and .design/order-one-item/DESIGN_BRIEF.md; removed prior untracked OCR test. Validation: PHP lint, 2 focused tests / 9 assertions, Blade cache and frontend build passed.
+- Parser supports the supplied Amazon English layout and first unshipped item only; other layouts may leave fields empty. Real-browser screenshot review unavailable; Better Design quota exhausted; Graphiti unavailable. Deploy PHP, Blade and assets; no DB or queue impact.
+
+### 2026-10-27 - Read-only order extraction results
+- Changed resources/views/livewire/pages/order/index.blade.php to display read-only order details and individual customization labels/values; split delimiter ignores colons inside parentheses. Input text remains editable for re-extraction.
+- Updated tests/Feature/OrderTextTest.php and .design/order-one-item/DESIGN_BRIEF.md. Validation: 2 tests / 16 assertions, Blade cache and frontend build passed. No database or queue changes. Deploy Blade/assets. Screenshot review unavailable; Better Design quota exhausted; Graphiti unavailable.
+
+### 2026-10-27 - Split Order 1 item shipping address
+- Updated resources/views/livewire/pages/order/index.blade.php to display TO_NAME, TO_ADDRESS1, TO_ADDRESS2, TO_CITY, TO_STATE and TO_POSTCODE when a US city/state/ZIP line is recognized. Original shipping block remains visible; unrecognized format does not guess fields.
+- Updated tests/Feature/OrderTextTest.php and .design/order-one-item/DESIGN_BRIEF.md. Validation: 3 tests / 22 assertions, Blade cache and frontend build passed. No DB or queue impact; deploy Blade and assets. No authenticated visual review; Better Design quota exhausted; Graphiti unavailable.
+
+### 2026-10-27 - Order 1 item results tables
+- Replaced stacked read-only result fields and customizations with semantic two-column tables in resources/views/livewire/pages/order/index.blade.php. Preserved all fields, original address and input behavior; updated tests/Feature/OrderTextTest.php and .design/order-one-item/DESIGN_BRIEF.md.
+- Validation: 3 tests / 22 assertions, Blade cache and frontend build passed. Deploy Blade/assets; no database or queue impact. Screenshot review pending; Better Design quota exhausted, Graphiti unavailable.
+
+- Latest UI change: removed `Ship to (bản gốc)` and `Product name` from the rendered result, widened the modal, and merged `Customizations` into the same horizontal table as Order ID, address fields, and SKU. Each customization label is a column with its read-only value below.
+- Validation: `php artisan test --filter=OrderTextTest` passed (3 tests, 22 assertions); `php artisan view:cache` passed; `npm run build` passed. No DB or queue impact. Better Design review tools unavailable because quota is exhausted; visual browser review remains unavailable.
+
+### 2026-10-27 - Order table readability
+- Updated resources/views/livewire/pages/order/index.blade.php: smaller table text, vertical column borders and wrapping for long customization headings; retained horizontal scrolling and full values. Updated tests/Feature/OrderTextTest.php to match the prior removal of the original address column, and .design/order-one-item/DESIGN_BRIEF.md.
+- Validation: OrderTextTest 3 tests / 21 assertions, Blade cache and frontend build passed. Deploy Blade and frontend assets; no DB or queue impact. Screenshot review unavailable; Better Design quota exhausted; Graphiti unavailable.
+- Updated the rendered customization header so `ADD NAME (example: DAVID - TOM - ALEX )` displays as `ADD NAME`; stored parser data remains unchanged. Validation: OrderTextTest 3 tests / 22 assertions, Blade cache and frontend build passed.
+
+### 2026-10-27 - Order text SKU design lookup
+- Added exact case-insensitive SKU lookup in SKU Order Items and a Link design column. Users are scoped by user_id; admins see all matching users, with owner names for duplicate SKUs. Missing match shows a dash. Changes: app/Livewire/Pages/Order/OrderPage.php, resources/views/livewire/pages/order/index.blade.php, tests/Feature/OrderTextTest.php, .design/order-one-item/DESIGN_BRIEF.md.
+- OrderTextTest passed (4 tests / 31 assertions), Blade cache and frontend build passed. Deploy PHP, Blade and assets; no database migration or queue impact. Screenshot review unavailable; Better Design quota exhausted; Graphiti unavailable.
+
+### 2026-10-27 - Order text fulfillment preview
+- Reordered results, added SKU product and catalog ID matching, user-entered quantity, phone/company fields, and FBM/FBA selection. Lookup preserves SKU owner scope; ambiguous catalog matches do not guess. Changed app/Livewire/Pages/Order/OrderPage.php, resources/views/livewire/pages/order/index.blade.php, tests/Feature/OrderTextTest.php and .design/order-one-item/DESIGN_BRIEF.md.
+- Validation: OrderTextTest 5 tests / 36 assertions, Blade cache and frontend build passed. Deploy PHP, Blade and assets; no database or queue impact. Visual review unavailable; Better Design quota exhausted; Graphiti unavailable. Company parsing and catalog variants need further source examples.
+
+### 2026-10-27 - Extract order quantity
+- Order 1 item now extracts quantity from the line following Order Item ID and displays it read-only; unmatched input clears the previous quantity. Changed app/Livewire/Pages/Order/OrderPage.php, resources/views/livewire/pages/order/index.blade.php, tests/Feature/OrderTextTest.php and .design/order-one-item/DESIGN_BRIEF.md.
+- Validation: OrderTextTest 5 tests / 38 assertions; Blade cache and frontend build passed. Deploy PHP, Blade and assets; no database or queue impact. No visual screenshots; Better Design quota exhausted; Graphiti unavailable. Other Amazon layouts may show a dash.
+- Removed the visible Product column while retaining SKU product lookup for Order Product ID. Validation: OrderTextTest 5 tests / 38 assertions, Blade cache and frontend build passed. No database or queue impact; visual review unavailable.
+
+### 2026-10-27 - Glass one-side order product
+- Order 1 item lookup now requires a 1-side Glass catalog entry; 2-side and Broken Glass sticker variants are excluded. SKU FCAMZ1716 maps to FBM Order Product ID 57008 when the catalog has its single 1-side Glass entry. Changes: app/Livewire/Pages/Order/OrderPage.php and tests/Feature/OrderTextTest.php.
+- Validation: OrderTextTest 5 tests / 38 assertions, Blade cache and frontend build passed. Deploy PHP; no database migration or queue impact. Graphiti unavailable. Two-sided Glass remains future work.
+- Removed the redundant `Qty lấy từ nội dung đơn` line; Qty remains in the result table. Validation: OrderTextTest 5 tests / 38 assertions, Blade cache and frontend build passed.
+
+### 2026-10-27 - Multiple pasted orders in one modal
+- Order text modal appends parsed orders into one table, locks input after extraction, unlocks and clears input on Thêm đơn, and offers row removal and clear-all. Customization labels form shared columns; FBA applies to every row and SKU lookup remains permission scoped. Multiple full Amazon pages split at Order details / Order ID headers. Closing modal discards temporary results.
+- Changed app/Livewire/Pages/Order/OrderPage.php, resources/views/livewire/pages/order/index.blade.php, tests/Feature/OrderTextTest.php, .design/order-one-item/DESIGN_BRIEF.md. OrderTextTest passed 6 tests / 52 assertions; Blade cache and npm build passed. Deploy PHP, Blade and assets. No DB or queue impact. Visual review unavailable; Better Design quota exhausted; Graphiti unavailable.
+
+### 2026-10-27 - Order text Excel export and history
+- Added Export đơn for all preview rows using Excel XML Spreadsheet (.xls), preserving text and dynamic customization columns. Uses existing history_order_report with user-scoped order ID and per-export count; duplicate order rows count once per export. Invalid or missing order ID blocks export. Changes: app/Livewire/Pages/Order/OrderPage.php, resources/views/livewire/pages/order/index.blade.php, tests/Feature/OrderTextTest.php, .design/order-one-item/DESIGN_BRIEF.md.
+- OrderTextTest passed 8 tests / 66 assertions; Blade cache and npm build passed. Deploy PHP, Blade and assets; existing DB table used, no migration or queue impact. Count records export requests, not confirmed client downloads. Screenshot review unavailable; Better Design quota exhausted; Graphiti unavailable.
+
+### 2026-10-27 - Multi-item Amazon order parsing
+- One Amazon Order ID can contain multiple SKU item blocks. Parser now creates one table row per SKU, sharing Order ID/address/phone; each row keeps its own quantity/customizations. Export saves all item rows inside one history record for the order and increments export_count once per export.
+- Changed app/Livewire/Pages/Order/OrderPage.php and tests/Feature/OrderTextTest.php. Validation: 9 tests / 79 assertions, Blade cache and npm build passed. Deploy PHP, Blade and assets; no DB migration or queue impact. Visual review unavailable; Better Design quota exhausted; Graphiti unavailable.
+
+### 2026-10-27 - Align order modal export action
+- Moved Export đơn beside Lấy dữ liệu and Thêm đơn in resources/views/livewire/pages/order/index.blade.php; action row wraps on narrow screens. Updated .design/order-one-item/DESIGN_BRIEF.md. Behavior unchanged.
+- Validation: OrderTextTest 9 tests / 79 assertions, Blade cache and npm build passed. Deploy Blade and assets; no database or queue impact. Visual screenshots unavailable; Better Design quota exhausted; Graphiti unavailable.
+
+### 2026-10-27 - Right-align order export button
+- Moved Export đơn to the right edge of the existing action row in resources/views/livewire/pages/order/index.blade.php. Validation: 9 tests / 79 assertions, Blade cache and npm build passed. Deploy Blade/assets; no database or queue impact. No visual screenshots; Better Design quota exhausted; Graphiti unavailable.
+
+### 2026-10-27 - Tracking file upload on export
+- Added Tracking ID file inputs after Design Link. On Export đơn, selected files upload through GoogleDriveService, then receive public reader permission so anyone with the link can view. Drive URLs are included in the Excel-compatible export and history report_data. Upload/permission failure blocks history save and export; repeated export reuses existing links. Supported JPG/JPEG/PNG/WebP/PDF, max 10 MB.
+- Changed app/Services/Google/GoogleDriveService.php, app/Livewire/Pages/Order/OrderPage.php, resources/views/livewire/pages/order/index.blade.php, tests/Feature/OrderTextTest.php and .design/order-one-item/DESIGN_BRIEF.md. Validation: 12 tests / 95 assertions, Blade cache, PHP lint and npm build passed. No migration or queue impact. Visual review unavailable; Better Design quota exhausted; Graphiti unavailable.
+
+### 2026-10-27 - Order export loading state
+- Updated resources/views/livewire/pages/order/index.blade.php and .design/order-one-item/DESIGN_BRIEF.md: disable modal controls and Escape during export; show spinner until response; retain tracking upload guard. Validation: OrderTextTest 12 tests / 95 assertions, Blade cache and npm build passed. Deploy Blade/assets; no database or queue impact. Visual screenshots unavailable; Better Design quota exhausted; Graphiti unavailable.

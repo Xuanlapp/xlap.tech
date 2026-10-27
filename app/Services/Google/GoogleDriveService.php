@@ -15,7 +15,7 @@ class GoogleDriveService
     /**
      * Upload one local file to the configured Google Drive folder.
      */
-    public function uploadLocalFile(string $absolutePath, string $filename, ?string $mimeType = null, ?string $folderId = null): string
+    public function uploadLocalFile(string $absolutePath, string $filename, ?string $mimeType = null, ?string $folderId = null, ?bool $makePublic = null): string
     {
         if (! File::exists($absolutePath)) {
             throw new RuntimeException('Khong tim thay file local de upload Drive.');
@@ -62,7 +62,7 @@ class GoogleDriveService
             throw new RuntimeException('Google Drive khong tra ve file id.');
         }
 
-        if ((bool) config('services.google_drive.make_public', true)) {
+        if ($makePublic ?? (bool) config('services.google_drive.make_public', true)) {
             $this->makePublic($fileId);
         }
 

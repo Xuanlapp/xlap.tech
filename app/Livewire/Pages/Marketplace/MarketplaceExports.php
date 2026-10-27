@@ -13,6 +13,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Session;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Symfony\Component\HttpFoundation\Response;
@@ -87,7 +88,7 @@ class MarketplaceExports extends Component
         'mockup6', 'mockup7', 'mockup8', 'mockup9', 'mockup10', 'mockup11',
     ];
 
-    #[Session(key: 'marketplace-export.status')]
+    #[Url(as: 'status', history: true, keep: true)]
     public string $status = 'unexported';
 
     #[Session(key: 'marketplace-export.search')]
@@ -96,7 +97,7 @@ class MarketplaceExports extends Component
     #[Session(key: 'marketplace-export.exact-sku')]
     public bool $exactSku = false;
 
-    #[Session(key: 'marketplace-export.marketplace')]
+    #[Url(as: 'marketplace', history: true, keep: true)]
     public string $marketplace = 'all';
 
     #[Session(key: 'marketplace-export.owner-user-id')]
@@ -106,6 +107,8 @@ class MarketplaceExports extends Component
     public int $perPage = 20;
 
     public ?string $skuSort = null;
+
+    public bool $selectedFirst = false;
 
     private const PER_PAGE_OPTIONS = [5, 10, 20, 30, 50, 100, 500, 1000];
 
@@ -118,6 +121,17 @@ class MarketplaceExports extends Component
     public ?string $message = null;
 
     public ?string $patternError = null;
+
+    public function mount(): void
+    {
+        if (! in_array($this->status, self::STATUS_OPTIONS, true)) {
+            $this->status = 'unexported';
+        }
+
+        if (! in_array($this->marketplace, self::MARKETPLACE_OPTIONS, true)) {
+            $this->marketplace = 'all';
+        }
+    }
 
     public function updatedStatus(string $status): void
     {
@@ -160,6 +174,25 @@ class MarketplaceExports extends Component
     {
         $this->skuSort = $this->skuSort === 'asc' ? 'desc' : 'asc';
         $this->resetPage();
+    }
+
+    public function toggleSelectedFirst(): void
+    {
+        $this->selectedFirst = ! $this->selectedFirst;
+
+
+        $this->resetPage();
+    }
+
+    private function orderVisibleAssets(Builder $query): Builder
+    {
+        $ids = $this->selectedIds()->all();
+
+        if ($this->selectedFirst && $ids !== []) {
+            $query->orderByRaw('CASE WHEN id IN ('.implode(',', array_fill(0, count($ids), '?')).') THEN 0 ELSE 1 END', $ids);
+        }
+
+        return $this->orderAssets($query);
     }
 
     private function orderAssets(Builder $query): Builder
@@ -212,7 +245,7 @@ class MarketplaceExports extends Component
         $this->patternError = null;
         $selectedIds = $this->selectedIds();
 
-        $query = $this->exportableQuery(false)->whereKey($selectedIds->all());
+        $query = $this->exportableQuery(false, false)->whereKey($selectedIds->all());
         $assets = in_array($this->skuSort, ['asc', 'desc'], true)
             ? $this->orderAssets($query)->get()
             : $query->get()->sortBy(fn (ProductDesignAsset $asset): int => $selectedIds->search((string) $asset->id))->values();
@@ -237,7 +270,7 @@ class MarketplaceExports extends Component
     {
         $selectedIds = $this->selectedIds();
 
-        $query = $this->exportableQuery(false)->whereKey($selectedIds->all());
+        $query = $this->exportableQuery(false, false)->whereKey($selectedIds->all());
         $assets = in_array($this->skuSort, ['asc', 'desc'], true)
             ? $this->orderAssets($query)->get()
             : $query->orderBy('id')->get();
@@ -259,7 +292,7 @@ class MarketplaceExports extends Component
                 'marketplace_export_filename' => $filename,
             ]);
 
-        $query = $this->readyQuery(false)->whereKey($assets->pluck('id')->all());
+        $query = $this->readyQuery(false, false)->whereKey($assets->pluck('id')->all());
         $exportedAssets = in_array($this->skuSort, ['asc', 'desc'], true)
             ? $this->orderAssets($query)->get()
             : $query->orderBy('id')->get();
@@ -308,12 +341,12 @@ class MarketplaceExports extends Component
 
     public function render(): View
     {
-        $assets = $this->orderAssets($this->filteredReadyQuery())
+        $assets = $this->orderVisibleAssets($this->filteredReadyQuery())
             ->paginate(in_array($this->perPage, self::PER_PAGE_OPTIONS, true) ? $this->perPage : 20);
         $visibleIds = $assets->getCollection()->pluck('id')->map(fn (int $id): string => (string) $id);
         $selectedIds = $this->selectedIds();
         $patternSelectionError = $selectedIds->isEmpty() ? null : $this->patternSelectionError(
-            $this->exportableQuery(false)->whereKey($selectedIds->all())->orderBy('id')->get(),
+            $this->exportableQuery(false, false)->whereKey($selectedIds->all())->orderBy('id')->get(),
             $selectedIds->count(),
         );
 
@@ -375,12 +408,12 @@ class MarketplaceExports extends Component
             );
     }
 
-    private function exportableQuery(bool $applySearch = true): Builder
+    private function exportableQuery(bool $applySearch = true, bool $applyMarketplace = true): Builder
     {
-        return $this->readyQuery($applySearch);
+        return $this->readyQuery($applySearch, $applyMarketplace);
     }
 
-    private function readyQuery(bool $applySearch = true): Builder
+    private function readyQuery(bool $applySearch = true, bool $applyMarketplace = true): Builder
     {
         return ProductDesignAsset::query()
             ->with(['user:id,name,email', 'product:id,name,slug'])
@@ -423,7 +456,7 @@ class MarketplaceExports extends Component
                 });
             })
             ->when($this->selectedOwnerId() !== null, fn (Builder $query) => $query->where('user_id', $this->selectedOwnerId()))
-            ->when($this->marketplace !== 'all', fn (Builder $query) => $this->applyMarketplaceFilter($query, $this->marketplace))
+            ->when($applyMarketplace && $this->marketplace !== 'all', fn (Builder $query) => $this->applyMarketplaceFilter($query, $this->marketplace))
             ->when($applySearch && $this->normalizedSearch() !== null, function (Builder $query): void {
                 $skus = collect(preg_split('/[,，\\r\\n]+/u', $this->normalizedSearch() ?? '') ?: [])
                     ->map(fn (string $sku): string => trim($sku))
@@ -431,15 +464,19 @@ class MarketplaceExports extends Component
                     ->unique()
                     ->values();
 
-                if ($this->exactSku) {
-                    $query->whereIn('sku', $skus->all());
-                } else {
-                    $query->where(function (Builder $query) use ($skus): void {
+                $query->where(function (Builder $query) use ($skus): void {
+                    if ($this->exactSku) {
+                        $query->whereIn('sku', $skus->all());
+                    } else {
                         foreach ($skus as $sku) {
                             $query->orWhere('sku', 'like', '%'.$this->escapeLike($sku).'%');
                         }
-                    });
-                }
+                    }
+
+                    if ($this->selectedFirst && $this->selectedIds()->isNotEmpty()) {
+                        $query->orWhereIn('product_design_assets.id', $this->selectedIds()->all());
+                    }
+                });
             });
     }
 
@@ -624,7 +661,7 @@ class MarketplaceExports extends Component
      */
     private function visibleIds(): Collection
     {
-        return $this->orderAssets($this->filteredExportableQuery())
+        return $this->orderVisibleAssets($this->filteredExportableQuery())
             ->forPage($this->getPage(), in_array($this->perPage, self::PER_PAGE_OPTIONS, true) ? $this->perPage : 20)
             ->pluck('id')
             ->map(fn (int $id): string => (string) $id);
@@ -1047,4 +1084,3 @@ class MarketplaceExports extends Component
         return addcslashes($value, '\%_');
     }
 }
-

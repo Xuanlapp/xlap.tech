@@ -9,6 +9,8 @@ use App\Models\User;
 use App\Models\OrderProduct;
 use App\Models\HistoryOrderReport;
 use App\Services\Order\SkuOrderItemService;
+use App\Services\Google\GoogleDriveService;
+use Livewire\Attributes\Locked;
 use App\Services\Image\ImageLinkPreviewService;
 use App\Services\Logging\ActivityLogService;
 use Illuminate\Contracts\View\View;
@@ -18,7 +20,7 @@ use Livewire\WithFileUploads;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Throwable;
 
-class Index extends Component
+class OrderPage extends Component
 {
     use WithFileUploads, WithPagination;
 
@@ -37,6 +39,116 @@ class Index extends Component
 
     /** @var array<int, int> */
     public array $selectedSkuOrderItemIds = [];
+
+    public bool $showOrderTextModal = false;
+
+    public string $orderText = '';
+
+    public string $orderTextId = '';
+
+    public string $orderTextShipTo = '';
+
+    public string $orderTextCompany = '';
+
+    public string $orderTextPhone = '';
+
+    public string $orderTextProduct = '';
+
+    public string $orderTextSku = '';
+
+    public string $orderTextQuantity = '';
+
+    public bool $orderTextFbaOnly = false;
+
+    public string $orderTextCustomizations = '';
+
+    public bool $orderTextParsed = false;
+
+    public bool $orderTextLocked = false;
+
+    public array $orderTextRows = [];
+
+    public array $orderTextTrackingFiles = [];
+
+    #[Locked]
+    public array $orderTextTrackingLinks = [];
+
+    public function closeOrderTextModal(): void
+    {
+        $this->reset(['showOrderTextModal', 'orderText', 'orderTextId', 'orderTextShipTo', 'orderTextCompany', 'orderTextPhone', 'orderTextProduct', 'orderTextSku', 'orderTextQuantity', 'orderTextFbaOnly', 'orderTextCustomizations', 'orderTextParsed', 'orderTextLocked', 'orderTextRows', 'orderTextTrackingFiles', 'orderTextTrackingLinks']);
+        $this->resetValidation('orderText');
+    }
+
+    public function parseOrderText(): void
+    {
+        $this->validate(['orderText' => 'required|string|max:100000']);
+        if ($this->orderTextLocked) return;
+        $input = str_replace(["\r\n", "\r"], "\n", $this->orderText);
+        $parts = preg_split('/(?=Order\s+details\s+Order\s+ID\s*:)/i', $input, -1, PREG_SPLIT_NO_EMPTY) ?: [$input];
+        if (count($parts) > 1 && ! preg_match('/\bOrder\s+details\s+Order\s+ID\s*:/i', $parts[0])) array_shift($parts);
+        foreach ($parts as $orderText) {
+            preg_match('/\bOrder\s*ID\s*:??\s*#?\s*(\d{3}-\d{7}-\d{7})/i', $orderText, $order);
+            $orderId = trim($order[1] ?? '');
+            preg_match('/\bShip\s+to\b[^\n]*\n(.*?)(?=\n\s*(?:Address\s+Type|Contact\s+Buyer|Phone|More\s+details|Order\s+contents)\b|\z)/is', $orderText, $ship);
+            $shipTo = trim($ship[1] ?? '');
+            preg_match('/^\s*Phone\s*:\s*([^\r\n]+)/im', $orderText, $phone);
+            preg_match_all('/^[ \t]*SKU[ \t]*:/im', $orderText, $skuMarkers, PREG_OFFSET_CAPTURE);
+            $offsets = array_map(fn (array $marker): int => $marker[1], $skuMarkers[0] ?? []);
+            if ($offsets === []) $offsets = [0];
+            foreach ($offsets as $index => $offset) {
+                $itemText = substr($orderText, $offset, isset($offsets[$index + 1]) ? $offsets[$index + 1] - $offset : null) ?: $orderText;
+                preg_match('/^[ \t]*SKU[ \t]*:[ \t]*([^\r\n]+)/im', $itemText, $sku);
+                $itemSku = trim($sku[1] ?? '');
+                preg_match('/Order\s+Item\s+ID\s*:\s*[^\n]+\n\s*(\d+)\s+\$[0-9]/i', $itemText, $quantity);
+                preg_match('/^\s*Customizations\s*:\s*\n(.*?)(?=\n\s*(?:Customization\s+Information|Show\s+less|Condition\s*:|Order\s+Item\s+ID\s*:)|\z)/ims', $itemText, $customizations);
+                $customizationText = trim($customizations[1] ?? '');
+                $this->orderTextRows[] = [
+                    'sku' => $itemSku, 'id' => $orderId, 'shipTo' => $shipTo,
+                    'company' => '', 'phone' => trim($phone[1] ?? ''),
+                    'quantity' => trim($quantity[1] ?? ''), 'customizations' => $customizationText,
+                ];
+            }
+            preg_match('/\bOrder\s+contents\b.*?\bUnshipped\b\s*(.*?)(?=\n\s*ASIN\s*:)/is', $orderText, $product);
+            $this->orderTextProduct = trim($product[1] ?? '');
+            $this->orderTextSku = $itemSku;
+            $this->orderTextQuantity = trim($quantity[1] ?? '');
+            $this->orderTextCustomizations = $customizationText;
+            $this->orderTextId = $orderId;
+            $this->orderTextShipTo = $shipTo;
+            $this->orderTextPhone = trim($phone[1] ?? '');
+        }
+        $this->orderTextParsed = $this->orderTextRows !== [];
+        $this->orderTextLocked = true;
+    }
+
+    public function clearOrderTextInput(): void
+    {
+        $this->orderText = '';
+        $this->orderTextLocked = false;
+        $this->resetValidation('orderText');
+    }
+
+    public function removeOrderTextRow(int $index): void
+    {
+        if (! array_key_exists($index, $this->orderTextRows)) return;
+        array_splice($this->orderTextRows, $index, 1);
+        $this->orderTextTrackingFiles = collect($this->orderTextTrackingFiles)->reject(fn ($file, $key) => (int) $key === $index)->mapWithKeys(fn ($file, $key) => [(int) $key > $index ? (int) $key - 1 : (int) $key => $file])->all();
+        $this->orderTextTrackingLinks = collect($this->orderTextTrackingLinks)->reject(fn ($link, $key) => (int) $key === $index)->mapWithKeys(fn ($link, $key) => [(int) $key > $index ? (int) $key - 1 : (int) $key => $link])->all();
+        $this->orderTextParsed = $this->orderTextRows !== [];
+    }
+
+    public function updatedOrderTextTrackingFiles(mixed $value, string $key): void
+    {
+        unset($this->orderTextTrackingLinks[(int) $key]);
+    }
+
+    public function clearOrderTextRows(): void
+    {
+        $this->orderTextRows = [];
+        $this->orderTextTrackingFiles = [];
+        $this->orderTextTrackingLinks = [];
+        $this->orderTextParsed = false;
+    }
 
     public bool $showManualFbaModal = false;
 
@@ -419,6 +531,34 @@ class Index extends Component
         }
     }
 
+    private function orderTextCustomizationValue(string $label, ?string $customizations = null): ?string
+    {
+        foreach (preg_split('/\R/u', $customizations ?? $this->orderTextCustomizations) ?: [] as $line) {
+            [$currentLabel, $value] = array_pad(preg_split('/:(?![^()]*\))/', trim($line), 2) ?: [], 2, '');
+            if (strcasecmp(trim($currentLabel), $label) === 0) return trim($value) ?: null;
+        }
+
+        return null;
+    }
+
+    private function matchSimpleOrderProduct($catalog, string $productName, ?string $size): ?OrderProduct
+    {
+        $name = strtolower(trim($productName));
+        if ($name === '') return null;
+        $singleSize = $this->containsProductToken($name, 'glass') || $this->containsProductToken($name, 'ceramic');
+        $requiredSize = $singleSize ? null : $this->extractProductSize((string) $size);
+        if (! $singleSize && $requiredSize === null) return null;
+
+        $matches = $catalog->filter(function (OrderProduct $orderProduct) use ($name, $requiredSize): bool {
+            $catalogName = strtolower(trim($orderProduct->product_name));
+            return $this->containsProductPhrase($catalogName, $name)
+                && (! $this->containsProductToken($name, 'glass') || preg_match('/\b1[\s-]*side\b/i', $catalogName) === 1)
+                && ($requiredSize === null || $this->containsProductSize($catalogName, $requiredSize));
+        });
+
+        return $matches->count() === 1 ? $matches->first() : null;
+    }
+
     private function matchOrderProduct($catalog, string $productKeyword, ?string $reportSize, string $sourceTitle = ''): ?OrderProduct
     {
         $keyword = strtolower(trim($productKeyword));
@@ -746,13 +886,149 @@ class Index extends Component
             $order->setAttribute('image_preview_url', $image !== '' ? $preview->previewUrl($image) : '');
         });
 
+        $orderTextDesigns = $this->showOrderTextModal && $this->orderTextParsed && trim($this->orderTextSku) !== ''
+            ? SkuOrderItem::query()
+                ->when(! auth()->user()?->is_admin, fn ($query) => $query->where('user_id', auth()->id()))
+                ->whereRaw('LOWER(TRIM(sku)) = ?', [strtolower(trim($this->orderTextSku))])
+                ->with(['user:id,name', 'product'])
+                ->orderBy('id')
+                ->get()
+            : collect();
+
+        $orderTextSkuItem = $orderTextDesigns->pluck('product_id')->unique()->count() === 1 ? $orderTextDesigns->first() : null;
+        $orderTextProduct = $orderTextSkuItem?->product;
+        $orderTextProductName = (string) ($orderTextProduct?->name ?? $orderTextProduct?->slug ?? '');
+        $orderTextSize = $this->orderTextCustomizationValue('SELECT SIZES');
+        $orderTextCatalog = $this->showOrderTextModal && $this->orderTextParsed && $orderTextProductName !== ''
+            ? OrderProduct::query()->where('fulfillment_type', $this->orderTextFbaOnly ? 'FBA' : 'FBM')->get()
+            : collect();
+        $orderTextOrderProduct = $this->matchSimpleOrderProduct($orderTextCatalog, $orderTextProductName, $orderTextSize);
+
+        [$orderTextResults, $orderTextCustomizationLabels] = $this->showOrderTextModal ? $this->buildOrderTextResults() : [[], []];
+
         return view('livewire.pages.order.index', [
+            'orderTextResults' => $orderTextResults,
+            'orderTextCustomizationLabels' => $orderTextCustomizationLabels,
+            'orderTextDesigns' => $orderTextDesigns,
+            'orderTextProduct' => $orderTextProductName,
+            'orderTextOrderProduct' => $orderTextOrderProduct,
             'items' => $items,
             'products' => Product::query()->whereIn('slug', ['sticker', 'decal', 'glass', 'ornament-etsy'])->orderBy('name')->get(),
             'importUsers' => auth()->user()?->is_admin ? $this->importableUsers()->orderBy('name')->get(['id', 'name', 'email']) : collect(),
             'orderProducts' => $orderProducts,
             'historyOrders' => $historyOrders,
         ])->layout('layouts.app');
+    }
+
+    public function exportOrderText(): mixed
+    {
+        abort_unless(auth()->check(), 403);
+        [$rows, $labels] = $this->buildOrderTextResults();
+        if ($rows === []) {
+            $this->addError('orderTextExport', 'Chưa có đơn hàng để export.');
+            return null;
+        }
+        foreach ($rows as $row) {
+            if (! preg_match('/^\d{3}-\d{7}-\d{7}$/', $row['id'])) {
+                $this->addError('orderTextExport', 'Có đơn thiếu Order ID hợp lệ. Kiểm tra trước khi export.');
+                return null;
+            }
+        }
+        $this->validate(['orderTextTrackingFiles.*' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:10240']]);
+        foreach ($rows as $index => $row) {
+            $file = $this->orderTextTrackingFiles[$index] ?? null;
+            if (! $file || isset($this->orderTextTrackingLinks[$index])) continue;
+            try {
+                $this->orderTextTrackingLinks[$index] = app(GoogleDriveService::class)->uploadLocalFile(
+                    $file->getRealPath(), $row['id'].'-tracking-'.bin2hex(random_bytes(8)).'.'.$file->extension(), $file->getMimeType(), null, true
+                );
+            } catch (Throwable $exception) {
+                report($exception);
+                $this->addError('orderTextExport', 'Không thể upload file hoặc cấp quyền xem trên Google Drive. Các đơn chưa được export; vui lòng thử lại.');
+                return null;
+            }
+        }
+        $headers = array_merge(['SKU', 'Order ID', 'Order Product ID', 'Qty', 'Design Link', 'Tracking ID', 'TO_NAME', 'TO_COMPANY', 'TO_PHONE', 'TO_ADDRESS1', 'TO_ADDRESS2', 'TO_CITY', 'TO_STATE', 'TO_POSTCODE'], array_values($labels));
+        $exportRows = [];
+        foreach ($rows as $index => $row) {
+            $links = $row['designs']->pluck('image_link')->filter()->values()->all();
+            $values = array_merge([$row['sku'], $row['id'], (string) ($row['catalogProduct']?->order_product_id ?? ''), $row['quantity'], implode("\n", $links), $this->orderTextTrackingLinks[$index] ?? ''], $row['address']);
+            foreach ($labels as $label) $values[] = $row['customizationValues'][$label] ?? '';
+            $exportRows[] = ['source' => $row, 'links' => $links, 'values' => $values];
+        }
+        $xml = '<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Orders"><Table>';
+        foreach (array_merge([$headers], array_column($exportRows, 'values')) as $values) {
+            $xml .= '<Row>';
+            foreach ($values as $value) $xml .= '<Cell><Data ss:Type="String">'.htmlspecialchars((string) $value, ENT_XML1 | ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'</Data></Cell>';
+            $xml .= '</Row>';
+        }
+        $xml .= '</Table></Worksheet></Workbook>';
+        \Illuminate\Support\Facades\DB::transaction(function () use ($exportRows): void {
+            User::query()->whereKey(auth()->id())->lockForUpdate()->firstOrFail();
+            foreach (collect($exportRows)->groupBy(fn ($row) => $row['source']['id']) as $orderId => $orderRows) {
+                $history = HistoryOrderReport::query()->firstOrNew(['user_id' => auth()->id(), 'order_id' => $orderId]);
+                $previous = is_array($history->report_data) ? $history->report_data : [];
+                $first = $orderRows->first();
+                $source = $first['source'];
+                $values = $first['values'];
+                $history->fill([
+                    'sku' => $source['sku'], 'quantity' => $source['quantity'],
+                    'images_link' => $orderRows->flatMap(fn ($row) => $row['links'])->unique()->values()->all(),
+                    'report_data' => array_merge($previous, [
+                        'id_order' => $orderId, 'sku' => $source['sku'], 'product_id' => $values[2],
+                        'quantity' => $source['quantity'], 'link_design' => $values[4],
+                        'tracking_id' => $values[5], 'to_name' => $values[6], 'to_company' => $values[7], 'to_phone' => $values[8],
+                        'to_address_1' => $values[9], 'to_address_2' => $values[10], 'to_city' => $values[11],
+                        'to_state' => $values[12], 'to_postcode' => $values[13],
+                        'fulfillment' => $this->orderTextFbaOnly ? 'FBA' : 'FBM',
+                        'export_count' => max(0, (int) ($previous['export_count'] ?? ($history->exists ? 1 : 0))) + 1,
+                        'order_text_rows' => $orderRows->map(fn ($row) => ['values' => $row['values'], 'customizations' => $row['source']['customizationValues']])->values()->all(),
+                    ]),
+                    'ordered_at' => now(),
+                ])->save();
+            }
+        });
+        $this->resetErrorBag('orderTextExport');
+        return response()->streamDownload(fn () => print $xml, 'order-text-'.now()->format('Ymd-His').'.xls', ['Content-Type' => 'application/vnd.ms-excel; charset=UTF-8']);
+    }
+
+    private function buildOrderTextResults(): array
+    {
+        $orderTextResults = [];
+        $orderTextCustomizationLabels = [];
+        foreach ($this->orderTextRows as $row) {
+            $designs = trim($row['sku']) === '' ? collect() : SkuOrderItem::query()
+                ->when(! auth()->user()?->is_admin, fn ($query) => $query->where('user_id', auth()->id()))
+                ->whereRaw('LOWER(TRIM(sku)) = ?', [strtolower(trim($row['sku']))])
+                ->with(['user:id,name', 'product'])->orderBy('id')->get();
+            $item = $designs->pluck('product_id')->unique()->count() === 1 ? $designs->first() : null;
+            $productName = (string) ($item?->product?->name ?? '');
+            $size = $this->orderTextCustomizationValue('SELECT SIZES', $row['customizations']);
+            $catalog = $productName !== '' ? OrderProduct::query()->where('fulfillment_type', $this->orderTextFbaOnly ? 'FBA' : 'FBM')->get() : collect();
+            $customizations = [];
+            foreach (preg_split('/\R/u', $row['customizations']) ?: [] as $line) {
+                if (trim($line) === '') continue;
+                [$label, $value] = array_pad(preg_split('/:(?![^()]*\))/', trim($line), 2) ?: [], 2, '');
+                $label = trim($label);
+                $label = preg_match('/^ADD NAME\s*\(example:.*\)$/i', $label) ? 'ADD NAME' : $label;
+                $customizations[$label] = trim($value);
+                $orderTextCustomizationLabels[$label] = $label;
+            }
+            $orderTextResults[] = $row + ['address' => $this->orderTextAddress($row), 'designs' => $designs, 'catalogProduct' => $this->matchSimpleOrderProduct($catalog, $productName, $size), 'customizationValues' => $customizations];
+        }
+
+        return [$orderTextResults, $orderTextCustomizationLabels];
+    }
+
+    private function orderTextAddress(array $row): array
+    {
+        $lines = array_values(array_filter(array_map('trim', preg_split('/\R/u', $row['shipTo']) ?: []), fn ($line) => $line !== ''));
+        $address = ['', $row['company'], $row['phone'], '', '', '', '', ''];
+        if (count($lines) >= 3 && preg_match('/^(.+),\s*([A-Za-z]{2})\s+(\d{5}(?:-\d{4})?)$/', end($lines), $match)) {
+            $address = [$lines[0], $row['company'], $row['phone'], $lines[1], implode(', ', array_slice($lines, 2, -1)), trim($match[1]), strtoupper($match[2]), $match[3]];
+        }
+
+        return $address;
     }
 
     private function importableUsers()

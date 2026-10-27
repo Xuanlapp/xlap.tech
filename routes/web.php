@@ -26,7 +26,7 @@ use App\Livewire\Pages\Marketplace\MarketplaceExports;
 use App\Livewire\Pages\Marketplace\ListingMetadataStatus;
 use App\Livewire\Pages\Admin\ListingPromptSettings;
 use App\Livewire\Pages\Admin\DataSkuSearch;
-use App\Livewire\Pages\Order\Index as OrderIndex;
+use App\Livewire\Pages\Order\OrderPage;
 use App\Livewire\Pages\Suncatcher\AutomationCatalog;
 use App\Livewire\Pages\SuncatcherTwo\ListSuncatcherTwo;
 use App\Livewire\Pages\SuncatcherTwo\AutomationCatalog as SuncatcherTwoAutomationCatalog;
@@ -128,7 +128,7 @@ Route::middleware(['auth', 'verified'])->prefix('offorest')->group(function (): 
     Route::get('listing-metadata', ListingMetadataStatus::class)
         ->name('offorest.listing-metadata');
 
-    Route::get('order', OrderIndex::class)
+    Route::get('order', OrderPage::class)
         ->name('offorest.order');
 
 
