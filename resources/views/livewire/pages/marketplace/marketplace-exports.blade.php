@@ -63,7 +63,7 @@
                         @disabled($selectedCount === 0 || $patternSelectionError !== null)
                         class="inline-flex h-11 items-center gap-2 rounded-md border border-indigo-200 bg-indigo-50 px-5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                        <span wire:loading.remove wire:target="exportPattern">Export Excel Pattern</span>
+                        <span wire:loading.remove wire:target="exportPattern">Export Excel Pattern {{ $selectedCount ? '('.$selectedCount.')' : '' }}</span>
                         <span wire:loading wire:target="exportPattern">Đang chuẩn bị...</span>
                     </button>
                 </div>
@@ -199,7 +199,11 @@
                                 class="h-4 w-4 rounded border-slate-400 text-indigo-600 focus:ring-indigo-500"
                             >
                         </th>
-                        <th class="px-5 py-4">SKU</th>
+                        <th class="px-5 py-4" @if ($skuSort === 'asc') aria-sort="ascending" @elseif ($skuSort === 'desc') aria-sort="descending" @endif>
+                            <button type="button" wire:click="sortSku" class="inline-flex min-h-6 items-center gap-1 rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600" aria-label="Sắp xếp SKU {{ $skuSort === 'asc' ? 'Z đến A' : 'A đến Z' }}">
+                                SKU <span aria-hidden="true">{{ $skuSort === 'asc' ? '↑' : ($skuSort === 'desc' ? '↓' : '↕') }}</span>
+                            </button>
+                        </th>
                         <th class="px-5 py-4">Item</th>
                         @if ((auth()->user()->is_admin || auth()->user()->isManager()))
                             <th class="px-5 py-4">User</th>

@@ -85,3 +85,13 @@
 - Changed app/Services/Product/ApprovedAssetDriveExportService.php to collect PNGs only from the exact product/user/asset bounds directory when redesign is updated; deletion occurs after the DB transaction. Added coverage in tests/Feature/ApprovedAssetDrivePartialFailureTest.php. If redesign upload fails, bound files remain for retry.
 - Validation: PHP lint passed; php artisan test --filter=ApprovedAssetDrivePartialFailureTest passed (3 tests, 25 assertions). No schema/frontend change.
 - Deploy impact: deploy PHP service and restart queue workers. No migration; queue behavior unchanged except post-upload local cleanup. Graphiti unavailable in configured tools.
+
+### 2026-10-27 - Marketplace export SKU sorting
+- XLAP Web Platform: added SKU header A-Z/Z-A ordering before pagination; default ordering retained. Visible selection uses the same ordering.
+- Changed app/Livewire/Pages/Marketplace/MarketplaceExports.php, resources/views/livewire/pages/marketplace/marketplace-exports.blade.php, tests/Feature/MarketplaceExportSelectionTest.php, and .design/marketplace-export-sku-sort/DESIGN_BRIEF.md.
+- No database, deploy migration, or queue impact. Deploy PHP/Blade and rebuilt assets. Graphiti unavailable; browser screenshots and visual review unavailable. Better Design review quota exhausted.
+
+### 2026-10-27 - Export selection and SKU order
+- Root cause: selected-item queries reused the current SKU search, excluding earlier selections from Pattern validation and both downloads. Export Excel used ID order; Pattern used selection order.
+- Updated MarketplaceExports.php to omit only the search constraint when validating/exporting selected assets, and apply active SKU order to Excel and Pattern. Other authorization, owner and marketplace constraints remain. Pattern parent follows the first sorted SKU. Blade now shows the selection count on Pattern.
+- Updated MarketplaceExportSelectionTest.php and .design/marketplace-export-sku-sort/DESIGN_BRIEF.md. Focused tests passed (4 tests, 24 assertions); Blade cache passed. Build run separately. No migrations or queue changes. Deploy PHP/Blade and frontend assets. Graphiti unavailable; visual screenshots unavailable; Better Design quota exhausted.

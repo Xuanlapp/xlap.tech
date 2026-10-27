@@ -105,6 +105,8 @@ class MarketplaceExports extends Component
     #[Session(key: 'marketplace-export.per-page')]
     public int $perPage = 20;
 
+    public ?string $skuSort = null;
+
     private const PER_PAGE_OPTIONS = [5, 10, 20, 30, 50, 100, 500, 1000];
 
     /** @var array<int, int|string> */
@@ -154,6 +156,21 @@ class MarketplaceExports extends Component
         $this->resetPage();
     }
 
+    public function sortSku(): void
+    {
+        $this->skuSort = $this->skuSort === 'asc' ? 'desc' : 'asc';
+        $this->resetPage();
+    }
+
+    private function orderAssets(Builder $query): Builder
+    {
+        return $query
+            ->when(in_array($this->skuSort, ['asc', 'desc'], true), fn (Builder $query) => $query->orderBy('sku', $this->skuSort))
+            ->latest('marketplace_exported_at')
+            ->latest('approved_at')
+            ->latest('id');
+    }
+
     public function setVisibleSelection(bool $checked): void
     {
         $visibleIds = $this->visibleIds();
@@ -195,9 +212,10 @@ class MarketplaceExports extends Component
         $this->patternError = null;
         $selectedIds = $this->selectedIds();
 
-        $assets = $this->exportableQuery()->whereKey($selectedIds->all())->get()
-            ->sortBy(fn (ProductDesignAsset $asset): int => $selectedIds->search((string) $asset->id))
-            ->values();
+        $query = $this->exportableQuery(false)->whereKey($selectedIds->all());
+        $assets = in_array($this->skuSort, ['asc', 'desc'], true)
+            ? $this->orderAssets($query)->get()
+            : $query->get()->sortBy(fn (ProductDesignAsset $asset): int => $selectedIds->search((string) $asset->id))->values();
         if ($error = $this->patternSelectionError($assets, $selectedIds->count())) {
             $this->patternError = $error;
             return null;
@@ -219,10 +237,10 @@ class MarketplaceExports extends Component
     {
         $selectedIds = $this->selectedIds();
 
-        $assets = $this->exportableQuery()
-            ->whereKey($selectedIds->all())
-            ->orderBy('id')
-            ->get();
+        $query = $this->exportableQuery(false)->whereKey($selectedIds->all());
+        $assets = in_array($this->skuSort, ['asc', 'desc'], true)
+            ? $this->orderAssets($query)->get()
+            : $query->orderBy('id')->get();
 
         if ($assets->isEmpty()) {
             $this->message = 'Hay chon it nhat 1 item de export.';
@@ -241,10 +259,10 @@ class MarketplaceExports extends Component
                 'marketplace_export_filename' => $filename,
             ]);
 
-        $exportedAssets = $this->readyQuery()
-            ->whereKey($assets->pluck('id')->all())
-            ->orderBy('id')
-            ->get();
+        $query = $this->readyQuery(false)->whereKey($assets->pluck('id')->all());
+        $exportedAssets = in_array($this->skuSort, ['asc', 'desc'], true)
+            ? $this->orderAssets($query)->get()
+            : $query->orderBy('id')->get();
         $exportedAmazonAssets = $exportedAssets->filter(fn (ProductDesignAsset $asset): bool => $this->assetMarketplace($asset) === 'amazon')->values();
         $exportedEtsyAssets = $exportedAssets->filter(fn (ProductDesignAsset $asset): bool => $this->assetMarketplace($asset) === 'etsy')->values();
 
@@ -290,15 +308,12 @@ class MarketplaceExports extends Component
 
     public function render(): View
     {
-        $assets = $this->filteredReadyQuery()
-            ->latest('marketplace_exported_at')
-            ->latest('approved_at')
-            ->latest('id')
+        $assets = $this->orderAssets($this->filteredReadyQuery())
             ->paginate(in_array($this->perPage, self::PER_PAGE_OPTIONS, true) ? $this->perPage : 20);
         $visibleIds = $assets->getCollection()->pluck('id')->map(fn (int $id): string => (string) $id);
         $selectedIds = $this->selectedIds();
         $patternSelectionError = $selectedIds->isEmpty() ? null : $this->patternSelectionError(
-            $this->exportableQuery()->whereKey($selectedIds->all())->orderBy('id')->get(),
+            $this->exportableQuery(false)->whereKey($selectedIds->all())->orderBy('id')->get(),
             $selectedIds->count(),
         );
 
@@ -360,9 +375,9 @@ class MarketplaceExports extends Component
             );
     }
 
-    private function exportableQuery(): Builder
+    private function exportableQuery(bool $applySearch = true): Builder
     {
-        return $this->readyQuery();
+        return $this->readyQuery($applySearch);
     }
 
     private function readyQuery(bool $applySearch = true): Builder
@@ -609,10 +624,7 @@ class MarketplaceExports extends Component
      */
     private function visibleIds(): Collection
     {
-        return $this->filteredExportableQuery()
-            ->latest('marketplace_exported_at')
-            ->latest('approved_at')
-            ->latest('id')
+        return $this->orderAssets($this->filteredExportableQuery())
             ->forPage($this->getPage(), in_array($this->perPage, self::PER_PAGE_OPTIONS, true) ? $this->perPage : 20)
             ->pluck('id')
             ->map(fn (int $id): string => (string) $id);
