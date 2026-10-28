@@ -198,3 +198,341 @@
 
 ### 2026-10-27 - Order export loading state
 - Updated resources/views/livewire/pages/order/index.blade.php and .design/order-one-item/DESIGN_BRIEF.md: disable modal controls and Escape during export; show spinner until response; retain tracking upload guard. Validation: OrderTextTest 12 tests / 95 assertions, Blade cache and npm build passed. Deploy Blade/assets; no database or queue impact. Visual screenshots unavailable; Better Design quota exhausted; Graphiti unavailable.
+
+### 2026-10-27 - Rename Amazon order paste entry
+- Renamed the modal title and trigger button to Order Amazon Paste in resources/views/livewire/pages/order/index.blade.php. Route offorest.order and OrderPage component unchanged. Better Design quota exhausted; no screenshot review.
+- Validation: OrderTextTest 12 tests / 95 assertions, view:cache and npm build passed. Deploy Blade/assets; no database or queue impact. Visual review unavailable; Graphiti unavailable.
+
+### 2026-10-27 - Rename Order Blade view
+- Renamed resources/views/livewire/pages/order/index.blade.php to OrderPage.blade.php and updated app/Livewire/Pages/Order/OrderPage.php view reference. Validation: OrderTextTest 12 tests / 95 assertions and view:cache passed. No database or queue impact; deploy PHP and Blade.
+
+### 2026-10-27 - Normalize Order table row colors
+- Root cause: global dark-mode CSS matched the hover:bg-orange-50/40 class substring and colored every table row brown/orange. Replaced the Order page row hover classes with neutral hover:bg-slate-100 in resources/views/livewire/pages/order/OrderPage.blade.php for SKU Order Items, History Orders, and Order Products. Validation: OrderTextTest 12 tests / 95 assertions, view cache, npm build passed. Deploy Blade/assets; no database or queue impact. Visual review unavailable; Better Design quota exhausted; Graphiti unavailable.
+
+### 2026-10-27 - Standalone Order Amazon Paste
+- Moved Amazon paste parsing/export from Order modal to standalone OrderAmazonPaste Livewire component and Blade view. Registered product order-amazon-paste under Support with existing per-product authorization; migration adds product and assigns existing admins. No user permissions granted automatically. Existing SKU ownership, FBA lookup, tracking upload and export history preserved.
+- Changed app/Livewire/Pages/Order/OrderPage.php, app/Livewire/Pages/Order/OrderAmazonPaste.php, app/Livewire/Pages/Dashboard/Index.php, app/Support/ProductRegistry.php, resources/views/livewire/pages/order/OrderPage.blade.php, resources/views/livewire/pages/order/OrderAmazonPaste.blade.php, resources/views/livewire/layout/navigation.blade.php, database/migrations/2026_10_27_120000_add_order_amazon_paste_product.php, tests/Feature/OrderTextTest.php, and .design/order-amazon-paste/DESIGN_BRIEF.md. Validation: 13 tests / 98 assertions, PHP lint, view cache, npm build. Deploy PHP, Blade, assets and run migration; no queue change. Visual screenshots unavailable; Better Design quota exhausted; Graphiti unavailable.
+
+### 2026-10-27 - Order Amazon Paste AI preview and approval
+- Added per-SKU source/AI image cards, optional ADD NAME/ADD YEAR prompt additions, explicit Duyệt ảnh state, and synchronous Drive upload of approved generated images during Export đơn alongside tracking files. Generated images do not upload through a worker. User-specific CheapKeyAI credentials use function_key order-amazon-paste; missing keys show an actionable error and page includes existing key modal. Super admins edit a shared prompt stored in listing_prompt_overrides marketplace order-master; users do not see it. Export uses approved Drive links, otherwise original Design Link.
+- Changed app/Livewire/Pages/Order/OrderAmazonPaste.php, resources/views/livewire/pages/order/OrderAmazonPaste.blade.php, tests/Feature/OrderTextTest.php and .design/order-amazon-paste/DESIGN_BRIEF.md. Validation: 16 tests / 112 assertions, PHP lint, Blade cache and npm build passed. Deploy PHP, Blade, assets; no queue change. Visual review unavailable; Better Design quota exhausted; Graphiti unavailable.
+
+
+### 2026-10-27 - Order Amazon Paste draft recovery
+- XLAP Web Platform: preserve pasted order rows, AI image approvals, and completed Drive links in the current user session. Clear-all also unlocks the input. Tracking files not yet uploaded must be selected again after reload. Validate source and generated image paths before use.
+- Changed app/Livewire/Pages/Order/OrderAmazonPaste.php, resources/views/livewire/pages/order/OrderAmazonPaste.blade.php, tests/Feature/OrderTextTest.php, and .design/order-amazon-paste/DESIGN_BRIEF.md. Existing page, migration, and other dirty files are from prior work.
+- Validation: OrderTextTest 18 tests / 122 assertions, PHP lint, Blade cache, Vite build passed. Screenshot and rendered spacing review unavailable; Better Design quota exhausted; Graphiti unavailable.
+- Deploy PHP, Blade, assets; prior Support product migration must be applied separately. Upload and generation remain synchronous, no worker required; Drive uploads are accessible to anyone with the link. Session drafts expire with the session and are not a cross-device backup.
+
+
+### 2026-10-28 - Order Amazon Paste image card layout
+- XLAP Web Platform: redesigned each order image card to follow the existing Glass/Ornament source and Create Master layout, with SKU/order header, approval button, larger previews and per-card loading. Existing generation, approval, personalization, permissions, and export behavior remain unchanged; mockup/PSD is outside scope.
+- Changed resources/views/livewire/pages/order/OrderAmazonPaste.blade.php and .design/order-amazon-paste/DESIGN_BRIEF.md; appended AI_MEMORY.md. Validation: OrderTextTest 18 tests / 122 assertions, Blade cache and npm build passed.
+- Deploy Blade and built assets; no migration or queue impact. Baseline and after screenshots, mobile/desktop visual review and spacing measurements unavailable; browser had no accessible tab and Better Design quota exhausted. Graphiti unavailable.
+
+
+### 2026-10-28 - Separate order image cards below table
+- XLAP Web Platform: moved image creation cards into a separate "Ảnh đơn hàng" section below the order data table. Table remains the primary data surface; image generation/approval actions and loading states are unchanged.
+- Changed resources/views/livewire/pages/order/OrderAmazonPaste.blade.php and .design/order-amazon-paste/DESIGN_BRIEF.md. Validation: OrderTextTest 18 tests / 122 assertions, Blade cache and npm build passed.
+- Deploy Blade and built assets; no migration or queue impact. Screenshot/DOM spacing review unavailable; Better Design quota exhausted. Graphiti unavailable.
+
+
+### 2026-10-28 - Third order image panel
+- XLAP Web Platform: added an explicitly empty third image panel per order card, matching the existing two panels; three columns on desktop, two on tablet, one on mobile. Existing image generation and approval unchanged; no mockup behavior added.
+- Changed resources/views/livewire/pages/order/OrderAmazonPaste.blade.php and .design/order-amazon-paste/DESIGN_BRIEF.md. Validation: OrderTextTest 18 tests / 122 assertions, Blade cache and Vite build passed.
+- Deploy Blade/assets; no migration or queue changes. Screenshot and rendered spacing review unavailable; Better Design quota exhausted and Graphiti unavailable.
+
+
+### 2026-10-28 - Align order image card metadata
+- XLAP Web Platform: moved ADD NAME and ADD YEAR into the same responsive header as STT, SKU and order ID; wrapping remains available for narrow screens. Generation and approval unchanged.
+- Changed resources/views/livewire/pages/order/OrderAmazonPaste.blade.php and .design/order-amazon-paste/DESIGN_BRIEF.md. OrderTextTest 18 tests / 122 assertions, Blade cache and Vite build passed.
+- Deploy Blade and assets; no database or queue changes. Screenshots and rendered review unavailable; Better Design quota exhausted, Graphiti unavailable.
+
+
+### 2026-10-28 - Order shared prompt modal
+- XLAP Web Platform: moved the super-admin-only shared prompt editor behind a Prompt button in the existing modal component. Successful save closes the dialog; server-side super admin authorization and prompt storage are unchanged.
+- Changed app/Livewire/Pages/Order/OrderAmazonPaste.php, resources/views/livewire/pages/order/OrderAmazonPaste.blade.php, tests/Feature/OrderTextTest.php and .design/order-amazon-paste/DESIGN_BRIEF.md. Validation: OrderTextTest 18 tests / 123 assertions, Blade cache and Vite build passed.
+- Deploy PHP, Blade and assets; no migration or queue impact. Browser screenshot and spacing review unavailable; Better Design quota exhausted and Graphiti unavailable.
+
+
+### 2026-10-28 - Separate order card metadata
+- XLAP Web Platform: added visible | separators between STT, SKU, Order, ADD NAME and ADD YEAR in each order image card header. Optional fields do not leave trailing separators.
+- Changed resources/views/livewire/pages/order/OrderAmazonPaste.blade.php and .design/order-amazon-paste/DESIGN_BRIEF.md.
+- Validation: OrderTextTest 18 tests / 123 assertions, Blade cache and build passed. Deploy Blade/assets; no queue or migration impact. Screenshot and spacing review unavailable; Better Design quota exhausted; Graphiti unavailable.
+
+
+### 2026-10-28 - Wait state for Design Link
+- XLAP Web Platform: the Design Link table cell now shows Wait until an approved AI image has a completed Drive link; it then displays the Drive URL. The source Design Link remains available through the Source Image card.
+- Changed resources/views/livewire/pages/order/OrderAmazonPaste.blade.php, tests/Feature/OrderTextTest.php and .design/order-amazon-paste/DESIGN_BRIEF.md. Validation: OrderTextTest 18 tests / 124 assertions, Blade cache and Vite build passed.
+- Deploy Blade/assets; no migration or queue impact. Screenshot/spacing review unavailable; Better Design quota exhausted and Graphiti unavailable.
+
+
+### 2026-10-28 - Order header action alignment
+- XLAP Web Platform: arranged API key and super-admin Prompt buttons together at the right of the page title, wrapping on narrow screens. Modal behavior and permissions unchanged.
+- Changed resources/views/livewire/pages/order/OrderAmazonPaste.blade.php and .design/order-amazon-paste/DESIGN_BRIEF.md. OrderTextTest 18 tests / 124 assertions, Blade cache and Vite build passed.
+- Deploy Blade and assets; no migration or queue changes. Rendered desktop/mobile screenshots and spacing review unavailable; Better Design quota exhausted, Graphiti unavailable.
+
+
+### 2026-10-28 - Order Create Master personalization
+- XLAP Web Platform: Create Master sends the first Source Image through the existing reference-image generator, applies the shared Order Amazon prompt, and appends explicit ADD NAME/ADD YEAR replacement instructions only when present. The generated result remains unapproved until the user clicks Duyệt ảnh.
+- Changed app/Livewire/Pages/Order/OrderAmazonPaste.php, tests/Feature/OrderTextTest.php and .design/order-amazon-paste/DESIGN_BRIEF.md. Validation: OrderTextTest 19 tests / 131 assertions, PHP lint, Blade cache and Vite build passed.
+- Deploy PHP, Blade and assets; no migration or queue impact. Screenshot/review unavailable; Better Design quota exhausted, Graphiti unavailable.
+
+
+### 2026-10-28 - Order CheapKeyAI balance display
+- XLAP Web Platform: show the current user CheapKeyAI balance beside the API button using the existing GlassService balance endpoint. Existing user key from any function/page is accepted; missing user key shows null, failed balance fetch shows N/A. Balance cached 60 seconds and refreshes after cheapkeyai-key-updated.
+- Changed app/Livewire/Pages/Order/OrderAmazonPaste.php, resources/views/livewire/pages/order/OrderAmazonPaste.blade.php, tests/Feature/OrderTextTest.php and .design/order-amazon-paste/DESIGN_BRIEF.md. Validation: OrderTextTest 20 tests / 135 assertions, Blade cache and Vite build passed.
+- Deploy PHP, Blade, assets; no migration or queue impact. Screenshot/spacing review unavailable; Better Design quota exhausted, Graphiti unavailable.
+
+
+### 2026-10-28 - Center shared prompt modal
+- XLAP Web Platform: added an opt-in centered layout to the shared modal component and enabled it for Order Amazon Paste Prompt. Modal remains scrollable on small screens; other modal callers keep existing positioning.
+- Changed resources/views/components/modal.blade.php, resources/views/livewire/pages/order/OrderAmazonPaste.blade.php and .design/order-amazon-paste/DESIGN_BRIEF.md. Validation: OrderTextTest 20 tests / 135 assertions, Blade cache and Vite build passed.
+- Deploy Blade and assets; no migration or queue impact. Screenshot/spacing review unavailable; Better Design quota exhausted and Graphiti unavailable.
+
+
+### 2026-10-28 - Enlarge shared prompt modal
+- XLAP Web Platform: increased the centered shared prompt modal from 2xl to 3xl and textarea from 8 to 10 rows. Existing modal scroll and permissions remain unchanged.
+- Changed resources/views/components/modal.blade.php, resources/views/livewire/pages/order/OrderAmazonPaste.blade.php and .design/order-amazon-paste/DESIGN_BRIEF.md. Validation: OrderTextTest 20 tests / 135 assertions, Blade cache and Vite build passed.
+- Deploy Blade and assets; no migration or queue impact. Screenshot/spacing review unavailable; Better Design quota exhausted, Graphiti unavailable.
+
+### 2026-10-28 - Hide customization columns in Order Amazon Paste table
+- XLAP Web Platform: hid `ADD NAME`, `ADD YEAR`, `Choose Pack`, `Surface 1`, and `SELECT SIZES` from the order-data table only. Parsed state, Create Master card header values, and export data remain unchanged.
+- Changed resources/views/livewire/pages/order/OrderAmazonPaste.blade.php and tests/Feature/OrderTextTest.php. Validation: OrderTextTest 20 tests / 143 assertions, `php artisan view:cache`, and `npm run build` passed.
+- Deploy Blade and compiled assets; no migration or queue impact. Screenshot/spacing review unavailable because Better Design quota is exhausted; Graphiti unavailable.
+
+### 2026-10-28 - Allow queued per-SKU Create Master actions
+- Root cause: the Create Master button used `wire:target="generateOrderTextMaster"`, so Livewire marked every card button disabled while any SKU was generating.
+- Changed resources/views/livewire/pages/order/OrderAmazonPaste.blade.php: target loading/disabled state to `generateOrderTextMaster(index)` per card; export remains a global lock. Livewire serializes requests for this component, so requests run sequentially rather than in parallel. Updated .design/order-amazon-paste/DESIGN_BRIEF.md.
+- Validation: OrderTextTest 20 tests / 143 assertions and `php artisan view:cache` passed. No migration or queue impact. Better Design review unavailable due to quota; no runtime screenshot captured.
+
+### 2026-10-28 - Shared Order Amazon Paste image model
+- XLAP Web Platform: Create Master previously relied on the provider default with no page-level shared selector. Super admins can now select an allowed model for future requests; every user continues using their own CheapKeyAI credential. The shared value is stored in listing_prompt_overrides under order-model; no migration required.
+- Changed app/Livewire/Pages/Order/OrderAmazonPaste.php, resources/views/livewire/pages/order/OrderAmazonPaste.blade.php, tests/Feature/OrderTextTest.php and .design/order-amazon-paste/DESIGN_BRIEF.md. Validation: OrderTextTest 21 tests / 152 assertions, PHP lint, Blade cache and Vite build passed. Existing AI_MEMORY.md whitespace makes git diff --check fail.
+- Deploy PHP, Blade and built assets; no queue changes. Provider support and prices for each listed model were not verified. Screenshots and Better Design review unavailable (quota exhausted); Graphiti unavailable.
+
+### 2026-10-28 - Move shared model trigger beside balance
+- XLAP Web Platform: moved the super-admin Model trigger to the left of the CheapKeyAI balance in the Order Amazon Paste header.
+- Changed resources/views/livewire/pages/order/OrderAmazonPaste.blade.php and .design/order-amazon-paste/DESIGN_BRIEF.md. Validation: Blade cache passed; no backend, queue, or migration impact.
+
+
+### 2026-10-28 - Move Model trigger beside balance
+- XLAP Web Platform: moved the super-admin Model trigger immediately to the left of the CheapKeyAI balance in the Order Amazon Paste header.
+- Changed resources/views/livewire/pages/order/OrderAmazonPaste.blade.php and .design/order-amazon-paste/DESIGN_BRIEF.md. Validation: OrderTextTest 21 tests / 152 assertions, Blade cache, and Vite build passed.
+- Deploy Blade/assets only; no backend, migration, or queue impact. Better Design review unavailable because quota is exhausted; no runtime screenshot captured.
+
+
+### 2026-10-28 - Align Order Amazon Paste image panels
+
+- XLAP Web Platform: fixed vertical misalignment between Source Image, Create Master, and the supplemental empty panel.
+- Root cause: Create Master header contained a button and was taller than the two plain headers.
+- Changed resources/views/livewire/pages/order/OrderAmazonPaste.blade.php to give all three headers a shared min-height and preserve responsive layout/actions. Updated .design/order-amazon-paste/DESIGN_BRIEF.md.
+- Validation: php artisan view:cache passed; OrderTextTest passed (21 tests, 152 assertions); npm run build passed. No backend, database, or queue impact. Browser screenshot review unavailable; visual result unverified in runtime.
+
+
+### 2026-10-28 - Remove Order Amazon Paste prompt cap
+
+- XLAP Web Platform: removed the 5,000-character cap from the shared Order Amazon Paste prompt editor. The database column is already longText.
+- Changed app/Livewire/Pages/Order/OrderAmazonPaste.php, resources/views/livewire/pages/order/OrderAmazonPaste.blade.php, tests/Feature/OrderTextTest.php, and .design/order-amazon-paste/DESIGN_BRIEF.md. Authorization and required validation remain.
+- Validation: OrderTextTest passed (22 tests, 154 assertions); PHP lint, Blade cache, and npm run build passed. No migration or queue impact.
+
+### 2026-10-28 - Order bounds template upload
+- XLAP Web Platform: added a super-admin-only Order Amazon Paste modal to upload separate shared Glass and Ceramic bounds templates without color detection. Files are normalized to PNG and stored separately from existing Glass/Ceramic guides; the editor/export integration is not implemented.
+- Changed app/Livewire/Pages/Order/OrderAmazonPaste.php, resources/views/livewire/pages/order/OrderAmazonPaste.blade.php, tests/Feature/OrderTextTest.php and .design/order-amazon-paste/DESIGN_BRIEF.md. Validation: OrderTextTest 23 tests / 165 assertions, Blade cache, PHP lint and npm build passed.
+- Deploy PHP, Blade and compiled assets; no migration or queue changes. Better Design quota exhausted; no browser screenshot review. Graphiti unavailable.
+
+### 2026-10-28 - Order bounds upload preview and loading lock
+- XLAP Web Platform: fixed missing selected-file preview in the super-admin Order bounds modal. Added temporary image preview, upload progress text, and disabled modal controls while Livewire uploads/saves to prevent duplicate actions.
+- Changed resources/views/livewire/pages/order/OrderAmazonPaste.blade.php and .design/order-amazon-paste/DESIGN_BRIEF.md. Validation: OrderTextTest 23 tests / 165 assertions and Blade cache passed.
+- Deploy Blade only; no migration or queue impact. Browser screenshot and Better Design review unavailable due to quota.
+
+# 2026-10-28 - Order template selected-type comparison
+- Root cause: template modal showed both types instead of the selected type and lacked a before/after comparison.
+- Changed: resources/views/livewire/pages/order/OrderAmazonPaste.blade.php; .design/order-amazon-paste/DESIGN_BRIEF.md.
+- Module: Order Amazon Paste bounds template modal. Selected type controls current preview; selected upload is the after preview. Existing upload/save locks remain.
+- Validation: OrderTextTest 23 tests/165 assertions, view:cache, npm run build, PHP lint passed. Desktop/mobile screenshots unavailable; visual review unverified. Better Design quota exhausted; Graphiti unavailable.
+- Deploy: deploy Blade and clear/cache views as appropriate. Queue: no impact. Follow-up: bounds editor/export integration is separate and not implemented in this task.
+
+# 2026-10-28 - Order template preview comparison layout
+- Cause: preview lacked the requested current/new square comparison layout.
+- Changed: resources/views/livewire/pages/order/OrderAmazonPaste.blade.php and .design/order-amazon-paste/DESIGN_BRIEF.md.
+- Module: Order Amazon Paste template modal; existing upload behavior and permissions preserved.
+- Validation: OrderTextTest 23 tests/165 assertions and view:cache passed; npm build run. No rendered screenshots; visual review unverified. Better Design quota exhausted; Graphiti unavailable.
+- Deploy: publish Blade and frontend build, refresh view cache. Queue: no impact. Follow-up: verify desktop/mobile visually.
+
+# 2026-10-28 - Missing order bounds template notice
+- Root cause: page header gave no indication when Glass or Ceramic shared bounds template was absent.
+- Changed: resources/views/livewire/pages/order/OrderAmazonPaste.blade.php; .design/order-amazon-paste/DESIGN_BRIEF.md.
+- Module: Order Amazon Paste header. Shows missing template types; non-super-admin users see contact guidance; hides notice when complete.
+- Validation: OrderTextTest 23 tests/165 assertions, view:cache, npm build passed. No rendered screenshot; visual review unverified. Better Design quota exhausted; Graphiti unavailable.
+- Deploy: deploy Blade and refresh view cache. Queue: no impact. Follow-up: verify notice on user and super_admin accounts.
+
+# 2026-10-28 - Restrict missing-template notice
+- Change: missing Glass/Ceramic template notice is now rendered only for super_admin; regular users never see it.
+- Validation: OrderTextTest 23 tests/165 assertions, view:cache, npm build passed. Queue impact: none.
+
+# 2026-10-28 - Order template bounds editor
+- Root cause: Order Amazon Paste had no per-card template alignment flow after Create Master.
+- Changed: app/Livewire/Pages/Order/OrderAmazonPaste.php; resources/views/livewire/pages/order/OrderAmazonPaste.blade.php; resources/views/livewire/pages/order/partials/order-template-editor.blade.php; .design/order-amazon-paste/DESIGN_BRIEF.md.
+- Module: Order Amazon Paste. Template button is disabled without Create Master. Product name suggests Glass/Ceramic; user can switch type. Missing template warns. Editor crops a circular transparent PNG and shows it in frame 3; export prefers it and requires re-approval.
+- Validation: OrderTextTest, view:cache, PHP lint, npm build passed. No browser screenshot; visual review unverified. Better Design quota exhausted; Graphiti unavailable.
+- Deploy: deploy PHP/Blade and refresh view cache. Queue: no impact. Follow-up: verify circle position against real Glass/Ceramic templates and add browser interaction coverage.
+
+# 2026-10-28 - Order bounds verification
+- Added tests/Feature/OrderTextTest.php: template save validates type/existence, stores PNG, preserves master and clears prior approval/link. OrderTextTest: 24 tests/177 assertions passed; PHP lint, Blade cache and npm build passed. git diff --check reports pre-existing whitespace in AI_MEMORY.md. Browser editor and export remain unverified; deploy PHP, Blade and built assets, refresh view cache; no queue impact. Graphiti and Better Design unavailable.
+
+
+### 2026-10-28 - Split Order Amazon Paste into two cards
+
+- XLAP Web Platform: split the order data area and the order image workflow into separate cards at the boundary shown by the user.
+- Changed resources/views/livewire/pages/order/OrderAmazonPaste.blade.php and .design/order-amazon-paste/DESIGN_BRIEF.md. Preserved Livewire actions, data, approvals, template editing, responsive behavior, and card contents.
+- Validation: php artisan view:cache passed; OrderTextTest passed (24 tests, 177 assertions); npm run build passed. Better Design review tools unavailable because quota is exhausted; no browser screenshot/spacing evidence, so visual result remains unverified.
+
+# 2026-10-28 - Order bounds editor Glass-like layout
+- Changed resources/views/livewire/pages/order/partials/order-template-editor.blade.php and .design/order-amazon-paste/DESIGN_BRIEF.md. Order editor uses left image and right controls while keeping independent templates and adjustable circular crop.
+- Validated OrderTextTest 24 tests / 177 assertions, view:cache, npm build. Browser screenshots not captured; visual/interaction verification remains. Better Design quota exhausted; Graphiti unavailable. Deploy Blade and assets; no queue changes.
+
+# 2026-10-28 - Order bounds guide colors
+- Removed the blue diagnostic crop overlay and multiply blend that darkened the template. Initial guide opacity is 60% so artwork remains visible; user can adjust it. Updated resources/views/livewire/pages/order/partials/order-template-editor.blade.php.
+- Validated OrderTextTest 24/177, view:cache and npm build. Browser preview unverified. Deploy Blade; no queue impact. Graphiti unavailable.
+
+# 2026-10-28 - Order template under-image opacity
+- Bound guide opacity to the under-image template in resources/views/livewire/pages/order/partials/order-template-editor.blade.php; an opaque master image still covers a guide below it.
+- Validation: OrderTextTest 24 tests/177 assertions, view:cache and npm build passed. Browser visual verification unavailable; Graphiti unavailable. Deploy Blade, refresh view cache; no queue changes.
+
+# 2026-10-28 - Order template overlay toggle
+- Root cause: frame 3 alternated between template and adjusted image and had no per-card toggle.
+- Changed resources/views/livewire/pages/order/OrderAmazonPaste.blade.php and .design/order-amazon-paste/DESIGN_BRIEF.md. Frame 3 displays adjusted image or Create Master with independently toggled SKU-derived guide.
+- Validation: OrderTextTest 24/177, view:cache, npm build passed. Browser/mobile screenshots not available; visual interaction unverified. Better Design quota exhausted; Graphiti unavailable.
+- Deploy Blade/build assets and refresh view cache; no queue impact. Follow-up: verify overlay alignment and custom template selection in browser.
+
+# 2026-10-28 - Repair order image card container
+- Cause: extra closing div after template preview closed the image section early; subsequent order cards expanded outside the intended container.
+- Changed resources/views/livewire/pages/order/OrderAmazonPaste.blade.php, tests/Feature/OrderTextTest.php and .design/order-amazon-paste/DESIGN_BRIEF.md. Added DOM regression for two cards in the section.
+- Validation: focused DOM regression, OrderTextTest, view:cache and npm build. Browser desktop/mobile screenshots unavailable; visual confirmation remains. Better Design quota exhausted and Graphiti unavailable.
+- Deploy Blade and refresh view cache; queue impact none.
+
+# 2026-10-28 - Preview Order Amazon Paste images
+- Cause: order image cards rendered images as static elements, so users could not inspect source, Create Master, or template-adjusted results at full size.
+- Changed resources/views/livewire/pages/order/OrderAmazonPaste.blade.php: wrapped each available image in an accessible button dispatching the existing review-image image-only modal; template overlay remains separate and unchanged.
+- Changed tests/Feature/OrderTextTest.php: added coverage for three preview triggers and image-only payloads.
+- Affected module: Order Amazon Paste image review UI. Deploy impact: Blade/cache and frontend assets only. Queue impact: none. Follow-up: verify click preview at desktop/mobile in browser.
+- Validation: OrderTextTest 26 tests/181 assertions, view:cache and npm build passed. Desktop/mobile screenshots and rendered design review unavailable; Better Design quota exhausted, Graphiti unavailable.
+
+# 2026-10-28 - Match Glass image preview
+- Cause: Order Amazon Paste dispatched the shared modal with imageOnly enabled, hiding the Glass-style detail panel.
+- Changed resources/views/livewire/pages/order/OrderAmazonPaste.blade.php and tests/Feature/OrderTextTest.php: order images now use the full shared review-image modal like Glass.
+- Deploy impact: Blade/cache only. Queue impact: none. Follow-up: verify modal controls in browser.
+
+
+# 2026-10-28 - Order draft image cleanup
+- Cause: draft image references were removed without deleting generated files; template saves created orphan images.
+- Changed app/Livewire/Pages/Order/OrderAmazonPaste.php, resources/views/livewire/pages/order/OrderAmazonPaste.blade.php, tests/Feature/OrderTextTest.php and .design/order-amazon-paste/DESIGN_BRIEF.md. New filenames include SKU, user, product, date, image type and UUID; replacement and draft deletion clean up owned local images with confirmation.
+- Affected: Order Amazon Paste drafts; existing session storage retained, no database migration. Existing orphan files not automatically removed. Drive uploads and source images are untouched.
+- Validation: OrderTextTest 28/190, view:cache, npm build passed. Screenshots and visual review unavailable; Better Design quota exhausted; Graphiti unavailable. Deploy Blade/PHP and compiled assets, no queue impact. Follow up verify browser and old orphan cleanup separately.
+
+# 2026-10-28 - Approval requires saved template
+- Cause: Duyệt ảnh was available after Create Master, although export should use only the saved frame-3 Template image.
+- Changed app/Livewire/Pages/Order/OrderAmazonPaste.php and resources/views/livewire/pages/order/OrderAmazonPaste.blade.php: approval is shown and accepted only when orderTextTemplateImages exists; export rejects legacy approvals without a template.
+- Changed tests/Feature/OrderTextTest.php with UI/backend/export coverage. Validation: 30/200, view:cache, npm build passed. No queue impact; deploy PHP/Blade/assets. Better Design quota exhausted; browser visual review unavailable.
+
+# 2026-10-28 - Scope generation loading per order card
+- Cause: approval and template controls used a global generateOrderTextMaster loading target, so starting STT 3 disabled controls on STT 1 and STT 2.
+- Changed resources/views/livewire/pages/order/OrderAmazonPaste.blade.php: approval, template visibility, and template-open controls now target only generateOrderTextMaster(index); other cards remain interactive.
+- Changed tests/Feature/OrderTextTest.php with per-card target coverage. Validation: 31/203, view:cache, npm build passed. Deploy Blade/assets, no queue impact. Browser visual review unavailable; Better Design quota exhausted.
+
+# 2026-10-28 - Empty template panel before save
+- Cause: frame 3 fell back to the Create Master image and displayed the template guide before a template result had been saved.
+- Changed resources/views/livewire/pages/order/OrderAmazonPaste.blade.php, tests/Feature/OrderTextTest.php and .design/order-amazon-paste/DESIGN_BRIEF.md. Frame 3 now shows an empty message until save; editor continues to receive the master image.
+- Validation: OrderTextTest 32/207, view:cache, npm build passed. Browser screenshots unavailable; Better Design quota exhausted; Graphiti unavailable. Deploy Blade/assets; queue impact none.
+
+# 2026-10-28 - Restore template guide in empty frame
+- Cause: frame 3 fallback removal also hid the Glass/Ceramic bounds guide before a saved adjusted image existed.
+- Changed resources/views/livewire/pages/order/OrderAmazonPaste.blade.php and tests/Feature/OrderTextTest.php: frame 3 remains empty until save, while the selected template guide stays visible when available; no guide when product type/template is missing.
+- Validation: OrderTextTest 33/210, view:cache and npm build passed. Browser visual review unavailable; Better Design quota exhausted. Deploy Blade/assets, queue impact none.
+
+# 2026-10-28 - Upload order template on approval
+- Cause: approval only marked a draft; Design Link remained Wait until export. User requested Drive upload when approving.
+- Changed app/Livewire/Pages/Order/OrderAmazonPaste.php, resources/views/livewire/pages/order/OrderAmazonPaste.blade.php, tests/Feature/OrderTextTest.php, and .design/order-amazon-paste/DESIGN_BRIEF.md. Approval uploads the saved template and optional selected tracking, shows per-row links, and retries failed tracking without re-uploading successful image. Export reuses links or uploads tracking selected later.
+- Validation: OrderTextTest 35/229, view:cache, npm build passed. Browser interaction not verified; Better Design quota exhausted and Graphiti unavailable. Deploy PHP/Blade/assets; no queue impact. Drive links are publicly viewable by anyone with the link.
+
+# 2026-10-28 - Require complete Design Links before export
+- Cause: Export đơn remained clickable while one or more order rows still showed Wait in Design Link.
+- Changed app/Livewire/Pages/Order/OrderAmazonPaste.php, resources/views/livewire/pages/order/OrderAmazonPaste.blade.php, tests/Feature/OrderTextTest.php and .design/order-amazon-paste/DESIGN_BRIEF.md. Export is disabled and server-rejected until every row has approved Drive Design Link; the page explains the missing prerequisite.
+- Validation: OrderTextTest 36/240, view:cache, npm build passed. Browser visual review unavailable; Better Design quota exhausted; Graphiti unavailable. Deploy PHP/Blade/assets; no queue impact.
+
+# 2026-10-28 - Shared order template visibility
+- Cause: template overlay toggle was repeated in each card, preventing one action from hiding or showing all guides.
+- Changed resources/views/livewire/pages/order/OrderAmazonPaste.blade.php, tests/Feature/OrderTextTest.php and .design/order-amazon-paste/DESIGN_BRIEF.md: one shared Alpine state and toggle in the image-section heading; editor buttons remain per card.
+- Validation: OrderTextTest 37/242, view:cache and npm build passed. Desktop/mobile visual review unavailable; Better Design quota exhausted; Graphiti unavailable. Deploy Blade/assets; queue impact none.
+
+# 2026-10-28 - Order Amazon Paste button loading
+- Cause: asynchronous order actions lacked a visible spinner during processing.
+- Changed resources/views/livewire/pages/order/OrderAmazonPaste.blade.php, resources/views/livewire/pages/order/partials/order-template-editor.blade.php and .design/order-amazon-paste/DESIGN_BRIEF.md. Loading is scoped to each action/card; instant controls remain immediate.
+- Validation: OrderTextTest 37/242, view:cache and npm build passed. Desktop/mobile screenshots and visual review unavailable; Better Design quota exhausted; Graphiti unavailable. Deploy Blade/assets; queue impact none.
+
+# 2026-10-28 - Order data row numbering
+- Added STT as the first column in Dữ liệu đơn hàng; numbering follows the current rows and reflows after deletion.
+- Changed resources/views/livewire/pages/order/OrderAmazonPaste.blade.php and .design/order-amazon-paste/DESIGN_BRIEF.md. No database or queue impact.
+- Validation: OrderTextTest 37/242, view:cache, npm run build passed. Browser visual review unavailable; Better Design quota exhausted; Graphiti unavailable.
+
+
+### 2026-10-28 - Glass Edit modal loading feedback
+
+- XLAP Web Platform: added a spinner and busy state to the Glass card Edit button while the keyword modal opens. Only the clicked button is disabled; modal validation and permissions remain unchanged.
+- Changed resources/views/livewire/pages/glass/product-design-card.blade.php and added .design/glass-edit-loading/DESIGN_BRIEF.md.
+- Validation: php artisan view:cache passed; UiComponentTest passed (3 tests, 17 assertions); npm run build passed. No database or queue impact. Browser screenshot review unavailable because Better Design quota is exhausted.
+
+# 2026-10-28 - Amazon gift box child lines
+- Cause: gift-box selections had no fulfillment line. FBM BOX maps to 59046, BOX WITH BOW to 70578; No, thanks creates none. Lines appear after their parent with only SKU and product ID, and follow parent deletion. FBA-only excludes these FBM products. Export and history include child lines without separate image approvals.
+- Changed app/Livewire/Pages/Order/OrderAmazonPaste.php, resources/views/livewire/pages/order/OrderAmazonPaste.blade.php, tests/Feature/OrderTextTest.php, and .design/order-amazon-paste/DESIGN_BRIEF.md. Deploy PHP, Blade, and assets; no migration or queue impact.
+- Validation: OrderTextTest 38/252, view:cache and npm build passed. Browser screenshots unavailable, Better Design quota exhausted, Graphiti unavailable.
+
+# 2026-10-28 - Order Amazon Paste draft cleanup
+- Cause: clear removed only URLs in session, leaving old files and folders. Clear now deletes the current user's draft directory recursively, including legacy files; Drive and other users are untouched. New files use glass/ceramic directories; unknown product types use unknown.
+- Changed app/Livewire/Pages/Order/OrderAmazonPaste.php and tests/Feature/OrderTextTest.php. Deploy PHP; no database migration or queue impact. Clearing removes all local drafts for this user, including other sessions.
+- Validation: OrderTextTest 38 tests, 256 assertions; PHP syntax passed. Graphiti unavailable.
+
+# 2026-10-28 - Hide gift-box customization column
+- Removed Would you prefer your item to come with a gift box? from the visible order data table while retaining parsed state for BOX/BOX WITH BOW child rows and export.
+- Changed resources/views/livewire/pages/order/OrderAmazonPaste.blade.php, tests/Feature/OrderTextTest.php, and .design/order-amazon-paste/DESIGN_BRIEF.md. No database or queue impact.
+- Validation: OrderTextTest 38/256, view:cache and npm run build passed. Browser screenshots unavailable; Better Design quota exhausted; Graphiti unavailable.
+
+# 2026-10-28 - Order data clear confirmation
+- Moved Xóa tất cả to the right of Dữ liệu đơn hàng and replaced browser confirm with a focused Yes/No modal. Confirmed deletion still removes draft rows and owned local images, then closes the modal.
+- Changed app/Livewire/Pages/Order/OrderAmazonPaste.php, resources/views/livewire/pages/order/OrderAmazonPaste.blade.php, tests unchanged. Deploy PHP and Blade/assets; no database or queue impact.
+- Validation: OrderTextTest 38/256, view:cache and npm run build passed. Browser screenshots unavailable; Better Design quota exhausted; Graphiti unavailable.
+
+# 2026-10-28 - Compact Amazon master image paths
+- Cause: generation created unnecessary order-id folders and UUID-heavy filenames. Changed generation to use order-amazon-paste/{user}/{product}/ and compact SKU_user_product_date.png names; temporary provider output is moved into the final path and duplicate final names are rejected instead of overwritten.
+- Changed app/Livewire/Pages/Order/OrderAmazonPaste.php and tests/Feature/OrderTextTest.php; design brief updated. Existing empty legacy folders are not recreated; clear-all still removes the user's full draft tree. Deploy PHP; no migration or queue impact.
+- Validation: OrderTextTest 39/264, view:cache and npm run build passed. Browser screenshots unavailable; Better Design quota exhausted; Graphiti unavailable.
+
+# 2026-10-28 - Per-row Design Link skip
+- Cause: some rows may intentionally have no Design Link. Added persistent orderTextSkipDesignLink per-row state and checkbox beside Design Link; checked rows bypass Design Link approval/upload validation and export with a blank link, while unchecked rows retain the existing requirement.
+- Changed app/Livewire/Pages/Order/OrderAmazonPaste.php, resources/views/livewire/pages/order/OrderAmazonPaste.blade.php, tests/Feature/OrderTextTest.php, and design brief. Deploy PHP and Blade/assets; no database or queue impact.
+- Validation: OrderTextTest 40/274, view:cache and npm run build passed. Browser screenshots unavailable; Better Design quota exhausted; Graphiti unavailable.
+
+# 2026-10-28 - Clear confirmation busy state
+- No used Livewire loading disabling without disabled visual styling; runtime cause of reported click remains unverified. Explicit Alpine pending state now disables No and Yes immediately until the delete request completes.
+- Delete currently recursively removes the user's entire draft image directory, including old files and empty folders, synchronously; production timings and file count unavailable. No deletion-performance change.
+- Changed resources/views/livewire/pages/order/OrderAmazonPaste.blade.php and design brief. OrderTextTest 40/274, view:cache, npm run build passed. Deploy Blade/assets; no queue impact. Browser visual review unavailable; Better Design quota exhausted; Graphiti unavailable.
+
+# 2026-10-28 - Order image replacement text
+- Cause: generated image instructions did not specify the original text to replace. Added per-card editable source text for name and year, defaulting to Name and Year; absent or dash values are hidden and omitted. Source values persist in session and follow row deletion.
+- Changed app/Livewire/Pages/Order/OrderAmazonPaste.php, resources/views/livewire/pages/order/OrderAmazonPaste.blade.php, tests/Feature/OrderTextTest.php and .design/order-amazon-paste/DESIGN_BRIEF.md. Deploy PHP, Blade and assets; no migration or queue impact.
+- Validation: OrderTextTest 41 tests/283 assertions, PHP lint, view cache and npm build passed. Browser screenshots and visual review unavailable; Better Design quota exhausted; Graphiti unavailable. AI image text fidelity remains unverified.
+
+# 2026-10-28 - Order image text add/replace modes
+- Cause: one source-text field could not represent images without existing replacement text. Added per-card replace/add modes for name and year; replace uses exact source text, add uses an explicit position and tells AI not to remove existing text.
+- Changed app/Livewire/Pages/Order/OrderAmazonPaste.php, resources/views/livewire/pages/order/OrderAmazonPaste.blade.php, tests/Feature/OrderTextTest.php and .design/order-amazon-paste/DESIGN_BRIEF.md. Deploy PHP, Blade and assets; no migration or queue impact.
+- Validation: OrderTextTest 42 tests/287 assertions, view cache and npm build passed. Browser/visual review unavailable; Better Design quota exhausted; Graphiti unavailable.
+
+# 2026-10-28 - DATA bulk approval and user filters
+- Added user chips and bulk approval for Glass, Ceramic, Sticker, Decal through their existing approval services. Other product flows are skipped to preserve their specialized approval logic.
+- Changed app/Livewire/Pages/Admin/DataSkuSearch.php, resources/views/livewire/pages/admin/data-sku-search.blade.php, tests/Feature/DataSkuSearchUnapproveTest.php and .design/data-sku-search/DESIGN_BRIEF.md. Deploy PHP, Blade and assets; approval can queue Drive uploads; no migration.
+- Validation: focused tests, view cache and npm build passed. Visual review unavailable; Better Design quota exhausted; Graphiti unavailable.
+
+# 2026-10-28 - DATA bulk approval mockup threshold
+- Bulk approval now requires at least 3 populated custom mockup fields; redesign alone is insufficient. Added ProductDesignAsset::getCustomMockupCount and reused it in hasCustomMockupOutput.
+- Changed app/Livewire/Pages/Admin/DataSkuSearch.php, app/Models/ProductDesignAsset.php, resources/views/livewire/pages/admin/data-sku-search.blade.php and tests/Feature/DataSkuSearchUnapproveTest.php. Deploy PHP/Blade; no migration or queue change.

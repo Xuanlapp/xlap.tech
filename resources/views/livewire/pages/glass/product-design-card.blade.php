@@ -2,6 +2,7 @@
     x-data="{
         showMasterBounds: localStorage.getItem('glass-show-master-bounds') === '1',
         masterBoundsOpacity: Number(localStorage.getItem('glass-master-bounds-opacity') || '0.72'),
+        editKeywordLoading: false,
         keywordValue: @js($asset->keyword ?: 'Glass item'),
         init() {
             window.addEventListener('glass-keyword-updated', (event) => {
@@ -40,9 +41,12 @@
                     variant="ghost"
                     size="xs"
                     type="button"
-                    x-on:click="Livewire.dispatchTo('modals.product.edit-keyword', 'openModal', { component: 'modals.product.edit-keyword', arguments: { assetId: {{ $asset->id }}, productSlug: 'glass' } })"
+                    x-on:click="if (!editKeywordLoading) { editKeywordLoading = true; try { await Livewire.getByName('modals.product.edit-keyword')[0].openModal('modals.product.edit-keyword', { assetId: {{ $asset->id }}, productSlug: 'glass' }); } finally { editKeywordLoading = false; } }"
+                    x-bind:disabled="editKeywordLoading"
+                    x-bind:aria-busy="editKeywordLoading"
                 >
-                    Edit
+                    <svg x-show="editKeywordLoading" x-cloak class="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" /><path class="opacity-75" fill="currentColor" d="M12 3a9 9 0 0 1 9 9h-3a6 6 0 0 0-6-6V3z" /></svg>
+                    <span x-text="editKeywordLoading ? 'Đang mở...' : 'Edit'"></span>
                     </x-button>
                 @endif
 

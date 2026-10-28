@@ -78,7 +78,7 @@ new class extends Component
     $isAdminUser = auth()->user()?->role === 'admin' || (bool) auth()->user()?->is_admin;
     $isWaliUser = (bool) (auth()->user()?->can_access_wali) && ! $isAdminUser && ! auth()->user()?->isManager();
     $pageProducts = $products->whereIn('slug', ['decal', 'suncatcher', 'suncatcher-two', 'ornament', 'ornament-etsy', 'ornament-amazon-2', 'sticker', 'glass', 'ceramic']);
-    $supportSlugs = ['camp', 'proxy', 'ytrends', 'idea-amazon', 'idea-etsy'];
+    $supportSlugs = ['order-amazon-paste', 'camp', 'proxy', 'ytrends', 'idea-amazon', 'idea-etsy'];
     $supportProducts = $products
         ->whereIn('slug', $supportSlugs)
         ->sortBy(fn ($product) => array_search($product->slug, $supportSlugs, true))

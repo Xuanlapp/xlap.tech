@@ -99,13 +99,12 @@ class ProductDesignAsset extends Model
 
     public function hasCustomMockupOutput(): bool
     {
-        for ($slot = 1; $slot <= 11; $slot++) {
-            if (filled($this->getAttribute("mockup{$slot}"))) {
-                return true;
-            }
-        }
+        return $this->getCustomMockupCount() > 0;
+    }
 
-        return false;
+    public function getCustomMockupCount(): int
+    {
+        return collect(range(1, 11))->filter(fn (int $slot): bool => filled($this->getAttribute("mockup{$slot}")))->count();
     }
 
     /**

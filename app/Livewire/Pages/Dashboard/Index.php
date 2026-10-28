@@ -67,7 +67,7 @@ class Index extends Component
 
         $data['missingListingPrompts'] = [];
         if (auth()->user()?->isSuperAdmin() || auth()->user()?->role === 'admin' || auth()->user()?->is_admin) {
-            $listingSlugs = collect(ProductRegistry::all())->reject(fn (array $product): bool => in_array($product['slug'], ['camp', 'proxy', 'ytrends', 'idea-amazon', 'idea-etsy'], true))->pluck('slug')->all();
+            $listingSlugs = collect(ProductRegistry::all())->reject(fn (array $product): bool => in_array($product['slug'], ['camp', 'proxy', 'ytrends', 'idea-amazon', 'idea-etsy', 'order-amazon-paste'], true))->pluck('slug')->all();
             $products = Product::query()->whereIn('slug', $listingSlugs)->where('is_active', true)->get(['id', 'name', 'slug']);
             foreach ($products as $product) {
                 foreach (['amazon', 'etsy'] as $marketplace) {

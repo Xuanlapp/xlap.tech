@@ -25,3 +25,7 @@
 - Add a Tracking ID file column after Design Link. Upload each selected JPG/PNG/WebP/PDF (max 10 MB) to Drive only during Export đơn; request public reader permission (`anyone with link`, view-only), include the Drive URL in Excel and history, and block export if upload/permission fails. Row deletion reindexes file inputs safely; repeat export reuses the uploaded link.
 
 - During export, disable modal actions and inputs, prevent Escape from closing the modal, and display an export spinner until the request ends. Keep export disabled during tracking file upload.
+
+- Renamed the order paste modal title and trigger button from Order 1 item to Order Amazon Paste. Route and Livewire component remain unchanged.
+
+- Renamed the Blade view to resources/views/livewire/pages/order/OrderPage.blade.php and updated OrderPage view resolution.

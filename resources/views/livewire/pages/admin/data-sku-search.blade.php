@@ -64,10 +64,16 @@
             <div class="space-y-6">
                 @foreach ([['label' => 'Da duyet', 'assets' => $approvedAssets, 'showBulkReset' => true], ['label' => 'Chua duyet', 'assets' => $unapprovedAssets, 'showBulkReset' => false]] as $table)
                     <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                        @if (!$table['showBulkReset'])<div class="flex justify-end border-b border-slate-200 px-5 py-3 dark:border-slate-800"><button type="button" wire:click="approveAllFilteredAssets" wire:confirm="Duyet tat ca item chua duyet dang loc? Chi item co it nhat 3 mockup tu chon moi duoc duyet." class="min-h-11 rounded-lg bg-emerald-600 px-4 text-xs font-semibold text-white transition hover:bg-emerald-700">Duyet toan bo dang loc</button></div>@endif
                         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-800">
                             <div>
                                 <h2 class="text-lg font-semibold">{{ $table['label'] }}</h2>
-                                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ count($skus) }} SKU dang loc</p>
+                                <div class="mt-1 flex flex-wrap items-center gap-2">
+                                    <p class="text-xs text-slate-500 dark:text-slate-400">{{ count($skus) }} SKU dang loc</p>
+                                    @foreach ($filteredUsers as $filterUser)
+                                        <button type="button" wire:click="toggleUserFilter({{ $filterUser->id }})" aria-pressed="{{ $filterMode === 'user' && $userId === $filterUser->id ? 'true' : 'false' }}" class="min-h-8 rounded-full border px-3 py-1 text-xs font-semibold transition {{ $filterMode === 'user' && $userId === $filterUser->id ? 'border-blue-500 bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200' : 'border-slate-300 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800' }}">{{ $filterUser->name }}</button>
+                                    @endforeach
+                                </div>
                             </div>
                             <div class="flex items-center gap-2">
                                 @if ($table['showBulkReset'])

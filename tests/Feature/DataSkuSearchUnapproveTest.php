@@ -61,6 +61,34 @@ class DataSkuSearchUnapproveTest extends TestCase
         $this->assertTrue($unrelated->refresh()->is_approved);
         $this->assertSame('Keep this title', $unrelated->title);
     }
+    public function test_bulk_approve_and_user_chip_filter_only_matching_rows(): void
+    {
+        $admin = User::factory()->create(['role' => 'super_admin']);
+        $owner = User::factory()->create(['name' => 'Quang']);
+        $other = User::factory()->create(['name' => 'Huy']);
+        $product = Product::where('slug', 'glass')->firstOrFail();
+        foreach ([[$owner, 'A1'], [$other, 'A2']] as [$user, $sku]) {
+            ProductDesignAsset::create(['user_id' => $user->id, 'product_id' => $product->id, 'sku' => $sku, 'item_number' => 1, 'redesign' => 'https://example.com/master.png', 'mockup1' => 'https://example.com/1.png', 'mockup2' => 'https://example.com/2.png', 'mockup3' => 'https://example.com/3.png', 'is_approved' => false]);
+        }
+        $this->actingAs($admin);
+        Livewire::test(DataSkuSearch::class)->set('skuSearch', 'A1,A2')->call('toggleUserFilter', $owner->id)->call('approveAllFilteredAssets');
+        $this->assertTrue(ProductDesignAsset::where('sku', 'A1')->value('is_approved'));
+        $this->assertFalse(ProductDesignAsset::where('sku', 'A2')->value('is_approved'));
+    }
+
+    public function test_bulk_approval_requires_three_custom_mockups(): void
+    {
+        $admin = User::factory()->create(['role' => 'super_admin']);
+        $product = Product::where('slug', 'glass')->firstOrFail();
+        $asset = ProductDesignAsset::create(['user_id' => $admin->id, 'product_id' => $product->id, 'sku' => 'THRESHOLD', 'item_number' => 20, 'redesign' => 'https://example.com/master.png', 'mockup1' => 'https://example.com/1.png', 'mockup2' => 'https://example.com/2.png', 'is_approved' => false]);
+        $this->actingAs($admin);
+        $component = Livewire::test(DataSkuSearch::class)->set('skuSearch', 'THRESHOLD')->call('approveAllFilteredAssets');
+        $this->assertFalse($asset->fresh()->is_approved);
+        $asset->update(['mockup3' => 'https://example.com/3.png']);
+        $component->call('approveAllFilteredAssets');
+        $this->assertTrue($asset->fresh()->is_approved);
+    }
+
     public function test_unapproving_clears_listing_error_and_stale_worker_cannot_restore_it(): void
     {
         $admin = User::factory()->create(['role' => 'super_admin']);

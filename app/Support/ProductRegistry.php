@@ -106,6 +106,16 @@ class ProductRegistry
                 'is_active' => true,
             ],
             [
+                'name' => 'Order Amazon Paste',
+                'slug' => 'order-amazon-paste',
+                'description' => 'Extract and export pasted Amazon orders.',
+                'route_name' => 'offorest.products.order-amazon-paste',
+                'path' => 'order-amazon-paste',
+                'component' => \App\Livewire\Pages\Order\OrderAmazonPaste::class,
+                'sort_order' => 45,
+                'is_active' => true,
+            ],
+            [
                 'name' => 'Camp',
                 'slug' => 'camp',
                 'description' => 'Spreadsheet-style campaign input sheet.',

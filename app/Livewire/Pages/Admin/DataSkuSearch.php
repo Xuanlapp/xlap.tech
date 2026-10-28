@@ -5,6 +5,10 @@ namespace App\Livewire\Pages\Admin;
 use App\Models\Product;
 use App\Models\ProductDesignAsset;
 use App\Models\User;
+use App\Services\Glass\GlassService;
+use App\Services\Ceramic\CeramicService;
+use App\Services\Sticker\StickerService;
+use App\Services\Decal\DecalService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Livewire\Component;
@@ -51,6 +55,50 @@ class DataSkuSearch extends Component
         $this->skuSearch = $remaining;
         $this->resetPage();
     }
+    public function toggleUserFilter(int $id): void
+    {
+        if ($this->filterMode === 'user' && $this->userId === $id) {
+            $this->filterMode = 'all';
+            $this->userId = null;
+        } else {
+            $this->filterMode = 'user';
+            $this->userId = $id;
+        }
+        $this->resetPage();
+    }
+
+    public function approveAllFilteredAssets(): void
+    {
+        abort_unless(auth()->user()?->isSuperAdmin(), 403);
+        $skus = $this->normalizedSkus();
+        if ($skus === []) return;
+
+        $services = ['glass' => GlassService::class, 'ceramic' => CeramicService::class, 'sticker' => StickerService::class, 'decal' => DecalService::class];
+        $approved = 0;
+        $skipped = 0;
+        $this->resultsQuery($skus)->where('is_approved', false)->select('id')->chunkById(100, function ($assets) use ($services, &$approved, &$skipped): void {
+            foreach ($assets as $asset) {
+                $asset = ProductDesignAsset::query()->find($asset->id);
+                $service = $services[$asset?->product?->slug] ?? null;
+                if (! $asset || $asset->is_approved || ! $asset->user || ! $service || $asset->hasCustomMockupOutput() === false || $asset->getCustomMockupCount() < 3) {
+                    $skipped++;
+                    continue;
+                }
+                try {
+                    app($service)->toggleApproval($asset->user, $asset->id);
+                    $approved++;
+                } catch (\Throwable $exception) {
+                    report($exception);
+                    $skipped++;
+                }
+            }
+        });
+
+        $message = "Da duyet {$approved} item";
+        if ($skipped > 0) $message .= "; bo qua {$skipped} item khong du dieu kien hoac can duyet tai trang san pham";
+        $this->dispatch('notify', type: 'success', message: $message.'.');
+    }
+
     public function resetAllFilteredAssets(): void
     {
         abort_unless(auth()->user()?->isSuperAdmin(), 403);
@@ -120,6 +168,7 @@ class DataSkuSearch extends Component
             'skus' => $skus,
             'users' => User::query()->select('id', 'name')->orderBy('name')->get(),
             'products' => Product::query()->whereIn('slug', $this->pageProductSlugs())->where('is_active', true)->select('id', 'name', 'slug')->orderBy('name')->get(),
+            'filteredUsers' => $skus === [] ? collect() : $this->resultsQuery($skus, false)->where('is_approved', false)->with('user:id,name')->get()->pluck('user')->filter()->unique('id')->sortBy('name')->values(),
             'approvedAssets' => $skus === []
                 ? ProductDesignAsset::query()->whereRaw('1 = 0')->paginate(25, ['*'], 'approvedPage')
                 : $this->resultsQuery($skus)->where('is_approved', true)->paginate(25, ['*'], 'approvedPage'),
@@ -147,13 +196,13 @@ class DataSkuSearch extends Component
     }
 
     /** @param list<string> $skus */
-    private function resultsQuery(array $skus): Builder
+    private function resultsQuery(array $skus, bool $filterUser = true): Builder
     {
         $query = ProductDesignAsset::query()
             ->with(['user:id,name,email', 'product:id,name,slug'])
             ->whereIn('sku', $skus);
 
-        if (in_array($this->filterMode, ['user', 'user_product'], true) && $this->userId) {
+        if ($filterUser && in_array($this->filterMode, ['user', 'user_product'], true) && $this->userId) {
             $query->where('user_id', $this->userId);
         }
 

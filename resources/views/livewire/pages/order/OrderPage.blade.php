@@ -1,80 +1,4 @@
 <section class="min-h-[calc(100vh-4rem)] bg-[#f4f6fb] px-3 py-6 text-slate-950 sm:px-5 lg:px-8">
-    @if ($showOrderTextModal)
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <dialog wire:ignore.self x-init="$el.showModal()" x-on:cancel.prevent="if (!$refs.closeOrderText.disabled) $wire.closeOrderTextModal()" aria-labelledby="order-text-title" class="m-auto max-h-[90vh] w-full max-w-[95vw] overflow-y-auto rounded-2xl bg-white p-5 text-slate-950 shadow-xl">
-                <div class="flex items-center justify-between gap-3"><h2 id="order-text-title" class="text-lg font-bold">Order 1 item</h2><button type="button" x-ref="closeOrderText" wire:click="closeOrderTextModal" wire:loading.attr="disabled" wire:target="exportOrderText" aria-label="Đóng" class="rounded px-3 py-2 text-xl">&times;</button></div>
-                <p class="mt-2 text-sm text-slate-600">Dán nội dung trang chi tiết đơn hàng Amazon. Kết quả không tự lưu đơn.</p>
-                <label for="order-text" class="mt-4 block text-sm font-semibold">Nội dung đơn hàng</label>
-                <textarea id="order-text" wire:model="orderText" wire:loading.attr="disabled" wire:target="exportOrderText" @disabled($orderTextLocked) rows="8" maxlength="100000" class="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Dán nội dung đơn hàng vào đây"></textarea>
-                @error('orderText') <p role="alert" class="mt-2 text-sm text-red-700">{{ $message }}</p> @enderror
-                <div class="mt-3 flex flex-wrap items-center gap-2">
-                    <button type="button" wire:click="parseOrderText" wire:loading.attr="disabled" wire:target="parseOrderText,exportOrderText" @disabled($orderTextLocked) class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Lấy dữ liệu</button>
-                    @if ($orderTextLocked)<button type="button" wire:click="clearOrderTextInput" wire:loading.attr="disabled" wire:target="exportOrderText" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold">Thêm đơn</button>@endif
-                    @if (count($orderTextResults))<button type="button" wire:click="exportOrderText" wire:loading.attr="disabled" wire:target="exportOrderText,orderTextTrackingFiles" class="ml-auto inline-flex items-center gap-2 rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:cursor-wait disabled:opacity-50">
-                        <span wire:loading.remove wire:target="exportOrderText">Export đơn</span>
-                        <span wire:loading wire:target="exportOrderText" class="inline-flex items-center gap-2"><svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>Đang export...</span>
-                    </button>@endif
-                </div>
-                <p wire:loading wire:target="orderTextTrackingFiles,exportOrderText" class="mt-2 text-sm">Đang xử lý file và export...</p>
-                @if ($errors->has('orderTextExport')) <p role="alert" class="mt-2 text-sm text-red-700">{{ $errors->first('orderTextExport') }}</p> @endif
-                <div class="mt-3 flex flex-wrap items-center gap-4">
-                    <label class="text-sm"><input type="checkbox" wire:model.live="orderTextFbaOnly" wire:loading.attr="disabled" wire:target="exportOrderText" class="mr-1"> Chỉ FBA</label>
-                </div>
-                <section class="mt-4 rounded-lg border border-slate-200 p-4" aria-labelledby="order-text-results-title">
-                    <h3 id="order-text-results-title" class="text-sm font-bold">Dữ liệu đơn hàng</h3>
-                    @if (count($orderTextResults))
-                        <p class="mt-3 text-sm text-amber-800">Kiểm tra dữ liệu trước khi sử dụng. Dấu gạch ngang là thông tin chưa tìm thấy.</p>
-                        <p class="mt-2 text-xs text-slate-600">File tracking được chia sẻ cho bất kỳ ai có link, chỉ quyền xem. Chấp nhận JPG, PNG, WebP hoặc PDF, tối đa 10 MB.</p>
-                        <button type="button" wire:click="clearOrderTextRows" wire:loading.attr="disabled" wire:target="exportOrderText" class="mt-2 rounded border border-slate-300 px-3 py-1 text-xs">Xóa tất cả</button>
-                        <div class="mt-3 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
-                            <table class="w-max min-w-full text-left text-xs leading-5 [&_th:not(:last-child)]:border-r [&_td:not(:last-child)]:border-r [&_th]:border-slate-300 [&_td]:border-slate-300">
-                                <caption class="sr-only">Dữ liệu đơn hàng và customizations</caption>
-                                <thead class="bg-slate-50 dark:bg-slate-800"><tr>
-                                    @foreach (['SKU', 'Order ID', 'Order Product ID', 'Qty', 'Design Link', 'Tracking ID', 'TO_NAME', 'TO_COMPANY', 'TO_PHONE', 'TO_ADDRESS1', 'TO_ADDRESS2', 'TO_CITY', 'TO_STATE', 'TO_POSTCODE'] as $heading)
-                                        <th scope="col" class="min-w-40 px-3 py-2 font-semibold">{{ $heading }}</th>
-                                    @endforeach
-                                    @foreach ($orderTextCustomizationLabels as $label)<th scope="col" class="min-w-40 max-w-52 px-3 py-2 font-semibold">{{ $label }}</th>@endforeach
-                                    <th scope="col" class="px-3 py-2 font-semibold">Xóa</th>
-                                </tr></thead>
-                                <tbody>
-                                    @foreach ($orderTextResults as $index => $row)
-                                        @php $address = $row['address']; @endphp
-                                        <tr class="align-top" wire:key="order-text-row-{{ $index }}">
-                                            <td class="break-words px-3 py-3">{{ $row['sku'] ?: '-' }}</td>
-                                            <td class="break-words px-3 py-3">{{ $row['id'] ?: '-' }}</td>
-                                            <td class="break-words px-3 py-3">{{ $row['catalogProduct']?->order_product_id ?? '-' }}</td>
-                                            <td class="break-words px-3 py-3">{{ $row['quantity'] ?: '-' }}</td>
-                                            <td class="max-w-64 break-all px-3 py-3">
-                                                @forelse ($row['designs'] as $design)
-                                                    <div>
-                                                        @if (auth()->user()?->is_admin && $row['designs']->count() > 1)<span>{{ $design->user?->name }}: </span>@endif
-                                                        @if (in_array(strtolower((string) parse_url($design->image_link, PHP_URL_SCHEME)), ['http', 'https'], true))
-                                                            <a href="{{ $design->image_link }}" target="_blank" rel="noopener noreferrer" class="text-blue-700 underline">{{ $design->image_link }}</a>
-                                                        @else {{ $design->image_link ?: '-' }} @endif
-                                                    </div>
-                                                @empty - @endforelse
-                                            </td>
-                                            <td class="px-3 py-3">
-                                                <label class="sr-only" for="tracking-file-{{ $index }}">File tracking cho đơn {{ $row['id'] ?: $index + 1 }}</label>
-                                                <input id="tracking-file-{{ $index }}" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" wire:model="orderTextTrackingFiles.{{ $index }}" wire:loading.attr="disabled" wire:target="exportOrderText" class="w-48 text-xs">
-                                                @if (!empty($orderTextTrackingLinks[$index]))<span class="block">Đã upload</span>@endif
-                                                @if ($errors->has('orderTextTrackingFiles.'.$index))<span role="alert" class="block text-red-700">{{ $errors->first('orderTextTrackingFiles.'.$index) }}</span>@endif
-                                            </td>
-                                            @foreach ($address as $value)<td class="break-words px-3 py-3">{{ $value ?: '-' }}</td>@endforeach
-                                            @foreach ($orderTextCustomizationLabels as $label)<td class="break-words px-3 py-3">{{ $row['customizationValues'][$label] ?? '-' }}</td>@endforeach
-                                            <td class="px-3 py-3"><button type="button" wire:click="removeOrderTextRow({{ $index }})" wire:loading.attr="disabled" wire:target="exportOrderText" aria-label="Xóa đơn {{ $row['id'] ?: $index + 1 }}" class="rounded px-2 py-1 text-red-700">&times;</button></td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    @else
-                        <p class="mt-3 text-sm text-slate-500">Dán nội dung và chọn Lấy dữ liệu.</p>
-                    @endif
-                </section>
-            </dialog>
-        </div>
-    @endif
     <div class="mx-auto flex w-full max-w-[1450px] flex-col gap-5">
         <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
             <div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
@@ -102,7 +26,6 @@
                 <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4">
                     <div><h2 class="text-base font-black text-slate-950">SKU Order Items</h2><p class="mt-1 text-xs text-slate-500">Anh trong danh sach la link Google Drive.</p></div>
                     <div class="flex flex-wrap items-center gap-2">
-                        <button type="button" wire:click="$set('showOrderTextModal', true)" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700">Order 1 item</button>
                         @if (auth()->user()?->is_admin)
                             <button type="button" wire:click="openImportModal" class="rounded-lg bg-slate-950 px-3 py-2 text-xs font-bold text-white hover:bg-orange-600">Import Order Item</button>
                             <button type="button" wire:click="reloadItems" wire:loading.attr="disabled" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:border-orange-400 hover:text-orange-700 disabled:opacity-60">
@@ -127,7 +50,7 @@
                             <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th class="px-5 py-3">Chon</th><th class="px-5 py-3">SKU</th><th class="px-5 py-3">Product</th><th class="px-5 py-3">Images</th><th class="px-5 py-3">Link Images</th><th class="px-5 py-3">Source</th></tr></thead>
                             <tbody class="divide-y divide-slate-100">
                                 @foreach ($items as $item)
-                                    <tr wire:key="order-item-{{ $item->id }}" class="hover:bg-orange-50/40">
+                                    <tr wire:key="order-item-{{ $item->id }}" class="hover:bg-slate-100">
                                         <td class="px-5 py-3"><input type="checkbox" wire:model.live="selectedSkuOrderItemIds" value="{{ $item->id }}" class="rounded border-slate-300"></td>
                                         <td class="px-5 py-3 font-black text-slate-950">@if (auth()->user()?->is_admin)<button type="button" wire:click="openEditOrderItemModal({{ $item->id }})" class="text-left hover:text-orange-600 hover:underline" title="Sua SKU Order Item">{{ $item->sku }}</button>@else{{ $item->sku }}@endif</td>
                                         <td class="px-5 py-3 text-slate-600"><span class="block font-semibold text-slate-800">{{ $item->product?->display_name ?? $item->asset?->product?->display_name ?? 'Chua gan product' }}</span><span class="block max-w-[240px] truncate text-xs text-slate-500">{{ $item->asset?->keyword }}</span></td>
@@ -158,7 +81,7 @@
                 @if ($historyOrders->isEmpty())
                     <div class="px-5 py-12 text-center text-sm font-medium text-slate-400">Chua co order nao trong history.</div>
                 @else
-                    <div class="overflow-x-auto"><table class="w-full min-w-[900px] text-left text-sm"><thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th class="px-5 py-3">Select</th><th class="px-5 py-3">Order ID</th>@if (auth()->user()?->is_admin)<th class="px-5 py-3">User</th>@endif<th class="px-5 py-3">Qty</th><th class="px-5 py-3">Size</th><th class="px-5 py-3">Preview</th><th class="px-5 py-3">Images</th><th class="px-5 py-3">Order Product ID</th></tr></thead><tbody class="divide-y divide-slate-100">@foreach ($historyOrders as $historyOrder)@php($historyData = $historyOrder->report_data ?? [])<tr wire:key="history-order-{{ $historyOrder->id }}" class="hover:bg-orange-50/40"><td class="px-5 py-3"><input type="checkbox" wire:model.live="selectedHistoryOrderIds" value="{{ $historyOrder->id }}" class="rounded border-slate-300"></td><td class="px-5 py-3 font-black text-slate-950">{{ $historyOrder->order_id }}</td>@if (auth()->user()?->is_admin)<td class="px-5 py-3 text-slate-700"><span class="block font-semibold">{{ $historyOrder->user?->name ?? 'Deleted user' }}</span><span class="block text-xs text-slate-500">{{ $historyOrder->user?->email }}</span></td>@endif<td class="px-5 py-3">{{ $historyData['quantity'] ?? '-' }}</td><td class="px-5 py-3">{{ $historyData['size'] ?? '-' }}</td><td class="px-5 py-3">@if ($historyOrder->image_preview_url)<button type="button" x-on:click="$dispatch('review-image', { src: @js($historyOrder->image_preview_url), original: @js(($historyOrder->images_link ?? [])[0] ?? ''), title: @js('Order ' . $historyOrder->order_id), imageOnly: true })"><img src="{{ $historyOrder->image_preview_url }}" alt="Order preview" loading="lazy" class="h-12 w-12 rounded border object-cover"></button>@else-@endif</td><td class="px-5 py-3"><span class="rounded-full bg-blue-50 px-2 py-1 text-xs font-bold text-blue-700">{{ count($historyOrder->images_link ?? []) }} images</span></td><td class="px-5 py-3 font-black text-slate-950">{{ $historyData['product_id'] ?? '-' }}</td></tr>@endforeach</tbody></table></div>
+                    <div class="overflow-x-auto"><table class="w-full min-w-[900px] text-left text-sm"><thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th class="px-5 py-3">Select</th><th class="px-5 py-3">Order ID</th>@if (auth()->user()?->is_admin)<th class="px-5 py-3">User</th>@endif<th class="px-5 py-3">Qty</th><th class="px-5 py-3">Size</th><th class="px-5 py-3">Preview</th><th class="px-5 py-3">Images</th><th class="px-5 py-3">Order Product ID</th></tr></thead><tbody class="divide-y divide-slate-100">@foreach ($historyOrders as $historyOrder)@php($historyData = $historyOrder->report_data ?? [])<tr wire:key="history-order-{{ $historyOrder->id }}" class="hover:bg-slate-100"><td class="px-5 py-3"><input type="checkbox" wire:model.live="selectedHistoryOrderIds" value="{{ $historyOrder->id }}" class="rounded border-slate-300"></td><td class="px-5 py-3 font-black text-slate-950">{{ $historyOrder->order_id }}</td>@if (auth()->user()?->is_admin)<td class="px-5 py-3 text-slate-700"><span class="block font-semibold">{{ $historyOrder->user?->name ?? 'Deleted user' }}</span><span class="block text-xs text-slate-500">{{ $historyOrder->user?->email }}</span></td>@endif<td class="px-5 py-3">{{ $historyData['quantity'] ?? '-' }}</td><td class="px-5 py-3">{{ $historyData['size'] ?? '-' }}</td><td class="px-5 py-3">@if ($historyOrder->image_preview_url)<button type="button" x-on:click="$dispatch('review-image', { src: @js($historyOrder->image_preview_url), original: @js(($historyOrder->images_link ?? [])[0] ?? ''), title: @js('Order ' . $historyOrder->order_id), imageOnly: true })"><img src="{{ $historyOrder->image_preview_url }}" alt="Order preview" loading="lazy" class="h-12 w-12 rounded border object-cover"></button>@else-@endif</td><td class="px-5 py-3"><span class="rounded-full bg-blue-50 px-2 py-1 text-xs font-bold text-blue-700">{{ count($historyOrder->images_link ?? []) }} images</span></td><td class="px-5 py-3 font-black text-slate-950">{{ $historyData['product_id'] ?? '-' }}</td></tr>@endforeach</tbody></table></div>
                     <div class="border-t border-slate-200 px-5 py-4">{{ $historyOrders->links('vendor.pagination.idea-etsy', data: ['scrollTo' => false]) }}</div>
                 @endif
             </div>
@@ -175,7 +98,7 @@
                 @if ($orderProducts->isEmpty())
                     <div class="px-5 py-12 text-center text-sm font-medium text-slate-400">Chua co Order Product. Admin hay import file Excel/CSV.</div>
                 @else
-                    <div class="overflow-x-auto"><table class="w-full min-w-[720px] text-left text-sm"><thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th class="px-5 py-3">ID</th><th class="px-5 py-3">FBM/FBA</th><th class="px-5 py-3">Order Product ID</th><th class="px-5 py-3">Product Name</th></tr></thead><tbody class="divide-y divide-slate-100">@foreach ($orderProducts as $orderProduct)<tr wire:key="order-product-{{ $orderProduct->id }}" class="hover:bg-orange-50/40"><td class="px-5 py-3 font-semibold text-slate-700">{{ $orderProduct->source_id }}</td><td class="px-5 py-3"><span class="rounded-full px-2 py-1 text-[11px] font-bold {{ $orderProduct->fulfillment_type === 'FBA' ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700' }}">{{ $orderProduct->fulfillment_type }}</span></td><td class="px-5 py-3 font-black text-slate-950">{{ $orderProduct->order_product_id }}</td><td class="px-5 py-3 text-slate-700">{{ $orderProduct->product_name }}</td></tr>@endforeach</tbody></table></div>
+                    <div class="overflow-x-auto"><table class="w-full min-w-[720px] text-left text-sm"><thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th class="px-5 py-3">ID</th><th class="px-5 py-3">FBM/FBA</th><th class="px-5 py-3">Order Product ID</th><th class="px-5 py-3">Product Name</th></tr></thead><tbody class="divide-y divide-slate-100">@foreach ($orderProducts as $orderProduct)<tr wire:key="order-product-{{ $orderProduct->id }}" class="hover:bg-slate-100"><td class="px-5 py-3 font-semibold text-slate-700">{{ $orderProduct->source_id }}</td><td class="px-5 py-3"><span class="rounded-full px-2 py-1 text-[11px] font-bold {{ $orderProduct->fulfillment_type === 'FBA' ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700' }}">{{ $orderProduct->fulfillment_type }}</span></td><td class="px-5 py-3 font-black text-slate-950">{{ $orderProduct->order_product_id }}</td><td class="px-5 py-3 text-slate-700">{{ $orderProduct->product_name }}</td></tr>@endforeach</tbody></table></div>
                     <div class="border-t border-slate-200 px-5 py-4">{{ $orderProducts->links('vendor.pagination.idea-etsy', data: ['scrollTo' => false]) }}</div>
                 @endif
             </div>
