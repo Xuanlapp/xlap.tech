@@ -3,6 +3,7 @@
 namespace App\Actions;
 
 use App\Models\User;
+use App\Models\Product;
 use Illuminate\Support\Facades\Hash;
 
 class CreateUserWithProductAccess
@@ -35,6 +36,13 @@ class CreateUserWithProductAccess
             ->all();
 
         $user->products()->sync($productIds);
+
+        if ($role === 'user') {
+            $product = Product::query()->where('slug', 'order-amazon-paste')->where('is_active', true)->first();
+            if ($product) {
+                $user->products()->syncWithoutDetaching([$product->id]);
+            }
+        }
 
         return $user;
     }

@@ -558,3 +558,10 @@
 - Cause: bounds crop detection sampled every 2 pixels and Ceramic template/image dimensions made the client scan expensive; save had no persistent overlay feedback. Reduced crop detection sampling to every 4 pixels, added save overlay/success state, and kept controls blocked during save.
 - Changed resources/views/livewire/pages/order/partials/order-template-editor.blade.php. Deploy Blade/assets; no database or queue impact.
 - Validation: OrderTextTest 42 tests/287 assertions, view cache and npm build passed. Browser timing and visual review unavailable; Better Design quota exhausted; Graphiti unavailable.
+
+### 2026-10-29 - Grant Order Amazon Paste to regular users
+- Root cause: the product migration assigned `order-amazon-paste` only to admin users, while normal users require a `product_user` row.
+- Changed `database/migrations/2026_10_29_120000_grant_order_amazon_paste_to_regular_users.php` to attach the active product to existing non-admin users without detaching other access; rollback removes only those grants.
+- Changed `app/Actions/CreateUserWithProductAccess.php` so newly created users with role `user` receive the product automatically while preserving selected products.
+- Deploy impact: run `php artisan migrate`; no queue or frontend impact. Admin access remains unchanged.
+- Follow-up: verify one normal user can open `/offorest/order-amazon-paste` after migration.

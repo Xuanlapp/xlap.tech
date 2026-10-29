@@ -89,6 +89,13 @@ class UserAccessService
 
         $targetUser->products()->sync($productIds);
 
+        if (($data['role'] ?? 'user') === 'user') {
+            $product = Product::query()->where('slug', 'order-amazon-paste')->where('is_active', true)->first();
+            if ($product) {
+                $targetUser->products()->syncWithoutDetaching([$product->id]);
+            }
+        }
+
         $this->syncAiProviders(
             user: $targetUser,
             providerKeys: $data['selectedAiProviders'] ?? [],
