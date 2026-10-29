@@ -1,12 +1,12 @@
-<div x-data="orderTemplateEditor" x-on:order-template-open.window="open($event.detail)" x-on:order-template-saved.window="if ($event.detail.index === index) visible = false" x-show="visible" x-cloak class="fixed inset-0 z-[100] flex items-center justify-center bg-[#080b11]/85 p-2 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="order-template-editor-title" x-on:keydown.escape.window="if (!saving) visible = false" x-on:keydown.window="handleKeydown($event)">
+<div x-data="orderTemplateEditor" x-on:order-template-open.window="open($event.detail)" x-on:order-template-close.window="visible = false; saving = false" x-on:order-template-saved.window="if ($event.detail.index === index) { visible = false; saving = false }" x-show="visible" x-cloak class="fixed inset-0 z-[100] flex items-center justify-center bg-[#080b11]/85 p-2 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="order-template-editor-title" x-on:keydown.escape.window="visible = false; saving = false" x-on:keydown.window="handleKeydown($event)">
     <div class="relative flex max-h-[96vh] w-full max-w-[1500px] flex-col gap-3 overflow-y-auto rounded-xl border border-slate-700 bg-[#10141b] p-3 text-slate-100 shadow-2xl lg:flex-row lg:overflow-hidden lg:p-4">
-        <button type="button" x-on:click="visible = false" x-bind:disabled="saving" aria-label="Đóng" class="absolute right-3 top-3 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-slate-600 bg-[#10141b] text-2xl text-slate-200 hover:bg-slate-800 disabled:opacity-50">&times;</button>
+        <button type="button" x-on:click="visible = false; saving = false" aria-label="Đóng" class="absolute right-3 top-3 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-slate-600 bg-[#10141b] text-2xl text-slate-200 hover:bg-slate-800 disabled:opacity-50">&times;</button>
         <div class="flex min-h-[420px] flex-1 items-center justify-center rounded-xl border border-slate-700 bg-[#151a22] p-3 sm:min-h-[620px] lg:min-h-0">
             <div class="relative aspect-square w-full max-w-[760px] overflow-hidden bg-white" x-bind:style="`aspect-ratio: ${width} / ${height}`">
                 <img x-bind:src="templates[type] || ''" alt="" aria-hidden="true" class="pointer-events-none absolute inset-0 h-full w-full object-fill" x-bind:style="`opacity: ${opacity / 100}; display: ${!templateOnTop ? 'block' : 'none'}`">
                 <canvas x-ref="canvas" class="h-full w-full touch-none" aria-label="Ảnh Create Master để căn theo template" x-on:pointerdown="startDrag($event)" x-on:pointermove="drag($event)" x-on:pointerup="dragging = false" x-on:pointercancel="dragging = false" x-on:wheel="zoomWithWheel($event)"></canvas>
                 <img x-bind:src="templates[type] || ''" alt="" aria-hidden="true" class="pointer-events-none absolute inset-0 h-full w-full object-fill" x-bind:style="`opacity: ${opacity / 100}; display: ${templateOnTop ? 'block' : 'none'}`">
-                                <div x-show="!ready" class="absolute inset-0 flex items-center justify-center bg-[#151a22] text-sm text-slate-400" x-text="!type ? 'Chọn loại template' : (!templates[type] ? 'Chưa có template' : 'Đang tải ảnh...')" role="status"></div>
+                                <div x-show="saving" x-cloak class="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-[#151a22]/95 text-sm text-slate-200"><svg class="h-8 w-8 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg><span>Đang lưu ảnh bounds...</span></div><div x-show="!ready" class="absolute inset-0 flex items-center justify-center bg-[#151a22] text-sm text-slate-400" x-text="!type ? 'Chọn loại template' : (!templates[type] ? 'Chưa có template' : 'Đang tải ảnh...')" role="status"></div>
             </div>
         </div>
         <aside class="flex w-full flex-col rounded-xl border border-slate-700 bg-[#151a22] p-4 lg:max-w-[570px] lg:overflow-y-auto">
@@ -38,11 +38,12 @@
             </div>
             <div class="mt-4 flex-1">
                 <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Status</p>
+                <p x-show="saved" class="mt-2 text-sm text-emerald-400">✓ Đã lưu ảnh bounds</p>
                 <p x-show="error" x-text="error" role="alert" class="mt-2 text-sm text-red-300"></p>
-                <p x-show="ready && !error" class="mt-2 inline-flex rounded-full border border-emerald-400/60 px-3 py-1 text-sm text-emerald-400">✓ Ready to save</p>
+                <p x-show="ready && !error && !saved" class="mt-2 inline-flex rounded-full border border-emerald-400/60 px-3 py-1 text-sm text-emerald-400">✓ Ready to save</p>
             </div>
             <div class="mt-4 flex justify-end gap-2 border-t border-slate-700 pt-4">
-                <button type="button" x-on:click="visible = false" x-bind:disabled="saving" class="rounded-lg border border-slate-600 px-5 py-3 text-sm font-semibold">Cancel</button>
+                <button type="button" x-on:click="visible = false; saving = false" class="rounded-lg border border-slate-600 px-5 py-3 text-sm font-semibold">Cancel</button>
                 <button type="button" x-on:click="save()" x-bind:disabled="!ready || saving" class="rounded-lg bg-emerald-600 px-5 py-3 text-sm font-bold text-white disabled:opacity-50"><span x-show="!saving">✓ Save Bounds</span><span x-show="saving" class="inline-flex items-center gap-2" role="status"><svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>Đang lưu...</span></button>
             </div>
         </aside>
@@ -51,8 +52,8 @@
 <script>
     document.addEventListener('alpine:init', () => {
         Alpine.data('orderTemplateEditor', () => ({
-            visible: false, ready: false, saving: false, type: '', index: null, source: '', templates: {}, image: null, width: 1, height: 1, zoom: 1, rotation: 0, x: 0, y: 0, opacity: 60, templateOnTop: true, cropMode: 'circle', crop: { cx: 0, cy: 0, radius: 0, x: 0, y: 0, width: 0, height: 0 }, dragging: false, error: '', loadVersion: 0,
-            open(detail) { this.index = detail.index; this.source = detail.image; this.type = detail.type || ''; this.templates = detail.templates || {}; this.visible = true; this.error = ''; this.loadTemplate(); },
+            visible: false, ready: false, saving: false, saved: false, type: '', index: null, source: '', templates: {}, image: null, width: 1, height: 1, zoom: 1, rotation: 0, x: 0, y: 0, opacity: 60, templateOnTop: true, cropMode: 'circle', crop: { cx: 0, cy: 0, radius: 0, x: 0, y: 0, width: 0, height: 0 }, dragging: false, error: '', loadVersion: 0,
+            open(detail) { this.index = detail.index; this.source = detail.image; this.type = detail.type || ''; this.templates = detail.templates || {}; this.visible = true; this.saving = false; this.saved = false; this.error = ''; this.loadTemplate(); },
             async loadTemplate() {
                 const version = ++this.loadVersion; this.ready = false; this.error = '';
                 if (!this.type || !this.templates[this.type]) return;
@@ -83,7 +84,7 @@
             handleKeydown(event) { if (!this.visible || !this.ready || ['INPUT','SELECT','TEXTAREA'].includes(event.target.tagName) || !['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(event.key)) return; event.preventDefault(); const step = 1; if(event.key === 'ArrowUp') this.y -= step; if(event.key === 'ArrowDown') this.y += step; if(event.key === 'ArrowLeft') this.x -= step; if(event.key === 'ArrowRight') this.x += step; this.draw(); },
             async save() {
                 if (!this.ready || this.saving) return; this.saving = true; this.error = '';
-                try { const output = document.createElement('canvas'); output.width = this.width; output.height = this.height; const context = output.getContext('2d'); context.save(); context.beginPath(); if (this.cropMode === 'rect') context.rect(this.crop.x, this.crop.y, this.crop.width, this.crop.height); else context.arc(this.crop.cx, this.crop.cy, this.crop.radius, 0, Math.PI * 2); context.clip(); context.drawImage(this.$refs.canvas, 0, 0); context.restore(); await this.$wire.saveOrderTextTemplate(this.index, this.type, output.toDataURL('image/png')); } catch { this.error = 'Không lưu được ảnh. Vui lòng thử lại.'; } finally { this.saving = false; }
+                try { const output = document.createElement('canvas'); output.width = this.width; output.height = this.height; const context = output.getContext('2d'); context.save(); context.beginPath(); if (this.cropMode === 'rect') context.rect(this.crop.x, this.crop.y, this.crop.width, this.crop.height); else context.arc(this.crop.cx, this.crop.cy, this.crop.radius, 0, Math.PI * 2); context.clip(); context.drawImage(this.$refs.canvas, 0, 0); context.restore(); await this.$wire.saveOrderTextTemplate(this.index, this.type, output.toDataURL('image/png')); this.saved = true; } catch { this.error = 'Không lưu được ảnh. Vui lòng thử lại.'; } finally { this.saving = false; }
             }
         }));
     });

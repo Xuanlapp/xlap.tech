@@ -548,3 +548,13 @@
 # 2026-10-28 - DATA bulk approval queues downstream work
 - Bulk approval now explicitly queues listing metadata via MarketplaceListingMetadataService::queueRetryApprovedAsset after approval; existing product services already queue local images for Drive. Scheduler workers process both queues asynchronously.
 - Changed app/Livewire/Pages/Admin/DataSkuSearch.php and tests/Feature/DataSkuSearchUnapproveTest.php. Deploy PHP; no migration.
+
+# 2026-10-29 - Order Amazon Paste template modal close
+- Cause: Alpine template editor remained visible while Livewire parse data refreshed the page, especially when Ceramic template was missing; close controls were also blocked by stale saving state. Parse now dispatches a close event; editor handles close, escape, saved, and manual buttons by clearing visible/saving state.
+- Changed app/Livewire/Pages/Order/OrderAmazonPaste.php and resources/views/livewire/pages/order/partials/order-template-editor.blade.php. Deploy PHP/Blade/assets; no database or queue impact.
+- Validation: OrderTextTest 42 tests/287 assertions, PHP lint, view cache and npm build passed. Browser visual review unavailable; Better Design quota exhausted; Graphiti unavailable.
+
+# 2026-10-29 - Order Amazon Paste Ceramic bounds performance
+- Cause: bounds crop detection sampled every 2 pixels and Ceramic template/image dimensions made the client scan expensive; save had no persistent overlay feedback. Reduced crop detection sampling to every 4 pixels, added save overlay/success state, and kept controls blocked during save.
+- Changed resources/views/livewire/pages/order/partials/order-template-editor.blade.php. Deploy Blade/assets; no database or queue impact.
+- Validation: OrderTextTest 42 tests/287 assertions, view cache and npm build passed. Browser timing and visual review unavailable; Better Design quota exhausted; Graphiti unavailable.

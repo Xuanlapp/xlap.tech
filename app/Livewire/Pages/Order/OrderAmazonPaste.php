@@ -132,6 +132,7 @@ class OrderAmazonPaste extends Component
 
     public function parseOrderText(): void
     {
+        $this->dispatch('order-template-close');
         $this->validate(['orderText' => 'required|string|max:100000']);
         if ($this->orderTextLocked) return;
         $input = str_replace(["\r\n", "\r"], "\n", $this->orderText);
