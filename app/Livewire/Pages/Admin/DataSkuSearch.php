@@ -9,6 +9,7 @@ use App\Services\Glass\GlassService;
 use App\Services\Ceramic\CeramicService;
 use App\Services\Sticker\StickerService;
 use App\Services\Decal\DecalService;
+use App\Services\Marketplace\MarketplaceListingMetadataService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Livewire\Component;
@@ -87,9 +88,10 @@ class DataSkuSearch extends Component
                 try {
                     app($service)->toggleApproval($asset->user, $asset->id);
                     $approved++;
+                    app(MarketplaceListingMetadataService::class)->queueRetryApprovedAsset($asset->id);
                 } catch (\Throwable $exception) {
                     report($exception);
-                    $skipped++;
+                    if (! ProductDesignAsset::query()->whereKey($asset->id)->where('is_approved', true)->exists()) $skipped++;
                 }
             }
         });

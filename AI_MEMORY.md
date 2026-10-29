@@ -536,3 +536,15 @@
 # 2026-10-28 - DATA bulk approval mockup threshold
 - Bulk approval now requires at least 3 populated custom mockup fields; redesign alone is insufficient. Added ProductDesignAsset::getCustomMockupCount and reused it in hasCustomMockupOutput.
 - Changed app/Livewire/Pages/Admin/DataSkuSearch.php, app/Models/ProductDesignAsset.php, resources/views/livewire/pages/admin/data-sku-search.blade.php and tests/Feature/DataSkuSearchUnapproveTest.php. Deploy PHP/Blade; no migration or queue change.
+
+# 2026-10-28 - DATA bulk approval loading
+- Added request-scoped spinner and disabled state to bulk approval; spinner ends when the Livewire request completes, not when queued Drive uploads finish. Changed resources/views/livewire/pages/admin/data-sku-search.blade.php and .design/data-sku-search/DESIGN_BRIEF.md.
+- Validation: DataSkuSearchUnapproveTest 4/21, view:cache and npm build passed. Deploy Blade/assets; no queue changes. Browser screenshots and visual review unavailable; Better Design quota exhausted; Graphiti unavailable.
+
+# 2026-10-28 - DATA bulk unapproval loading
+- Added spinner and disabled state to Chua duyet toan bo; it lasts until resetAllFilteredAssets Livewire request completes. Changed resources/views/livewire/pages/admin/data-sku-search.blade.php and .design/data-sku-search/DESIGN_BRIEF.md.
+- Validation: DataSkuSearchUnapproveTest 4/21, view cache and npm build passed. Deploy Blade/assets; no queue change.
+
+# 2026-10-28 - DATA bulk approval queues downstream work
+- Bulk approval now explicitly queues listing metadata via MarketplaceListingMetadataService::queueRetryApprovedAsset after approval; existing product services already queue local images for Drive. Scheduler workers process both queues asynchronously.
+- Changed app/Livewire/Pages/Admin/DataSkuSearch.php and tests/Feature/DataSkuSearchUnapproveTest.php. Deploy PHP; no migration.

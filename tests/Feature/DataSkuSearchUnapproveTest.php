@@ -6,6 +6,7 @@ use App\Livewire\Pages\Admin\DataSkuSearch;
 use App\Models\Product;
 use App\Models\ProductDesignAsset;
 use App\Models\User;
+use App\Models\ProductDriveUpload;
 use App\Repositories\Product\ProductDesignAssetRepository;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -68,11 +69,13 @@ class DataSkuSearchUnapproveTest extends TestCase
         $other = User::factory()->create(['name' => 'Huy']);
         $product = Product::where('slug', 'glass')->firstOrFail();
         foreach ([[$owner, 'A1'], [$other, 'A2']] as [$user, $sku]) {
-            ProductDesignAsset::create(['user_id' => $user->id, 'product_id' => $product->id, 'sku' => $sku, 'item_number' => 1, 'redesign' => 'https://example.com/master.png', 'mockup1' => 'https://example.com/1.png', 'mockup2' => 'https://example.com/2.png', 'mockup3' => 'https://example.com/3.png', 'is_approved' => false]);
+            ProductDesignAsset::create(['user_id' => $user->id, 'product_id' => $product->id, 'sku' => $sku, 'item_number' => 1, 'redesign' => '/storage/generated/master.png', 'mockup1' => 'https://example.com/1.png', 'mockup2' => 'https://example.com/2.png', 'mockup3' => 'https://example.com/3.png', 'is_approved' => false]);
         }
         $this->actingAs($admin);
         Livewire::test(DataSkuSearch::class)->set('skuSearch', 'A1,A2')->call('toggleUserFilter', $owner->id)->call('approveAllFilteredAssets');
         $this->assertTrue(ProductDesignAsset::where('sku', 'A1')->value('is_approved'));
+        $this->assertSame('waiting', ProductDesignAsset::where('sku', 'A1')->value('marketplace_listing_status'));
+        $this->assertSame('waiting', ProductDriveUpload::where('product_design_asset_id', ProductDesignAsset::where('sku', 'A1')->value('id'))->value('status'));
         $this->assertFalse(ProductDesignAsset::where('sku', 'A2')->value('is_approved'));
     }
 
